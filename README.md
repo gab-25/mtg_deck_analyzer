@@ -1,2 +1,2 @@
-# mtg_deck_analyzer_ai
-MTG Deck Analyzer AI
+# mtg_deck_analyzer
+MTG Deck Analyzer
