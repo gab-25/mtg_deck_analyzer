@@ -27,6 +27,38 @@ def escape_for_paragraph(text: str) -> str:
     return html.escape(text).replace("\n", "<br/>")
 
 
+def localize_card_names(text: str, name_map: dict) -> str:
+    """Replaces English card names in the analysis text with localized names.
+
+    ``name_map`` maps each English card name (exactly as fed to the analysis
+    model) to its localized printed name. The substitution runs in a single pass
+    using a combined, case-insensitive pattern; longer names are tried first so a
+    card whose name is a prefix of another (e.g. "Tatyova" inside "Tatyova,
+    Benthic Druid") is never partially replaced. Word boundaries keep names from
+    matching inside larger words. Bold/italic markers around a name are
+    preserved, since only the name text itself is rewritten.
+    """
+    if not text or not name_map:
+        return text
+
+    # Skip entries with no real translation (e.g. names identical in both langs).
+    pairs = [
+        (eng, loc)
+        for eng, loc in name_map.items()
+        if eng and loc and eng.lower() != loc.lower()
+    ]
+    if not pairs:
+        return text
+
+    # Longest first so the alternation prefers the most specific card name.
+    pairs.sort(key=lambda kv: len(kv[0]), reverse=True)
+    lookup = {eng.lower(): loc for eng, loc in pairs}
+    alternation = "|".join(re.escape(eng) for eng, _ in pairs)
+    pattern = re.compile(r"(?<!\w)(" + alternation + r")(?!\w)", re.IGNORECASE)
+
+    return pattern.sub(lambda m: lookup[m.group(1).lower()], text)
+
+
 def convert_markdown_inline(text: str) -> str:
     """Converts inline Markdown styles into HTML tags for ReportLab Paragraphs."""
     # Escape HTML tags first to avoid XML parsing errors.
@@ -59,13 +91,16 @@ def markdown_to_flowables(text: str, styles: dict) -> list:
             flowables.append(Spacer(1, 6))
             continue
 
-        # Headings
+        # Headings. Only the first line is the heading; any text that follows on
+        # the next line(s) is body copy that must not inherit the heading size.
         if p.startswith("#"):
+            heading_line, _, remainder = p.partition("\n")
+
             level = 0
-            while p.startswith("#"):
+            while heading_line.startswith("#"):
                 level += 1
-                p = p[1:]
-            p = p.strip()
+                heading_line = heading_line[1:]
+            heading_line = heading_line.strip()
 
             if level == 1:
                 style_name = "Heading1"
@@ -74,8 +109,15 @@ def markdown_to_flowables(text: str, styles: dict) -> list:
             else:
                 style_name = "Heading3"
 
-            flowables.append(Paragraph(convert_markdown_inline(p), styles[style_name]))
+            flowables.append(
+                Paragraph(convert_markdown_inline(heading_line), styles[style_name])
+            )
             flowables.append(Spacer(1, 6))
+
+            # Process any text following the heading as its own block(s).
+            remainder = remainder.strip()
+            if remainder:
+                flowables.extend(markdown_to_flowables(remainder, styles))
 
         # Lists
         elif p.startswith("- ") or p.startswith("* ") or p.startswith("1. "):

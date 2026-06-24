@@ -10,6 +10,7 @@ from .decklist import parse_decklist
 from .gemini import analyze_deck_list, log_analysis_unavailable
 from .pdf import generate_pdf
 from .scryfall import fetch_card_data
+from .text_utils import localize_card_names
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -122,6 +123,9 @@ def main(argv=None):
     # 4. Fetch details and images from Scryfall.
     print(f"Fetching card metadata and artwork (language: {lang})...")
     processed_cards = []
+    # Maps the English name (as used in the analysis prompt) to the localized
+    # name, so card mentions in the analysis can be translated afterwards.
+    name_map = {}
 
     for idx, item in enumerate(deck_cards):
         name = item["name"]
@@ -133,6 +137,9 @@ def main(argv=None):
         if card_info:
             print("OK")
             processed_cards.append({"quantity": qty, "data": card_info})
+            localized_name = card_info.get("name")
+            if localized_name:
+                name_map[name] = localized_name
         else:
             print("FAILED (Skipped)")
 
@@ -153,6 +160,10 @@ def main(argv=None):
             deck_analysis = analyze_deck_list(
                 deck_text_repr, api_key=api_key, lang_code=lang
             )
+            # Translate the card names mentioned in the analysis into the target
+            # language (the analysis is written from the English deck list).
+            if deck_analysis and lang != "en":
+                deck_analysis = localize_card_names(deck_analysis, name_map)
         else:
             # No API key: log to the console and leave the PDF without the analysis.
             log_analysis_unavailable()

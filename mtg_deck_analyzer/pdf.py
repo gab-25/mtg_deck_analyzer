@@ -10,6 +10,7 @@ from reportlab.platypus import (
     Image as RLImage,
 )
 from reportlab.platypus import (
+    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -201,6 +202,20 @@ def _build_styles():
             textColor=primary_color,
             spaceBefore=10,
             spaceAfter=4,
+            keepWithNext=True,
+        ),
+        # Analysis section heading (the ## headings inside the AI analysis).
+        # Deliberately smaller than the "Deck Strategy & Analysis" title (h2) so
+        # the section title stays dominant and the inner text reads as content.
+        "analysis_heading": ParagraphStyle(
+            "AnalysisHeading",
+            parent=styles["Heading3"],
+            fontName="Helvetica-Bold",
+            fontSize=11,
+            leading=14,
+            textColor=primary_color,
+            spaceBefore=9,
+            spaceAfter=3,
             keepWithNext=True,
         ),
         # Subsection heading (###, e.g. Early / Mid / Late game).
@@ -458,16 +473,36 @@ def _build_card_cell(item: dict, styles: dict):
     return cell
 
 
-def _build_card_list_table(grouped_cards: dict, styles: dict):
-    """Builds one continuous 2-column table for the whole card list.
+def _make_card_rows_table(rows: list, styles: dict):
+    """Builds a 2-column table of card rows with the standard boxed styling."""
+    table = Table(rows, colWidths=[_GRID_COL_WIDTH, _GRID_COL_WIDTH])
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (1, -1), _GRID_CELL_PAD_X),
+                ("RIGHTPADDING", (0, 0), (1, -1), _GRID_CELL_PAD_X),
+                ("TOPPADDING", (0, 0), (1, -1), _GRID_CELL_PAD_Y),
+                ("BOTTOMPADDING", (0, 0), (1, -1), _GRID_CELL_PAD_Y),
+                ("BOX", (0, 0), (1, -1), 0.5, styles["border"]),
+                # Divider between the two cards on a row.
+                ("LINEAFTER", (0, 0), (0, -1), 0.5, styles["border"]),
+            ]
+        )
+    )
+    return table
 
-    Category headers are full-width rows; cards are laid out two per row. Using a
-    single flowing table (instead of one table/page per category) lets pages fill
-    up completely, minimizing the page count.
+
+def _build_card_list_flowables(grouped_cards: dict, styles: dict):
+    """Builds the card-list section as a list of flowables.
+
+    Each category is rendered as a header followed by 2-column rows of cards. The
+    header is kept together with the first row of cards (via ``KeepTogether``) so
+    a category header is never stranded alone at the bottom of a page. The
+    remaining rows flow normally and abut the first row seamlessly, so pages
+    still fill up and the page count stays minimal.
     """
-    rows = []
-    header_row_idx = []
-    card_row_idx = []
+    flowables = []
 
     for cat in CATEGORY_ORDER:
         cards_in_cat = grouped_cards[cat]
@@ -478,44 +513,22 @@ def _build_card_list_table(grouped_cards: dict, styles: dict):
         header = Paragraph(
             f"{_CATEGORY_LABELS[cat]} ({cat_total_qty})", styles["category_header"]
         )
-        rows.append([header, ""])
-        header_row_idx.append(len(rows) - 1)
 
         cells = [_build_card_cell(item, styles) for item in cards_in_cat]
+        rows = []
         for i in range(0, len(cells), _GRID_COLS):
             pair = cells[i : i + _GRID_COLS]
             while len(pair) < _GRID_COLS:
                 pair.append("")  # filler so the row has 2 columns
             rows.append(pair)
-            card_row_idx.append(len(rows) - 1)
 
-    if not rows:
-        return None
+        # Glue the header to the first row of cards.
+        flowables.append(KeepTogether([header, _make_card_rows_table(rows[:1], styles)]))
+        # Remaining rows flow (and may split across pages) right below.
+        if len(rows) > 1:
+            flowables.append(_make_card_rows_table(rows[1:], styles))
 
-    style = [("VALIGN", (0, 0), (-1, -1), "TOP")]
-    # Category header rows span both columns, with no side padding.
-    for r in header_row_idx:
-        style += [
-            ("SPAN", (0, r), (1, r)),
-            ("LEFTPADDING", (0, r), (1, r), 0),
-            ("RIGHTPADDING", (0, r), (1, r), 0),
-            ("TOPPADDING", (0, r), (1, r), 6),
-            ("BOTTOMPADDING", (0, r), (1, r), 2),
-        ]
-    # Card rows: padded, boxed, with a divider between the two cards.
-    for r in card_row_idx:
-        style += [
-            ("LEFTPADDING", (0, r), (1, r), _GRID_CELL_PAD_X),
-            ("RIGHTPADDING", (0, r), (1, r), _GRID_CELL_PAD_X),
-            ("TOPPADDING", (0, r), (1, r), _GRID_CELL_PAD_Y),
-            ("BOTTOMPADDING", (0, r), (1, r), _GRID_CELL_PAD_Y),
-            ("BOX", (0, r), (1, r), 0.5, styles["border"]),
-            ("LINEAFTER", (0, r), (0, r), 0.5, styles["border"]),
-        ]
-
-    table = Table(rows, colWidths=[_GRID_COL_WIDTH, _GRID_COL_WIDTH])
-    table.setStyle(TableStyle(style))
-    return table
+    return flowables
 
 
 def generate_pdf(
@@ -563,8 +576,8 @@ def generate_pdf(
 
         markdown_styles = {
             "Normal": styles["body"],
-            "Heading1": styles["h2"],
-            "Heading2": styles["h2"],
+            "Heading1": styles["analysis_heading"],
+            "Heading2": styles["analysis_heading"],
             "Heading3": styles["h3"],
             "Bullet": styles["bullet"],
         }
@@ -582,9 +595,7 @@ def generate_pdf(
         cat = classify_card(item["data"])
         grouped_cards[cat].append(item)
 
-    card_list_table = _build_card_list_table(grouped_cards, styles)
-    if card_list_table is not None:
-        story_flowables.append(card_list_table)
+    story_flowables.extend(_build_card_list_flowables(grouped_cards, styles))
 
     doc.build(
         story_flowables,
