@@ -10,7 +10,6 @@ from reportlab.platypus import (
     Image as RLImage,
 )
 from reportlab.platypus import (
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -178,72 +177,75 @@ def _build_styles():
             "DocTitle",
             parent=styles["Heading1"],
             fontName="Helvetica-Bold",
-            fontSize=24,
-            leading=28,
+            fontSize=22,
+            leading=25,
             textColor=primary_color,
-            spaceAfter=4,
+            spaceAfter=2,
         ),
         "subtitle": ParagraphStyle(
             "DocSubtitle",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=10,
-            leading=14,
+            fontSize=9,
+            leading=12,
             textColor=secondary_color,
-            spaceAfter=15,
+            spaceAfter=10,
         ),
+        # Section heading (## and the "Deck Strategy & Analysis" title).
         "h2": ParagraphStyle(
             "Heading2_Custom",
             parent=styles["Heading2"],
             fontName="Helvetica-Bold",
-            fontSize=14,
-            leading=18,
+            fontSize=12.5,
+            leading=15,
             textColor=primary_color,
-            spaceBefore=14,
-            spaceAfter=8,
+            spaceBefore=10,
+            spaceAfter=4,
             keepWithNext=True,
         ),
+        # Subsection heading (###, e.g. Early / Mid / Late game).
         "h3": ParagraphStyle(
             "Heading3_Custom",
             parent=styles["Heading3"],
             fontName="Helvetica-Bold",
-            fontSize=11,
-            leading=15,
-            textColor=primary_color,
-            spaceBefore=8,
-            spaceAfter=4,
+            fontSize=10,
+            leading=13,
+            textColor=secondary_color,
+            spaceBefore=5,
+            spaceAfter=2,
             keepWithNext=True,
         ),
         "category_header": ParagraphStyle(
             "CategoryHeader",
             parent=styles["Heading3"],
             fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=16,
+            fontSize=11,
+            leading=14,
             textColor=primary_color,
-            spaceBefore=12,
-            spaceAfter=6,
+            spaceBefore=8,
+            spaceAfter=3,
             keepWithNext=True,
         ),
         "body": ParagraphStyle(
             "Body_Custom",
             parent=styles["Normal"],
             fontName="Helvetica",
-            fontSize=10,
-            leading=14.5,
+            fontSize=9.5,
+            leading=13,
             textColor=charcoal_color,
-            spaceAfter=6,
+            spaceAfter=3,
+            alignment=4,  # Justified for an even, polished text block.
         ),
         "bullet": ParagraphStyle(
             "Bullet_Custom",
             parent=styles["Normal"],
             fontName="Helvetica",
             fontSize=9.5,
-            leading=14,
+            leading=13,
             textColor=charcoal_color,
-            leftIndent=15,
-            firstLineIndent=-10,
-            spaceAfter=4,
+            leftIndent=14,
+            firstLineIndent=-9,
+            spaceAfter=2,
         ),
         "card_title": ParagraphStyle(
             "CardTitle",
@@ -406,10 +408,9 @@ def _build_card_details_cell(card: dict, qty: int, price: float, styles: dict):
     return right_cell_flowables
 
 
-# Grid layout: 2 columns x 4 rows = max 8 cards per page.
+# Grid layout: cards are laid out in 2 columns and flow continuously to pack
+# pages as densely as possible.
 _GRID_COLS = 2
-_GRID_ROWS = 4
-_GRID_PAGE_SIZE = _GRID_COLS * _GRID_ROWS
 # Half-page card cell: smaller image + details side by side.
 _GRID_COL_WIDTH = 261
 # Padding between the grid lines and the cell content (so text never touches
@@ -457,32 +458,64 @@ def _build_card_cell(item: dict, styles: dict):
     return cell
 
 
-def _build_card_grid(chunk: list, styles: dict):
-    """Builds a 2-column grid table for up to 8 cards (one page worth)."""
-    cells = [_build_card_cell(item, styles) for item in chunk]
+def _build_card_list_table(grouped_cards: dict, styles: dict):
+    """Builds one continuous 2-column table for the whole card list.
 
+    Category headers are full-width rows; cards are laid out two per row. Using a
+    single flowing table (instead of one table/page per category) lets pages fill
+    up completely, minimizing the page count.
+    """
     rows = []
-    for i in range(0, len(cells), _GRID_COLS):
-        row = cells[i : i + _GRID_COLS]
-        while len(row) < _GRID_COLS:
-            row.append("")  # filler so the row has 2 columns
-        rows.append(row)
+    header_row_idx = []
+    card_row_idx = []
 
-    grid = Table(rows, colWidths=[_GRID_COL_WIDTH, _GRID_COL_WIDTH])
-    grid.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), _GRID_CELL_PAD_X),
-                ("RIGHTPADDING", (0, 0), (-1, -1), _GRID_CELL_PAD_X),
-                ("TOPPADDING", (0, 0), (-1, -1), _GRID_CELL_PAD_Y),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), _GRID_CELL_PAD_Y),
-                ("BOX", (0, 0), (-1, -1), 0.5, styles["border"]),
-                ("INNERGRID", (0, 0), (-1, -1), 0.5, styles["border"]),
-            ]
+    for cat in CATEGORY_ORDER:
+        cards_in_cat = grouped_cards[cat]
+        if not cards_in_cat:
+            continue
+
+        cat_total_qty = sum(item["quantity"] for item in cards_in_cat)
+        header = Paragraph(
+            f"{_CATEGORY_LABELS[cat]} ({cat_total_qty})", styles["category_header"]
         )
-    )
-    return grid
+        rows.append([header, ""])
+        header_row_idx.append(len(rows) - 1)
+
+        cells = [_build_card_cell(item, styles) for item in cards_in_cat]
+        for i in range(0, len(cells), _GRID_COLS):
+            pair = cells[i : i + _GRID_COLS]
+            while len(pair) < _GRID_COLS:
+                pair.append("")  # filler so the row has 2 columns
+            rows.append(pair)
+            card_row_idx.append(len(rows) - 1)
+
+    if not rows:
+        return None
+
+    style = [("VALIGN", (0, 0), (-1, -1), "TOP")]
+    # Category header rows span both columns, with no side padding.
+    for r in header_row_idx:
+        style += [
+            ("SPAN", (0, r), (1, r)),
+            ("LEFTPADDING", (0, r), (1, r), 0),
+            ("RIGHTPADDING", (0, r), (1, r), 0),
+            ("TOPPADDING", (0, r), (1, r), 6),
+            ("BOTTOMPADDING", (0, r), (1, r), 2),
+        ]
+    # Card rows: padded, boxed, with a divider between the two cards.
+    for r in card_row_idx:
+        style += [
+            ("LEFTPADDING", (0, r), (1, r), _GRID_CELL_PAD_X),
+            ("RIGHTPADDING", (0, r), (1, r), _GRID_CELL_PAD_X),
+            ("TOPPADDING", (0, r), (1, r), _GRID_CELL_PAD_Y),
+            ("BOTTOMPADDING", (0, r), (1, r), _GRID_CELL_PAD_Y),
+            ("BOX", (0, r), (1, r), 0.5, styles["border"]),
+            ("LINEAFTER", (0, r), (0, r), 0.5, styles["border"]),
+        ]
+
+    table = Table(rows, colWidths=[_GRID_COL_WIDTH, _GRID_COL_WIDTH])
+    table.setStyle(TableStyle(style))
+    return table
 
 
 def generate_pdf(
@@ -497,8 +530,8 @@ def generate_pdf(
         pagesize=A4,
         leftMargin=36,
         rightMargin=36,
-        topMargin=54,
-        bottomMargin=54,
+        topMargin=40,
+        bottomMargin=40,
     )
     doc.deck_name = deck_name
 
@@ -522,7 +555,7 @@ def generate_pdf(
         total_cards, total_price, avg_cmc, category_counts, deck_type
     )
     story_flowables.append(stats_table)
-    story_flowables.append(Spacer(1, 10))
+    story_flowables.append(Spacer(1, 6))
 
     # 2. Gemini analysis section.
     if deck_analysis:
@@ -537,55 +570,21 @@ def generate_pdf(
         }
 
         story_flowables.extend(markdown_to_flowables(deck_analysis, markdown_styles))
-        story_flowables.append(Spacer(1, 15))
+        story_flowables.append(Spacer(1, 8))
 
-    # 3. Card list section, on a fresh page as a 2-columns x 4-rows grid
-    # (max 8 cards per page).
-    story_flowables.append(PageBreak())
+    # 3. Card list: a single continuous 2-column table so pages fill up and the
+    # page count stays minimal.
     story_flowables.append(Paragraph("Card List", styles["h2"]))
-    story_flowables.append(Spacer(1, 4))
+    story_flowables.append(Spacer(1, 2))
 
-    # Group cards by category.
     grouped_cards = {cat: [] for cat in CATEGORY_ORDER}
     for item in processed_cards:
         cat = classify_card(item["data"])
         grouped_cards[cat].append(item)
 
-    # Render each category as 2x4 grids; every grid (<=8 cards) gets its own
-    # page, so a page never holds more than 8 cards.
-    first_unit = True
-    for cat in CATEGORY_ORDER:
-        cards_in_cat = grouped_cards[cat]
-        if not cards_in_cat:
-            continue
-
-        cat_total_qty = sum(item["quantity"] for item in cards_in_cat)
-        cat_title = _CATEGORY_LABELS[cat]
-
-        chunks = [
-            cards_in_cat[i : i + _GRID_PAGE_SIZE]
-            for i in range(0, len(cards_in_cat), _GRID_PAGE_SIZE)
-        ]
-        for ci, chunk in enumerate(chunks):
-            if not first_unit:
-                story_flowables.append(PageBreak())
-            first_unit = False
-
-            if ci == 0:
-                story_flowables.append(
-                    Paragraph(
-                        f"{cat_title} ({cat_total_qty})", styles["category_header"]
-                    )
-                )
-            else:
-                story_flowables.append(
-                    Paragraph(
-                        f"{cat_title} ({cat_total_qty}) — cont.",
-                        styles["category_header"],
-                    )
-                )
-            story_flowables.append(Spacer(1, 4))
-            story_flowables.append(_build_card_grid(chunk, styles))
+    card_list_table = _build_card_list_table(grouped_cards, styles)
+    if card_list_table is not None:
+        story_flowables.append(card_list_table)
 
     doc.build(
         story_flowables,
