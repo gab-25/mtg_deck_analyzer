@@ -374,6 +374,20 @@ def _build_card_details_cell(card: dict, qty: int, price: float, styles: dict):
         right_cell_flowables.append(Paragraph(title_html, styles["card_title"]))
         right_cell_flowables.append(Spacer(1, 2))
 
+        # Provenance note for the localized text (shown once, on the first face).
+        if idx == 0:
+            source = card.get("text_source")
+            note = None
+            if source == "machine":
+                note = "Machine translation"
+            elif source == "english":
+                note = "English text (no official localization)"
+            if note:
+                right_cell_flowables.append(
+                    Paragraph(f"<i>{note}</i>", styles["card_type"])
+                )
+                right_cell_flowables.append(Spacer(1, 2))
+
         # Type line.
         escaped_face_type = html.escape(face.get("type_line", ""))
         if escaped_face_type:

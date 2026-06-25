@@ -71,6 +71,15 @@
                         <span class="text-sm text-base-content/70">{{ face.mana_cost }}</span>
                         {% endif %}
                     </div>
+                    {% if loop.first and card.text_source in ['machine', 'english'] %}
+                    <div class="mt-1">
+                        {% if card.text_source == 'machine' %}
+                        <span class="badge badge-warning badge-sm" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
+                        {% else %}
+                        <span class="badge badge-ghost badge-sm" title="No official localization available; showing English text">English text</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% if face.type_line %}
                     <div class="text-xs italic text-base-content/60">{{ face.type_line }}</div>
                     {% endif %}

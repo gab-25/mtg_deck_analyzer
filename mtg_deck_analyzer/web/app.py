@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..cards import classify_card
 from ..config import load_config
-from ..constants import CATEGORY_ORDER, LANG_DISPLAY_NAMES
+from ..constants import CATEGORY_ORDER, LANG_DISPLAY_NAMES, normalize_lang
 from ..pdf import generate_pdf
 from ..service import analyze_decklist
 from ..text_utils import slugify
@@ -83,6 +83,7 @@ def _build_categories(stored_cards: list) -> list:
                     "total_price": price * qty,
                     "images": image_urls(data),
                     "faces": data.get("faces", []),
+                    "text_source": data.get("text_source"),
                 }
             )
         categories.append(
@@ -122,7 +123,7 @@ def create_deck(
     session: Session = Depends(get_session),
 ):
     name = name.strip() or "Untitled Deck"
-    lang = (lang or "en").lower()
+    lang = normalize_lang(lang)
 
     try:
         result = analyze_decklist(

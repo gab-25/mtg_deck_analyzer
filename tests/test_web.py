@@ -133,3 +133,50 @@ def test_media_route_serves_cached_image_from_db(client):
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/jpeg"
     assert r.content == b"\x01\x02\x03"
+
+
+def test_machine_translation_badge_shown(client):
+    from mtg_deck_analyzer.web import db as db_module
+    from mtg_deck_analyzer.web.models import Deck
+
+    session = db_module._SessionLocal()
+    deck = Deck(
+        name="Tradotto",
+        lang="it",
+        raw_decklist="1 Forest",
+        analysis_md=None,
+        deck_type="Custom",
+        total_cards=1,
+        total_value_eur=0.0,
+        avg_cmc=0.0,
+        category_counts={"Land": 1},
+        cards=[
+            {
+                "quantity": 1,
+                "data": {
+                    "name": "Foresta",
+                    "type_line": "Basic Land — Forest",
+                    "cmc": 0.0,
+                    "price_eur": 0.0,
+                    "image_paths": [],
+                    "text_source": "machine",
+                    "faces": [
+                        {
+                            "name": "Foresta",
+                            "mana_cost": "",
+                            "type_line": "Terra",
+                            "rules_text": "({T}: Aggiungi {G}.)",
+                        }
+                    ],
+                },
+            }
+        ],
+    )
+    session.add(deck)
+    session.commit()
+    deck_id = deck.id
+    session.close()
+
+    r = client.get(f"/decks/{deck_id}")
+    assert r.status_code == 200
+    assert "Auto-translated" in r.text

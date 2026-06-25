@@ -7,6 +7,7 @@ pipeline behind a single function so the workflow lives in exactly one place.
 import os
 
 from .cards import compute_statistics, infer_deck_type
+from .constants import normalize_lang
 from .decklist import parse_decklist_text
 from .gemini import analyze_deck_list, log_analysis_unavailable
 from .scryfall import FileCardCache, fetch_card_data
@@ -43,7 +44,7 @@ def analyze_decklist(
     and the aggregate statistics. Raises ``ValueError`` if no cards could be
     parsed or fetched.
     """
-    lang = (lang or "en").lower()
+    lang = normalize_lang(lang)
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if cache is None:
         cache = FileCardCache(default_cache_dir())

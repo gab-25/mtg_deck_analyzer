@@ -1,11 +1,20 @@
 """Tests for Scryfall data-processing helpers (no network access)."""
 
 from mtg_deck_analyzer.scryfall import (
+    _derive_text_source,
     _extract_price_eur,
     find_best_translated_card,
     get_face_details,
     is_text_untranslated,
+    process_cached_card,
 )
+
+
+class _NoImageCache:
+    """Minimal cache stub that reports no images (so nothing is downloaded)."""
+
+    def has_image(self, name):
+        return False
 
 
 class TestExtractPriceEur:
@@ -134,3 +143,25 @@ class TestFindBestTranslatedCard:
         ]
         result = find_best_translated_card(prints, "it")
         assert result is prints[0]
+
+
+class TestTextSource:
+    def test_process_cached_card_passes_text_source(self):
+        card = {"id": "x", "name": "Foresta", "_text_source": "machine"}
+        out = process_cached_card(card, _NoImageCache())
+        assert out["text_source"] == "machine"
+
+    def test_process_cached_card_missing_source_is_none(self):
+        out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
+        assert out["text_source"] is None
+
+    def test_derive_english_is_official(self):
+        assert _derive_text_source({"oracle_text": "Deal 3 damage"}, "en") == "official"
+
+    def test_derive_untranslated_non_english_is_english(self):
+        card = {"oracle_text": "Deal 3 damage"}  # no printed_text -> untranslated
+        assert _derive_text_source(card, "it") == "english"
+
+    def test_derive_translated_non_english_is_official(self):
+        card = {"printed_text": "Infligge 3 danni", "oracle_text": "Deal 3 damage"}
+        assert _derive_text_source(card, "it") == "official"

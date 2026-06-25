@@ -209,6 +209,9 @@ def process_cached_card(card: dict, cache) -> dict:
         "price_eur": _extract_price_eur(card),
         "type_line": card.get("type_line", ""),
         "cmc": card.get("cmc", 0.0),
+        # Provenance of the localized text: "official" (Scryfall printed text),
+        # "machine" (Gemini-translated) or "english" (no localization available).
+        "text_source": card.get("_text_source"),
     }
 
 
@@ -272,6 +275,15 @@ def _translate_card_data(card_data: dict, lang: str, api_key: str = None) -> Non
             card_data["printed_text"] = t_card.get("printed_text")
 
 
+def _derive_text_source(card_data: dict, lang: str) -> str:
+    """Infers text provenance for a cached card lacking a stored ``_text_source``."""
+    if lang == "en":
+        return "official"
+    if is_text_untranslated(card_data):
+        return "english"
+    return "official"
+
+
 def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> dict:
     """Fetches card data from cache or Scryfall, with set, language, and Gemini fallbacks.
 
@@ -293,7 +305,11 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
         if lang != "en" and is_text_untranslated(cached):
             if api_key or os.environ.get("GEMINI_API_KEY"):
                 _translate_card_data(cached, lang, api_key)
+                cached["_text_source"] = "machine"
                 cache.set_card(cache_key, cached)
+        # Backfill provenance for entries cached before this field existed.
+        if "_text_source" not in cached:
+            cached["_text_source"] = _derive_text_source(cached, lang)
         return process_cached_card(cached, cache)
 
     # 2. Fetch from the Scryfall API.
@@ -317,6 +333,7 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
 
     # If English is requested, we are done.
     if lang == "en":
+        eng_card["_text_source"] = "official"
         cache.set_card(cache_key, eng_card)
         return process_cached_card(eng_card, cache)
 
@@ -357,10 +374,20 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
         card_data["prices"] = eng_card.get("prices", {})
 
     # If the text is still untranslated and we are not in English, try Gemini.
+    translated_via_gemini = False
     if lang != "en" and is_text_untranslated(card_data):
         has_key = api_key or os.environ.get("GEMINI_API_KEY")
         if has_key:
             _translate_card_data(card_data, lang, api_key)
+            translated_via_gemini = True
+
+    # Record text provenance (this branch only runs for non-English requests).
+    if translated_via_gemini:
+        card_data["_text_source"] = "machine"
+    elif is_text_untranslated(card_data):
+        card_data["_text_source"] = "english"
+    else:
+        card_data["_text_source"] = "official"
 
     # Cache the JSON details.
     cache.set_card(cache_key, card_data)

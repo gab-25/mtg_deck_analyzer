@@ -66,6 +66,26 @@ def test_fetch_card_data_uses_cache_without_network(db_session):
     assert card["price_eur"] == 0.05
     assert card["image_paths"] == []  # no image_uris in the cached payload
     assert card["faces"][0]["rules_text"] == "({T}: Add {G}.)"
+    assert card["text_source"] == "official"  # English is always official
+
+
+def test_fetch_card_data_marks_english_fallback(db_session, monkeypatch):
+    """A non-English request with only untranslated text and no key -> 'english'."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    cache = DbCardCache(db_session)
+    cache.set_card(
+        "card_it_forest",
+        {
+            "id": "abc",
+            "lang": "en",
+            "name": "Forest",
+            "type_line": "Basic Land — Forest",
+            "oracle_text": "({T}: Add {G}.)",  # no printed_text -> untranslated
+            "cmc": 0.0,
+        },
+    )
+    card = fetch_card_data("Forest", "it", cache)
+    assert card["text_source"] == "english"
 
 
 def test_fetch_card_data_returns_none_for_cached_not_found(db_session):
