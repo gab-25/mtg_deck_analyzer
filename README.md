@@ -110,23 +110,23 @@ Then open <http://localhost:8000>. Everything — decks and the Scryfall cache
 
 ### Run locally (without Docker)
 
-The web service reads the database connection string from the `DATABASE_URL`
-environment variable (default: `postgresql+psycopg://mtg:mtg@localhost:5432/mtg`).
-Point it at any Postgres instance, or use a dependency-free SQLite file for quick
-local testing:
+Copy the example environment file and adjust it — it is loaded automatically on
+startup (real environment variables still take precedence):
 
 ```bash
-# Postgres:
-export DATABASE_URL="postgresql+psycopg://mtg:mtg@localhost:5432/mtg"
-# …or SQLite for a quick run:
-export DATABASE_URL="sqlite+pysqlite:///./mtg.db"
-
-export GEMINI_API_KEY="your_api_key_here"   # optional
+cp .env.example .env
+# edit .env: DATABASE_URL, GEMINI_API_KEY, HOST/PORT/RELOAD
 uv run mtg-deck-web
 ```
 
-Tables are created automatically on startup. The server listens on `HOST`/`PORT`
-(defaults `0.0.0.0:8000`); set `RELOAD=1` for auto-reload during development.
+The relevant variables are:
+
+- `DATABASE_URL` — any SQLAlchemy URL (default `postgresql+psycopg://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite+pysqlite:///./mtg.db` for a quick, dependency-free run.
+- `GEMINI_API_KEY` — optional; enables the strategic analysis (can also be set in `config.toml`).
+- `HOST` / `PORT` — server bind address (defaults `0.0.0.0:8000`).
+- `RELOAD` — set to `1` for auto-reload during development.
+
+Tables are created automatically on startup.
 
 The Gemini API key and the default language are resolved from the
 [Configuration](#configuration) above (config file → `GEMINI_API_KEY`
