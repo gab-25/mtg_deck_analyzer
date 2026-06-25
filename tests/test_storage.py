@@ -1,6 +1,6 @@
-"""Tests for the web storage helpers (image path (de)serialization)."""
+"""Tests for the web storage helpers (image key (de)serialization)."""
 
-import os
+import io
 
 from mtg_deck_analyzer.web.storage import (
     cards_for_pdf,
@@ -8,25 +8,41 @@ from mtg_deck_analyzer.web.storage import (
     image_urls,
 )
 
+# Smallest valid 1x1 transparent PNG.
+_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+    "0000000a49444154789c6360000002000154a24f5f0000000049454e44ae426082"
+)
+
+
+class _FakeCache:
+    def __init__(self, images):
+        self.images = images
+
+    def get_image(self, name):
+        return self.images.get(name)
+
 
 def _cards(paths):
     return [{"quantity": 2, "data": {"name": "Forest", "image_paths": list(paths)}}]
 
 
 def test_cards_for_storage_reduces_to_basenames():
-    cards = _cards(["/abs/cache/images/img_a_en.jpg", "/abs/cache/images/img_b_en.jpg"])
+    cards = _cards(["/abs/cache/images/img_a_en.jpg", "img_b_en.jpg"])
     stored = cards_for_storage(cards)
     assert stored[0]["data"]["image_paths"] == ["img_a_en.jpg", "img_b_en.jpg"]
     # Original list is left untouched (deep copy).
     assert cards[0]["data"]["image_paths"][0] == "/abs/cache/images/img_a_en.jpg"
 
 
-def test_cards_for_pdf_rebuilds_only_existing_files(tmp_path):
-    real = tmp_path / "img_real.jpg"
-    real.write_bytes(b"x")
+def test_cards_for_pdf_resolves_only_present_images():
+    cache = _FakeCache({"img_real.jpg": _PNG})
     stored = _cards(["img_real.jpg", "img_missing.jpg"])
-    rebuilt = cards_for_pdf(stored, str(tmp_path))
-    assert rebuilt[0]["data"]["image_paths"] == [os.path.join(str(tmp_path), "img_real.jpg")]
+    rebuilt = cards_for_pdf(stored, cache)
+    streams = rebuilt[0]["data"]["image_paths"]
+    assert len(streams) == 1  # the missing one is dropped
+    assert isinstance(streams[0], io.BytesIO)
+    assert streams[0].getvalue() == _PNG
 
 
 def test_image_urls_uses_media_prefix():

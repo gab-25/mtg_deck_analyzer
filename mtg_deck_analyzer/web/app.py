@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 import markdown as md
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,9 +15,10 @@ from ..cards import classify_card
 from ..config import load_config
 from ..constants import CATEGORY_ORDER, LANG_DISPLAY_NAMES
 from ..pdf import generate_pdf
-from ..service import analyze_decklist, default_cache_dir
+from ..service import analyze_decklist
 from ..text_utils import slugify
 from .db import get_session, init_db
+from .db_cache import DbCardCache
 from .models import Deck
 from .storage import cards_for_pdf, cards_for_storage, image_urls
 
@@ -44,10 +44,6 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Serve the cached card images under /media (mount once).
-    if not any(getattr(r, "name", None) == "media" for r in app.routes):
-        images_dir = os.path.join(default_cache_dir(), "images")
-        app.mount("/media", StaticFiles(directory=images_dir), name="media")
     yield
 
 
@@ -133,6 +129,7 @@ def create_deck(
             decklist,
             lang=lang,
             api_key=_resolved_api_key(),
+            cache=DbCardCache(session),
             skip_analysis=skip_analysis,
         )
     except ValueError as e:
@@ -199,8 +196,7 @@ def deck_pdf(deck_id: int, session: Session = Depends(get_session)):
     if deck is None:
         raise HTTPException(status_code=404, detail="Deck not found")
 
-    images_dir = os.path.join(default_cache_dir(), "images")
-    processed = cards_for_pdf(deck.cards or [], images_dir)
+    processed = cards_for_pdf(deck.cards or [], DbCardCache(session))
 
     fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
@@ -208,6 +204,15 @@ def deck_pdf(deck_id: int, session: Session = Depends(get_session)):
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"
     return FileResponse(tmp_path, media_type="application/pdf", filename=filename)
+
+
+@app.get("/media/{name}")
+def media(name: str, session: Session = Depends(get_session)):
+    """Serves a cached card image from the database."""
+    data = DbCardCache(session).get_image(name)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(content=data, media_type="image/jpeg")
 
 
 @app.delete("/decks/{deck_id}")

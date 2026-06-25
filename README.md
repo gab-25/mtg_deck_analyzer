@@ -16,7 +16,7 @@ See [Web Service](#web-service) to get it running.
 - **Multi-language**: Fetches images and text in the chosen language (e.g. Italian, English, Spanish, French, German, etc.). If a card is not available in the chosen language, it performs an intelligent automatic fallback (first to an alternative set that has it in the chosen language, then to the English version, and finally a dynamic Gemini translation).
 - **Gemini Analysis**: Analyzes the deck's archetype and gameplay strategy (early, mid, and late game, synergies, and combos) using the `gemini-2.5-flash` model. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
 - **Complex Card Support**: Correctly handles double-faced cards (showing both faces side by side in the PDF), split cards, adventures, and rooms.
-- **Local Cache System**: Stores JSON data and images locally in `.cache/mtg_deck_analyzer/` to avoid overloading the Scryfall API and to make subsequent runs instant (reducing build time from ~1.5 minutes to under 3 seconds).
+- **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
 - **Aesthetic PDF Layout**: Generates a clean, modern, and elegant A4 PDF with dynamic headers and footers including page numbers, and aligned tables.
 - **Interactive Web UI**: Submit decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (fact sheet, Gemini analysis, grouped card list) with a PDF download — built with HTMX and DaisyUI (see [Web Service](#web-service)).
 
@@ -41,8 +41,9 @@ mtg_deck_analyzer/
     ├── __main__.py    # Server entrypoint (mtg-deck-web)
     ├── app.py         # FastAPI routes
     ├── db.py          # SQLAlchemy engine/session (Postgres)
-    ├── models.py      # ORM models (Deck)
-    ├── storage.py     # Card image-path (de)serialization
+    ├── models.py      # ORM models (Deck, ScryfallCard, ScryfallImage)
+    ├── db_cache.py    # Database-backed Scryfall cache backend
+    ├── storage.py     # Card image (de)serialization for storage/PDF
     └── templates/     # Jinja2 templates
 ```
 
@@ -104,8 +105,8 @@ export GEMINI_API_KEY="your_api_key_here"
 docker compose up --build
 ```
 
-Then open <http://localhost:8000>. The Scryfall cache is persisted to `./.cache`
-and the database to a named Docker volume.
+Then open <http://localhost:8000>. Everything — decks and the Scryfall cache
+(card JSON + images) — lives in Postgres, persisted to a named Docker volume.
 
 ### Run locally (without Docker)
 

@@ -101,3 +101,35 @@ def test_create_with_empty_decklist_returns_error(client):
 
 def test_unknown_deck_returns_404(client):
     assert client.get("/decks/9999").status_code == 404
+
+
+def test_pdf_download(client):
+    r = client.post(
+        "/decks",
+        data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    deck_id = r.headers["HX-Redirect"].rsplit("/", 1)[-1]
+    pdf = client.get(f"/decks/{deck_id}/pdf")
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.content.startswith(b"%PDF")
+
+
+def test_media_route_serves_cached_image_from_db(client):
+    from mtg_deck_analyzer.web import db as db_module
+    from mtg_deck_analyzer.web.models import ScryfallImage
+
+    # Missing image -> 404.
+    assert client.get("/media/img_missing.jpg").status_code == 404
+
+    # Seed an image directly into the cache table, then fetch it via /media.
+    session = db_module._SessionLocal()
+    session.add(ScryfallImage(name="img_seed.jpg", data=b"\x01\x02\x03"))
+    session.commit()
+    session.close()
+
+    r = client.get("/media/img_seed.jpg")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/jpeg"
+    assert r.content == b"\x01\x02\x03"

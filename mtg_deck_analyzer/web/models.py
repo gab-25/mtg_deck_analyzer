@@ -2,11 +2,15 @@
 
 import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, Integer, LargeBinary, String, Text
 from sqlalchemy import JSON as SA_JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
+
+
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
 class Deck(Base):
@@ -33,6 +37,24 @@ class Deck(Base):
     # card's ``image_paths`` are stored as cache-relative basenames.
     cards: Mapped[list] = mapped_column(SA_JSON, default=list)
 
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ScryfallCard(Base):
+    """Cached Scryfall card JSON, keyed by ``card_<lang>_<slug>`` (the Scryfall cache)."""
+
+    __tablename__ = "scryfall_cards"
+
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    data: Mapped[dict] = mapped_column(SA_JSON, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ScryfallImage(Base):
+    """Cached card image bytes, keyed by basename (``img_<id>_<lang>.jpg``)."""
+
+    __tablename__ = "scryfall_images"
+
+    name: Mapped[str] = mapped_column(String(255), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)

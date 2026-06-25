@@ -1,17 +1,21 @@
 """Helpers to move processed cards between the cache, the DB and the views.
 
-Scryfall images are downloaded into the local cache as absolute file paths. For
-persistence we keep only the image *basename*; the actual bytes stay in the
-cache directory, which is served as static files by the web app and read back
-when regenerating the PDF.
+Scryfall card images are cached as bytes (by basename) in the cache backend.
+The persisted deck keeps only those basenames; they are turned into ``/media``
+URLs for the web pages and read back as in-memory images for PDF generation.
 """
 
 import copy
+import io
 import os
 
 
 def cards_for_storage(processed_cards: list) -> list:
-    """Returns a copy of ``processed_cards`` with image paths reduced to basenames."""
+    """Returns a copy of ``processed_cards`` with image keys reduced to basenames.
+
+    ``image_paths`` already holds cache keys (basenames); ``basename`` keeps this
+    idempotent and tolerant of any absolute paths from a filesystem cache.
+    """
     stored = copy.deepcopy(processed_cards)
     for item in stored:
         data = item.get("data", {})
@@ -21,20 +25,22 @@ def cards_for_storage(processed_cards: list) -> list:
     return stored
 
 
-def cards_for_pdf(stored_cards: list, images_dir: str) -> list:
-    """Rebuilds absolute image paths from basenames for PDF generation.
+def cards_for_pdf(stored_cards: list, cache) -> list:
+    """Resolves stored image keys to in-memory streams for PDF generation.
 
-    Missing files are dropped; the PDF renderer falls back to a placeholder.
+    Reads each image's bytes from ``cache`` and wraps them in ``BytesIO`` (which
+    ReportLab's ``Image`` accepts directly); missing images are dropped (the PDF
+    renderer falls back to a placeholder).
     """
     cards = copy.deepcopy(stored_cards)
     for item in cards:
         data = item.get("data", {})
-        abs_paths = []
+        streams = []
         for name in data.get("image_paths", []):
-            path = os.path.join(images_dir, name)
-            if os.path.exists(path):
-                abs_paths.append(path)
-        data["image_paths"] = abs_paths
+            raw = cache.get_image(name)
+            if raw:
+                streams.append(io.BytesIO(raw))
+        data["image_paths"] = streams
     return cards
 
 

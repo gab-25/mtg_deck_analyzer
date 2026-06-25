@@ -91,6 +91,15 @@ class TestPlaceholderAndImageCell:
         cell = _build_card_image_cell([img])
         assert isinstance(cell, RLImage)
 
+    def test_single_file_like_stream_yields_rlimage(self, tmp_path):
+        # The web app feeds in-memory BytesIO streams (images read from the DB).
+        import io
+
+        png_bytes = (tmp_path / "card.png")
+        _make_png(png_bytes)
+        cell = _build_card_image_cell([io.BytesIO(png_bytes.read_bytes())])
+        assert isinstance(cell, RLImage)
+
     def test_two_images_yield_sub_table(self, tmp_path):
         a = _make_png(tmp_path / "a.png")
         b = _make_png(tmp_path / "b.png")

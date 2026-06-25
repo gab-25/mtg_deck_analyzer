@@ -9,7 +9,7 @@ import os
 from .cards import compute_statistics, infer_deck_type
 from .decklist import parse_decklist_text
 from .gemini import analyze_deck_list, log_analysis_unavailable
-from .scryfall import fetch_card_data
+from .scryfall import FileCardCache, fetch_card_data
 from .text_utils import localize_card_names
 
 
@@ -28,21 +28,25 @@ def analyze_decklist(
     lang: str = "en",
     api_key: str = None,
     *,
-    cache_dir: str = None,
+    cache=None,
     skip_analysis: bool = False,
     progress=None,
 ) -> dict:
     """Runs the full analysis pipeline on raw decklist text.
 
-    ``progress`` is an optional ``callable(message: str)`` used to report status
-    (defaults to no-op). Returns a dict with the processed cards, the (optional)
-    Gemini analysis text and the aggregate statistics.
+    ``cache`` is a Scryfall cache backend (see ``scryfall.FileCardCache`` or the
+    web app's ``DbCardCache``); it defaults to a filesystem cache under the
+    package's ``.cache`` directory. ``progress`` is an optional
+    ``callable(message: str)`` used to report status (defaults to no-op).
 
-    Raises ``ValueError`` if no cards could be parsed or fetched.
+    Returns a dict with the processed cards, the (optional) Gemini analysis text
+    and the aggregate statistics. Raises ``ValueError`` if no cards could be
+    parsed or fetched.
     """
     lang = (lang or "en").lower()
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
-    cache_dir = cache_dir or default_cache_dir()
+    if cache is None:
+        cache = FileCardCache(default_cache_dir())
     notify = progress or (lambda _msg: None)
 
     deck_cards = parse_decklist_text(decklist_text)
@@ -61,7 +65,7 @@ def analyze_decklist(
         qty = item["quantity"]
         notify(f"[{idx + 1}/{len(deck_cards)}] Fetching '{name}' (x{qty})...")
 
-        card_info = fetch_card_data(name, lang, cache_dir, api_key)
+        card_info = fetch_card_data(name, lang, cache, api_key)
         if card_info:
             processed_cards.append({"quantity": qty, "data": card_info})
             localized_name = card_info.get("name")
