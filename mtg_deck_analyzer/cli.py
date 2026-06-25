@@ -6,11 +6,8 @@ import shutil
 import sys
 
 from .config import load_config
-from .decklist import parse_decklist
-from .gemini import analyze_deck_list, log_analysis_unavailable
 from .pdf import generate_pdf
-from .scryfall import fetch_card_data
-from .text_utils import localize_card_names
+from .service import analyze_decklist
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -111,62 +108,27 @@ def main(argv=None):
     # 2. Set up the local cache.
     cache_dir = _setup_cache_dir(args.clear_cache)
 
-    # 3. Parse the decklist.
+    # 3-5. Parse, fetch and analyze through the shared service.
     print(f"Parsing decklist from '{filename}'...")
-    deck_cards = parse_decklist(deck_path)
-    if not deck_cards:
-        print("No cards parsed. Please verify the input file contents.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Parsed {len(deck_cards)} unique entries.")
-
-    # 4. Fetch details and images from Scryfall.
     print(f"Fetching card metadata and artwork (language: {lang})...")
-    processed_cards = []
-    # Maps the English name (as used in the analysis prompt) to the localized
-    # name, so card mentions in the analysis can be translated afterwards.
-    name_map = {}
+    with open(deck_path, "r", encoding="utf-8") as f:
+        decklist_text = f.read()
 
-    for idx, item in enumerate(deck_cards):
-        name = item["name"]
-        qty = item["quantity"]
-
-        print(f"[{idx+1}/{len(deck_cards)}] Fetching '{name}' (x{qty})... ", end="", flush=True)
-        card_info = fetch_card_data(name, lang, cache_dir, api_key)
-
-        if card_info:
-            print("OK")
-            processed_cards.append({"quantity": qty, "data": card_info})
-            localized_name = card_info.get("name")
-            if localized_name:
-                name_map[name] = localized_name
-        else:
-            print("FAILED (Skipped)")
-
-    if not processed_cards:
-        print(
-            "Error: Could not retrieve card details for any card. Generation aborted.",
-            file=sys.stderr,
+    try:
+        result = analyze_decklist(
+            decklist_text,
+            lang=lang,
+            api_key=api_key,
+            cache_dir=cache_dir,
+            skip_analysis=args.skip_analysis,
+            progress=print,
         )
+    except ValueError as e:
+        print(f"Error: {e} Generation aborted.", file=sys.stderr)
         sys.exit(1)
 
-    # 5. Strategic analysis with Gemini.
-    deck_analysis = None
-    if not args.skip_analysis:
-        if api_key:
-            deck_text_repr = "\n".join(
-                [f"{item['quantity']} {item['name']}" for item in deck_cards]
-            )
-            deck_analysis = analyze_deck_list(
-                deck_text_repr, api_key=api_key, lang_code=lang
-            )
-            # Translate the card names mentioned in the analysis into the target
-            # language (the analysis is written from the English deck list).
-            if deck_analysis and lang != "en":
-                deck_analysis = localize_card_names(deck_analysis, name_map)
-        else:
-            # No API key: log to the console and leave the PDF without the analysis.
-            log_analysis_unavailable()
+    processed_cards = result["processed_cards"]
+    deck_analysis = result["deck_analysis"]
 
     # 6. Generate the final PDF.
     print(f"Compiling deck analysis PDF to '{os.path.basename(output_pdf)}'...")

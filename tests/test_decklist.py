@@ -1,6 +1,6 @@
 """Tests for decklist parsing."""
 
-from mtg_deck_analyzer.decklist import parse_decklist
+from mtg_deck_analyzer.decklist import parse_decklist, parse_decklist_text
 
 
 def _write(tmp_path, contents):
@@ -61,3 +61,15 @@ def test_missing_file_returns_empty_list(tmp_path):
 def test_empty_file_returns_empty_list(tmp_path):
     path = _write(tmp_path, "")
     assert parse_decklist(path) == []
+
+
+def test_parse_decklist_text_parses_lines():
+    cards = parse_decklist_text("4 Lightning Bolt\n// comment\n\n2 Island\n")
+    assert cards == [
+        {"quantity": 4, "name": "Lightning Bolt"},
+        {"quantity": 2, "name": "Island"},
+    ]
+
+
+def test_parse_decklist_text_empty_returns_empty():
+    assert parse_decklist_text("\n  \n# only comment\n") == []

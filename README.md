@@ -27,14 +27,22 @@ The code is organized as a Python package with clearly separated responsibilitie
 mtg_deck_analyzer/
 ├── __init__.py        # Package metadata
 ├── __main__.py        # Module entrypoint (python -m mtg_deck_analyzer)
-├── cli.py             # Argument parsing and workflow orchestration
+├── cli.py             # Argument parsing and CLI workflow
+├── service.py         # Shared analysis pipeline (parse → fetch → analyze → stats)
 ├── constants.py       # Shared constants (Scryfall headers, language maps, categories)
-├── decklist.py        # Decklist text-file parsing
-├── cards.py           # Card classification by type
+├── decklist.py        # Decklist text parsing (file and raw text)
+├── cards.py           # Card classification and aggregate statistics
 ├── scryfall.py        # Card data/image fetching and local caching
 ├── gemini.py          # Card translation and strategic analysis (Google Gemini)
 ├── text_utils.py      # Slugs and Markdown -> ReportLab Flowables conversion
-└── pdf.py             # PDF generation
+├── pdf.py             # PDF generation
+└── web/               # FastAPI web service (HTMX + DaisyUI)
+    ├── __main__.py    # Server entrypoint (mtg-deck-web)
+    ├── app.py         # FastAPI routes
+    ├── db.py          # SQLAlchemy engine/session (Postgres)
+    ├── models.py      # ORM models (Deck)
+    ├── storage.py     # Card image-path (de)serialization
+    └── templates/     # Jinja2 templates
 ```
 
 ---
@@ -120,6 +128,54 @@ uv run python -m mtg_deck_analyzer [path_to_deck_file.txt]
    ```bash
    uv run mtg-deck-analyzer deck.txt --clear-cache
    ```
+
+---
+
+## Web Service
+
+The same analysis engine is available as a **FastAPI** web service with a
+**Postgres** database and **HTMX + DaisyUI** pages. You paste a decklist, pick a
+language, and get a web page with the deck fact sheet, the Gemini strategy
+analysis, and the full card list — plus a one-click **PDF download** of the same
+report the CLI produces.
+
+### Run with Docker Compose (recommended)
+
+This starts Postgres and the web app together:
+
+```bash
+# Optional: enable the Gemini strategic analysis.
+export GEMINI_API_KEY="your_api_key_here"
+
+docker compose up --build
+```
+
+Then open <http://localhost:8000>. The Scryfall cache is persisted to `./.cache`
+and the database to a named Docker volume.
+
+### Run locally (without Docker)
+
+The web service reads the database connection string from the `DATABASE_URL`
+environment variable (default: `postgresql+psycopg://mtg:mtg@localhost:5432/mtg`).
+Point it at any Postgres instance, or use a dependency-free SQLite file for quick
+local testing:
+
+```bash
+# Postgres:
+export DATABASE_URL="postgresql+psycopg://mtg:mtg@localhost:5432/mtg"
+# …or SQLite for a quick run:
+export DATABASE_URL="sqlite+pysqlite:///./mtg.db"
+
+export GEMINI_API_KEY="your_api_key_here"   # optional
+uv run mtg-deck-web
+```
+
+Tables are created automatically on startup. The server listens on `HOST`/`PORT`
+(defaults `0.0.0.0:8000`); set `RELOAD=1` for auto-reload during development.
+
+The Gemini API key and the default language are resolved exactly as for the CLI
+(config file → `GEMINI_API_KEY` environment variable). Without a key the web
+service still works, simply skipping the strategy section.
 
 ---
 

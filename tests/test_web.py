@@ -1,0 +1,103 @@
+"""Integration tests for the FastAPI web service (hermetic, no network)."""
+
+import pytest
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    # Use an isolated SQLite database so tests need no Postgres.
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{tmp_path}/test.db")
+
+    from mtg_deck_analyzer.web import app as app_module
+    from mtg_deck_analyzer.web import db as db_module
+
+    # Reset the lazy engine so init_db() rebuilds it against the test database.
+    db_module._engine = None
+    db_module._SessionLocal = None
+
+    # Replace the heavy analysis pipeline with a deterministic stub.
+    def fake_analyze(decklist, lang="en", api_key=None, skip_analysis=False, **kwargs):
+        if not decklist.strip():
+            raise ValueError("No cards could be parsed from the decklist.")
+        return {
+            "processed_cards": [
+                {
+                    "quantity": 2,
+                    "data": {
+                        "name": "Forest",
+                        "type_line": "Basic Land — Forest",
+                        "cmc": 0.0,
+                        "price_eur": 0.05,
+                        "image_paths": [],
+                        "faces": [
+                            {
+                                "name": "Forest",
+                                "mana_cost": "",
+                                "type_line": "Basic Land — Forest",
+                                "rules_text": "({T}: Add {G}.)",
+                            }
+                        ],
+                    },
+                }
+            ],
+            "deck_analysis": None if skip_analysis else "## Overview\n\n- A **Forest** deck.",
+            "name_map": {},
+            "stats": {
+                "deck_type": "Custom",
+                "total_cards": 2,
+                "total_value_eur": 0.10,
+                "avg_cmc": 0.0,
+                "category_counts": {"Land": 2},
+            },
+        }
+
+    monkeypatch.setattr(app_module, "analyze_decklist", fake_analyze)
+
+    with TestClient(app_module.app) as c:
+        yield c
+
+
+def test_index_renders(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "Analyze a deck" in r.text
+
+
+def test_create_view_and_delete_deck(client):
+    r = client.post(
+        "/decks",
+        data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 204
+    target = r.headers["HX-Redirect"]
+
+    detail = client.get(target)
+    assert detail.status_code == 200
+    assert "Mono Green" in detail.text
+    assert "Card List" in detail.text
+    assert "Lands" in detail.text
+    # The analysis Markdown is rendered to HTML.
+    assert "Overview" in detail.text
+
+    # Listed on the index.
+    assert "Mono Green" in client.get("/").text
+
+    deck_id = target.rsplit("/", 1)[-1]
+    assert client.delete(f"/decks/{deck_id}").status_code == 200
+    assert client.get(target).status_code == 404
+
+
+def test_create_with_empty_decklist_returns_error(client):
+    r = client.post(
+        "/decks",
+        data={"name": "x", "decklist": "   ", "lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert r.status_code == 422
+    assert "alert-error" in r.text
+
+
+def test_unknown_deck_returns_404(client):
+    assert client.get("/decks/9999").status_code == 404
