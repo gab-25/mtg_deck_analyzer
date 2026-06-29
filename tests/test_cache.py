@@ -4,9 +4,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from mtg_deck_analyzer.db import Base
+from mtg_deck_analyzer.db_cache import DbCardCache
 from mtg_deck_analyzer.scryfall import FileCardCache, fetch_card_data
-from mtg_deck_analyzer.web.db import Base
-from mtg_deck_analyzer.web.db_cache import DbCardCache
 
 
 @pytest.fixture

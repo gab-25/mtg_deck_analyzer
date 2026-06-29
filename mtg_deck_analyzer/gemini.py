@@ -65,10 +65,8 @@ def log_analysis_unavailable() -> None:
     """Logs to the console how to enable the Gemini analysis (nothing goes into the PDF)."""
     print("[Info] No Gemini API key configured: skipping deck analysis.")
     print("       The PDF will be generated without the strategy section.")
-    print("       To enable it, obtain a Google Gemini API key and either:")
-    print('         - add it to config.toml:  api_key = "your_api_key"')
-    print("         - pass it with the --api-key argument")
-    print('         - or set the environment variable: export GEMINI_API_KEY="your_api_key"')
+    print("       To enable it, obtain a Google Gemini API key and set the")
+    print('       environment variable: export GEMINI_API_KEY="your_api_key"')
 
 
 def analyze_deck_list(deck_list_text: str, api_key: str = None, lang_code: str = "en") -> str:

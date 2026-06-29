@@ -24,11 +24,18 @@ See [Web Service](#web-service) to get it running.
 
 ## Project Structure
 
-The code is organized as a Python package with clearly separated responsibilities:
+The code is organized as a flat, direct Python package:
 
 ```
 mtg_deck_analyzer/
-├── __init__.py        # Package metadata
+├── __init__.py        # Package metadata and dotenv loading
+├── __main__.py        # Server entrypoint (mtg-deck-analyzer)
+├── app.py             # FastAPI routes (HTMX + DaisyUI)
+├── db.py              # SQLAlchemy engine/session (Postgres)
+├── models.py          # ORM models (Deck, ScryfallCard, ScryfallImage)
+├── db_cache.py        # Database-backed Scryfall cache backend
+├── storage.py         # Card image (de)serialization for storage/PDF
+├── templates/         # Jinja2 templates
 ├── service.py         # Analysis pipeline (parse → fetch → analyze → stats)
 ├── constants.py       # Shared constants (Scryfall headers, language maps, categories)
 ├── decklist.py        # Decklist text parsing
@@ -36,15 +43,7 @@ mtg_deck_analyzer/
 ├── scryfall.py        # Card data/image fetching and local caching
 ├── gemini.py          # Card translation and strategic analysis (Google Gemini)
 ├── text_utils.py      # Slugs and Markdown -> ReportLab Flowables conversion
-├── pdf.py             # PDF generation
-└── web/               # FastAPI web service (HTMX + DaisyUI)
-    ├── __main__.py    # Server entrypoint (mtg-deck-web)
-    ├── app.py         # FastAPI routes
-    ├── db.py          # SQLAlchemy engine/session (Postgres)
-    ├── models.py      # ORM models (Deck, ScryfallCard, ScryfallImage)
-    ├── db_cache.py    # Database-backed Scryfall cache backend
-    ├── storage.py     # Card image (de)serialization for storage/PDF
-    └── templates/     # Jinja2 templates
+└── pdf.py             # PDF generation
 ```
 
 ---
@@ -67,23 +66,11 @@ The tool uses `uv` as a fast and efficient Python package manager.
 
 ## Configuration
 
-The Gemini API key (used for the strategic analysis and card translation) and the default language are read from a TOML config file. Copy the provided example and edit it:
+The app is configured entirely through environment variables (loaded from a
+`.env` file during local development — see [Run locally](#run-locally-without-docker)):
 
-```bash
-cp config.example.toml config.toml
-```
-
-```toml
-# config.toml
-api_key = "your_gemini_api_key_here"
-lang = "it"
-```
-
-The app looks for `config.toml` in the current directory and then in the project root.
-
-**Precedence** (highest to lowest): `config.toml` → `GEMINI_API_KEY` environment variable → defaults (`lang` defaults to `en`). Without a key the app still works, simply skipping the strategy section. The language can also be chosen per-deck in the web form.
-
-> `config.toml` is git-ignored, so your API key is never committed.
+- `GEMINI_API_KEY` — enables the strategic analysis and card translation. Without a key the app still works, simply skipping the strategy section.
+- `DEFAULT_LANG` — default target language code for card names and analysis (defaults to `en`). The language can also be chosen per-deck in the web form.
 
 ---
 
@@ -116,22 +103,22 @@ startup (real environment variables still take precedence):
 ```bash
 cp .env.example .env
 # edit .env: DATABASE_URL, GEMINI_API_KEY, HOST/PORT/RELOAD
-uv run mtg-deck-web
+uv run mtg-deck-analyzer
 ```
 
 The relevant variables are:
 
 - `DATABASE_URL` — any SQLAlchemy URL (default `postgresql+psycopg://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite+pysqlite:///./mtg.db` for a quick, dependency-free run.
-- `GEMINI_API_KEY` — optional; enables the strategic analysis (can also be set in `config.toml`).
+- `GEMINI_API_KEY` — optional; enables the strategic analysis.
+- `DEFAULT_LANG` — optional; default target language code (defaults to `en`).
 - `HOST` / `PORT` — server bind address (defaults `0.0.0.0:8000`).
 - `RELOAD` — set to `1` for auto-reload during development.
 
 Tables are created automatically on startup.
 
 The Gemini API key and the default language are resolved from the
-[Configuration](#configuration) above (config file → `GEMINI_API_KEY`
-environment variable). Without a key the app still works, simply skipping the
-strategy section.
+environment variables described in [Configuration](#configuration) above.
+Without a key the app still works, simply skipping the strategy section.
 
 ---
 

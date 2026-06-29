@@ -16,4 +16,4 @@ ENV HOST=0.0.0.0 \
 
 EXPOSE 8000
 
-CMD ["uv", "run", "--no-dev", "mtg-deck-web"]
+CMD ["uv", "run", "--no-dev", "mtg-deck-analyzer"]

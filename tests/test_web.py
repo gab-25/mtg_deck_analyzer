@@ -9,8 +9,8 @@ def client(tmp_path, monkeypatch):
     # Use an isolated SQLite database so tests need no Postgres.
     monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{tmp_path}/test.db")
 
-    from mtg_deck_analyzer.web import app as app_module
-    from mtg_deck_analyzer.web import db as db_module
+    from mtg_deck_analyzer import app as app_module
+    from mtg_deck_analyzer import db as db_module
 
     # Reset the lazy engine so init_db() rebuilds it against the test database.
     db_module._engine = None
@@ -41,7 +41,9 @@ def client(tmp_path, monkeypatch):
                     },
                 }
             ],
-            "deck_analysis": None if skip_analysis else "## Overview\n\n- A **Forest** deck.",
+            "deck_analysis": None
+            if skip_analysis
+            else "## Overview\n\n- A **Forest** deck.",
             "name_map": {},
             "stats": {
                 "deck_type": "Custom",
@@ -117,8 +119,8 @@ def test_pdf_download(client):
 
 
 def test_media_route_serves_cached_image_from_db(client):
-    from mtg_deck_analyzer.web import db as db_module
-    from mtg_deck_analyzer.web.models import ScryfallImage
+    from mtg_deck_analyzer import db as db_module
+    from mtg_deck_analyzer.models import ScryfallImage
 
     # Missing image -> 404.
     assert client.get("/media/img_missing.jpg").status_code == 404
@@ -136,8 +138,8 @@ def test_media_route_serves_cached_image_from_db(client):
 
 
 def test_machine_translation_badge_shown(client):
-    from mtg_deck_analyzer.web import db as db_module
-    from mtg_deck_analyzer.web.models import Deck
+    from mtg_deck_analyzer import db as db_module
+    from mtg_deck_analyzer.models import Deck
 
     session = db_module._SessionLocal()
     deck = Deck(

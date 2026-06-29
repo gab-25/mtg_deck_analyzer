@@ -212,6 +212,3 @@ __marimo__/
 
 deck.txt
 deck.pdf
-
-# Local config holding the Gemini API key
-config.toml

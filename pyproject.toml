@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mtg-deck-web = "mtg_deck_analyzer.web.__main__:main"
+mtg-deck-analyzer = "mtg_deck_analyzer.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

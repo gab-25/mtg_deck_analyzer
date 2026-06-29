@@ -11,16 +11,20 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..cards import classify_card
-from ..config import load_config
-from ..constants import CATEGORY_ORDER, LANG_DISPLAY_NAMES, normalize_lang
-from ..pdf import generate_pdf
-from ..service import analyze_decklist
-from ..text_utils import slugify
+from .cards import classify_card
+from .constants import (
+    CATEGORY_ORDER,
+    DEFAULT_LANG,
+    LANG_DISPLAY_NAMES,
+    normalize_lang,
+)
 from .db import get_session, init_db
 from .db_cache import DbCardCache
 from .models import Deck
+from .pdf import generate_pdf
+from .service import analyze_decklist
 from .storage import cards_for_pdf, cards_for_storage, image_urls
+from .text_utils import slugify
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -51,13 +55,11 @@ app = FastAPI(title="MTG Deck Analyzer", lifespan=lifespan)
 
 
 def _resolved_api_key() -> str | None:
-    config = load_config()
-    return config.get("api_key") or os.environ.get("GEMINI_API_KEY")
+    return os.environ.get("GEMINI_API_KEY")
 
 
 def _default_lang() -> str:
-    config = load_config()
-    return (config.get("lang") or "en").lower()
+    return normalize_lang(os.environ.get("DEFAULT_LANG", DEFAULT_LANG))
 
 
 def _build_categories(stored_cards: list) -> list:
@@ -98,9 +100,9 @@ def _build_categories(stored_cards: list) -> list:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, session: Session = Depends(get_session)):
-    decks = session.execute(
-        select(Deck).order_by(Deck.created_at.desc())
-    ).scalars().all()
+    decks = (
+        session.execute(select(Deck).order_by(Deck.created_at.desc())).scalars().all()
+    )
     return templates.TemplateResponse(
         request,
         "index.html",
