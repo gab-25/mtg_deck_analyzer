@@ -5,6 +5,7 @@ pipeline behind a single function so the workflow lives in exactly one place.
 """
 
 import os
+from typing import Any
 
 from .cards import compute_statistics, infer_deck_type
 from .constants import normalize_lang
@@ -27,12 +28,12 @@ def default_cache_dir() -> str:
 def analyze_decklist(
     decklist_text: str,
     lang: str = "en",
-    api_key: str = None,
+    api_key: str | None = None,
     *,
     cache=None,
     skip_analysis: bool = False,
     progress=None,
-) -> dict:
+) -> dict[str, Any]:
     """Runs the full analysis pipeline on raw decklist text.
 
     ``cache`` is a Scryfall cache backend (see ``scryfall.FileCardCache`` or the

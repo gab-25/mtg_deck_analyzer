@@ -2,28 +2,56 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: mtg
-      POSTGRES_PASSWORD: mtg
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mtg
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mtg"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v2.55.0
+    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters!" --tlsMode disabled'
+    environment:
+      - ZITADEL_DATABASE_POSTGRES_HOST=db
+      - ZITADEL_DATABASE_POSTGRES_PORT=5432
+      - ZITADEL_DATABASE_POSTGRES_DATABASE=zitadel
+      - ZITADEL_DATABASE_POSTGRES_USER_USERNAME=zitadel
+      - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=zitadel
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME=postgres
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD=postgres
+      - ZITADEL_DATABASE_POSTGRES_SSL_MODE=disable
+      - ZITADEL_EXTERNALDOMAIN=localhost:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
     build: .
     depends_on:
       db:
         condition: service_healthy
+      zitadel:
+        condition: service_started
     environment:
-      DATABASE_URL: postgresql+psycopg://mtg:mtg@db:5432/mtg
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/mtg
       # Provide your Gemini key to enable the strategic analysis:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Zitadel OIDC Integration:
+      ZITADEL_DOMAIN: ${ZITADEL_DOMAIN:-http://localhost:8080}
+      ZITADEL_INTERNAL_DOMAIN: ${ZITADEL_INTERNAL_DOMAIN:-http://zitadel:8080}
+      ZITADEL_CLIENT_ID: ${ZITADEL_CLIENT_ID:-}
+      ZITADEL_CLIENT_SECRET: ${ZITADEL_CLIENT_SECRET:-}
+      ZITADEL_REDIRECT_URI: ${ZITADEL_REDIRECT_URI:-http://localhost:8000/auth/callback}
+      SESSION_SECRET: ${SESSION_SECRET:-a-very-secret-key-change-me}
     ports:
       - "8000:8000"
 

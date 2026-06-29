@@ -109,8 +109,12 @@ def get_face_details(face_or_card: dict) -> dict:
     """Extracts localized text details from a card or a face object."""
     name = face_or_card.get("printed_name") or face_or_card.get("name") or ""
     mana_cost = face_or_card.get("mana_cost") or ""
-    type_line = face_or_card.get("printed_type_line") or face_or_card.get("type_line") or ""
-    rules_text = face_or_card.get("printed_text") or face_or_card.get("oracle_text") or ""
+    type_line = (
+        face_or_card.get("printed_type_line") or face_or_card.get("type_line") or ""
+    )
+    rules_text = (
+        face_or_card.get("printed_text") or face_or_card.get("oracle_text") or ""
+    )
 
     return {
         "name": name.strip(),
@@ -284,7 +288,9 @@ def _derive_text_source(card_data: dict, lang: str) -> str:
     return "official"
 
 
-def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> dict:
+def fetch_card_data(
+    card_name: str, lang: str, cache, api_key: str | None = None
+) -> dict:
     """Fetches card data from cache or Scryfall, with set, language, and Gemini fallbacks.
 
     ``cache`` is a cache backend (see :class:`FileCardCache` or the web app's
@@ -359,7 +365,9 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
     if need_search_fallback:
         # 2c. Fallback: search this name in this language across other sets (unique=prints).
         encoded_query = urllib.parse.quote(f'!"{eng_card.get("name")}" lang:{lang}')
-        search_url = f"https://api.scryfall.com/cards/search?q={encoded_query}&unique=prints"
+        search_url = (
+            f"https://api.scryfall.com/cards/search?q={encoded_query}&unique=prints"
+        )
         search_resp = _scryfall_get(search_url)
         if search_resp is not None and search_resp.status_code == 200:
             try:

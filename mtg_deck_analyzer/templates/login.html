@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MTG Deck Analyzer{% endblock %}
+
+{% block content %}
+<div class="hero min-h-[60vh] bg-base-200">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h1 class="text-5xl font-bold mb-4">🧙 MTG Deck Analyzer</h1>
+      <p class="py-4 text-base-content/80">
+        Welcome! MTG Deck Analyzer allows you to paste decklists to fetch real-time card data, view estimated prices, translate rules text, and get strategic AI analyses with Google Gemini.
+      </p>
+      <div class="card bg-base-100 shadow-xl p-8 mt-6">
+        <h2 class="card-title justify-center mb-4 text-xl">Authentication Required</h2>
+        <p class="text-sm mb-6 text-base-content/70">
+          Please log in with Zitadel to access the analyzer.
+        </p>
+        <a href="/auth/login" class="btn btn-primary w-full">
+          Login with Zitadel
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
