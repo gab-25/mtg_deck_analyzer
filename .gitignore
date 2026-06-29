@@ -61,6 +61,10 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Local web-service databases (SQLite dev fallback).
+*.db
+mtg.db
+
 # Flask stuff:
 instance/
 .webassets-cache
@@ -208,6 +212,3 @@ __marimo__/
 
 deck.txt
 deck.pdf
-
-# Local config holding the Gemini API key
-config.toml

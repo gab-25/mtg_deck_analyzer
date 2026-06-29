@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}MTG Deck Analyzer{% endblock %}</title>
+    <link
+        href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css"
+        rel="stylesheet"
+        type="text/css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <style>
+        .analysis h2 { font-size: 1.25rem; font-weight: 700; margin: 1rem 0 .5rem; }
+        .analysis h3 { font-size: 1.05rem; font-weight: 600; margin: .75rem 0 .35rem; }
+        .analysis ul { list-style: disc; padding-left: 1.5rem; margin: .35rem 0; }
+        .analysis li { margin: .2rem 0; }
+        .analysis p { margin: .5rem 0; }
+        .htmx-indicator { opacity: 0; transition: opacity .2s; }
+        .htmx-request .htmx-indicator,
+        .htmx-request.htmx-indicator { opacity: 1; }
+    </style>
+</head>
+<body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow-sm">
+        <div class="flex-1">
+            <a href="/" class="btn btn-ghost text-xl">🧙 MTG Deck Analyzer</a>
+        </div>
+        <div class="flex-none">
+            <a href="/" class="btn btn-ghost">New Analysis</a>
+        </div>
+    </div>
+
+    <main class="container mx-auto max-w-6xl px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer footer-center p-6 text-base-content/60">
+        <aside>
+            <p>MTG Deck Analyzer &bull; card data from Scryfall &bull; analysis by Google Gemini</p>
+        </aside>
+    </footer>
+</body>
+</html>

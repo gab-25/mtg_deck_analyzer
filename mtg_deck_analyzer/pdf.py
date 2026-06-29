@@ -18,7 +18,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .cards import classify_card, infer_deck_type
+from .cards import classify_card, compute_statistics, infer_deck_type
 from .constants import CATEGORY_ORDER
 from .text_utils import markdown_to_flowables
 
@@ -286,35 +286,6 @@ def _build_styles():
     }
 
 
-def _compute_statistics(processed_cards: list):
-    """Computes aggregate deck statistics (totals, price, average CMC, counts)."""
-    total_cards = 0
-    total_price = 0.0
-    total_non_land_cards = 0
-    total_non_land_cmc = 0.0
-
-    category_counts = {cat: 0 for cat in CATEGORY_ORDER}
-
-    for item in processed_cards:
-        qty = item["quantity"]
-        card = item["data"]
-        cat = classify_card(card)
-        category_counts[cat] = category_counts.get(cat, 0) + qty
-
-        total_cards += qty
-        total_price += qty * card.get("price_eur", 0.0)
-
-        if cat != "Land":
-            total_non_land_cards += qty
-            total_non_land_cmc += qty * card.get("cmc", 0.0)
-
-    avg_cmc = (
-        (total_non_land_cmc / total_non_land_cards) if total_non_land_cards > 0 else 0.0
-    )
-
-    return total_cards, total_price, avg_cmc, category_counts
-
-
 def _build_card_image_cell(image_paths: list, single=(110, 154), face=(80, 112)):
     """Builds the left cell (image/s) of a card row.
 
@@ -402,6 +373,20 @@ def _build_card_details_cell(card: dict, qty: int, price: float, styles: dict):
 
         right_cell_flowables.append(Paragraph(title_html, styles["card_title"]))
         right_cell_flowables.append(Spacer(1, 2))
+
+        # Provenance note for the localized text (shown once, on the first face).
+        if idx == 0:
+            source = card.get("text_source")
+            note = None
+            if source == "machine":
+                note = "Machine translation"
+            elif source == "english":
+                note = "English text (no official localization)"
+            if note:
+                right_cell_flowables.append(
+                    Paragraph(f"<i>{note}</i>", styles["card_type"])
+                )
+                right_cell_flowables.append(Spacer(1, 2))
 
         # Type line.
         escaped_face_type = html.escape(face.get("type_line", ""))
@@ -560,7 +545,7 @@ def generate_pdf(
     story_flowables.append(Paragraph(subtitle_text, styles["subtitle"]))
 
     # 1.1 Statistics and summary table.
-    total_cards, total_price, avg_cmc, category_counts = _compute_statistics(
+    total_cards, total_price, avg_cmc, category_counts = compute_statistics(
         processed_cards
     )
     deck_type = infer_deck_type(processed_cards)

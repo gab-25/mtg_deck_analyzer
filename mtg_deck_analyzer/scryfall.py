@@ -15,6 +15,59 @@ from .text_utils import get_card_slug
 _REQUEST_DELAY = 0.1
 
 
+class FileCardCache:
+    """Filesystem-backed Scryfall cache (card JSON + image bytes).
+
+    This is the default backend, kept so the analysis engine works standalone
+    (and in tests) without a database. Cards are keyed by a string like
+    ``card_en_lightning_bolt`` and images by their basename (``img_<id>_<lang>.jpg``).
+    """
+
+    def __init__(self, cache_dir: str):
+        self.cards_dir = os.path.join(cache_dir, "cards")
+        self.images_dir = os.path.join(cache_dir, "images")
+        os.makedirs(self.cards_dir, exist_ok=True)
+        os.makedirs(self.images_dir, exist_ok=True)
+
+    def get_card(self, key: str) -> dict | None:
+        path = os.path.join(self.cards_dir, f"{key}.json")
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None  # Treat a corrupt entry as a miss.
+
+    def set_card(self, key: str, data: dict) -> None:
+        path = os.path.join(self.cards_dir, f"{key}.json")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def has_image(self, name: str) -> bool:
+        return os.path.exists(os.path.join(self.images_dir, name))
+
+    def get_image(self, name: str) -> bytes | None:
+        path = os.path.join(self.images_dir, name)
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, "rb") as f:
+                return f.read()
+        except Exception:
+            return None
+
+    def set_image(self, name: str, data: bytes) -> None:
+        try:
+            with open(os.path.join(self.images_dir, name), "wb") as f:
+                f.write(data)
+        except Exception:
+            pass
+
+
 def _scryfall_get(url: str, max_retries: int = 5):
     """GETs a Scryfall URL, retrying on rate limits (429) and transient errors.
 
@@ -44,17 +97,12 @@ def _scryfall_get(url: str, max_retries: int = 5):
     return None
 
 
-def download_image(url: str, local_path: str) -> bool:
-    """Downloads an image from Scryfall to a local path."""
+def download_image(url: str) -> bytes | None:
+    """Downloads an image from Scryfall and returns its bytes (or None)."""
     resp = _scryfall_get(url)
     if resp is not None and resp.status_code == 200:
-        try:
-            with open(local_path, "wb") as f:
-                f.write(resp.content)
-            return True
-        except Exception:
-            return False
-    return False
+        return resp.content
+    return None
 
 
 def get_face_details(face_or_card: dict) -> dict:
@@ -108,21 +156,28 @@ def _extract_price_eur(card: dict) -> float:
     return 0.0
 
 
-def process_cached_card(card: dict, images_dir: str) -> dict:
-    """Processes Scryfall card JSON, downloads missing images, and structures the data."""
+def process_cached_card(card: dict, cache) -> dict:
+    """Processes Scryfall card JSON, caches missing images, and structures the data.
+
+    The returned ``image_paths`` are cache *keys* (image basenames); the bytes
+    themselves live in the cache backend.
+    """
     card_id = card.get("id", "unknown")
     lang = card.get("lang", "en")
-    image_paths = []
+    image_names = []
+
+    def _ensure_image(name: str, url: str) -> None:
+        if not cache.has_image(name):
+            data = download_image(url)
+            if data:
+                cache.set_image(name, data)
+        if cache.has_image(name):
+            image_names.append(name)
 
     # Check layout / image uris.
     if "image_uris" in card:
         # Single physical image.
-        img_url = card["image_uris"]["normal"]
-        local_img_path = os.path.join(images_dir, f"img_{card_id}_{lang}.jpg")
-        if not os.path.exists(local_img_path):
-            download_image(img_url, local_img_path)
-        if os.path.exists(local_img_path):
-            image_paths.append(local_img_path)
+        _ensure_image(f"img_{card_id}_{lang}.jpg", card["image_uris"]["normal"])
 
     elif (
         "card_faces" in card
@@ -131,12 +186,9 @@ def process_cached_card(card: dict, images_dir: str) -> dict:
     ):
         # Double-sided card (distinct images per face).
         for idx, face in enumerate(card["card_faces"]):
-            img_url = face["image_uris"]["normal"]
-            local_img_path = os.path.join(images_dir, f"img_{card_id}_{lang}_face{idx}.jpg")
-            if not os.path.exists(local_img_path):
-                download_image(img_url, local_img_path)
-            if os.path.exists(local_img_path):
-                image_paths.append(local_img_path)
+            _ensure_image(
+                f"img_{card_id}_{lang}_face{idx}.jpg", face["image_uris"]["normal"]
+            )
 
     # Extract details.
     faces_details = []
@@ -152,11 +204,14 @@ def process_cached_card(card: dict, images_dir: str) -> dict:
     return {
         "id": card_id,
         "name": card.get("printed_name") or card.get("name") or "Unknown Card",
-        "image_paths": image_paths,
+        "image_paths": image_names,
         "faces": faces_details,
         "price_eur": _extract_price_eur(card),
         "type_line": card.get("type_line", ""),
         "cmc": card.get("cmc", 0.0),
+        # Provenance of the localized text: "official" (Scryfall printed text),
+        # "machine" (Gemini-translated) or "english" (no localization available).
+        "text_source": card.get("_text_source"),
     }
 
 
@@ -220,35 +275,42 @@ def _translate_card_data(card_data: dict, lang: str, api_key: str = None) -> Non
             card_data["printed_text"] = t_card.get("printed_text")
 
 
-def fetch_card_data(card_name: str, lang: str, cache_dir: str, api_key: str = None) -> dict:
-    """Fetches card data from cache or Scryfall, with set, language, and Gemini fallbacks."""
-    cards_dir = os.path.join(cache_dir, "cards")
-    images_dir = os.path.join(cache_dir, "images")
+def _derive_text_source(card_data: dict, lang: str) -> str:
+    """Infers text provenance for a cached card lacking a stored ``_text_source``."""
+    if lang == "en":
+        return "official"
+    if is_text_untranslated(card_data):
+        return "english"
+    return "official"
 
+
+def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> dict:
+    """Fetches card data from cache or Scryfall, with set, language, and Gemini fallbacks.
+
+    ``cache`` is a cache backend (see :class:`FileCardCache` or the web app's
+    ``DbCardCache``) exposing ``get_card``/``set_card``/``has_image``/
+    ``get_image``/``set_image``.
+    """
     slug = get_card_slug(card_name)
-    cache_json_path = os.path.join(cards_dir, f"card_{lang}_{slug}.json")
+    cache_key = f"card_{lang}_{slug}"
 
-    # 1. Check the local cache.
-    if os.path.exists(cache_json_path):
-        try:
-            with open(cache_json_path, "r", encoding="utf-8") as f:
-                cached = json.load(f)
-            if cached.get("error") == "not_found":
-                return None
-            # If the cached entry is still untranslated (e.g. it was cached
-            # without a Gemini key) and a key is now available, translate it
-            # and refresh the cache so the language is honored.
-            if lang != "en" and is_text_untranslated(cached):
-                if api_key or os.environ.get("GEMINI_API_KEY"):
-                    _translate_card_data(cached, lang, api_key)
-                    try:
-                        with open(cache_json_path, "w", encoding="utf-8") as f:
-                            json.dump(cached, f, ensure_ascii=False, indent=2)
-                    except Exception:
-                        pass
-            return process_cached_card(cached, images_dir)
-        except Exception:
-            pass  # Re-fetch if the cache file is corrupt.
+    # 1. Check the cache.
+    cached = cache.get_card(cache_key)
+    if cached is not None:
+        if cached.get("error") == "not_found":
+            return None
+        # If the cached entry is still untranslated (e.g. it was cached
+        # without a Gemini key) and a key is now available, translate it
+        # and refresh the cache so the language is honored.
+        if lang != "en" and is_text_untranslated(cached):
+            if api_key or os.environ.get("GEMINI_API_KEY"):
+                _translate_card_data(cached, lang, api_key)
+                cached["_text_source"] = "machine"
+                cache.set_card(cache_key, cached)
+        # Backfill provenance for entries cached before this field existed.
+        if "_text_source" not in cached:
+            cached["_text_source"] = _derive_text_source(cached, lang)
+        return process_cached_card(cached, cache)
 
     # 2. Fetch from the Scryfall API.
     # 2a. Look up the exact English match first.
@@ -262,8 +324,7 @@ def fetch_card_data(card_name: str, lang: str, cache_dir: str, api_key: str = No
     if resp.status_code != 200:
         if resp.status_code == 404:
             # Cache the negative result (the card genuinely does not exist).
-            with open(cache_json_path, "w", encoding="utf-8") as f:
-                json.dump({"error": "not_found"}, f)
+            cache.set_card(cache_key, {"error": "not_found"})
         return None
     try:
         eng_card = resp.json()
@@ -272,9 +333,9 @@ def fetch_card_data(card_name: str, lang: str, cache_dir: str, api_key: str = No
 
     # If English is requested, we are done.
     if lang == "en":
-        with open(cache_json_path, "w", encoding="utf-8") as f:
-            json.dump(eng_card, f, ensure_ascii=False, indent=2)
-        return process_cached_card(eng_card, images_dir)
+        eng_card["_text_source"] = "official"
+        cache.set_card(cache_key, eng_card)
+        return process_cached_card(eng_card, cache)
 
     # 2b. Attempt a localized lookup for the exact print.
     card_data = eng_card
@@ -313,16 +374,22 @@ def fetch_card_data(card_name: str, lang: str, cache_dir: str, api_key: str = No
         card_data["prices"] = eng_card.get("prices", {})
 
     # If the text is still untranslated and we are not in English, try Gemini.
+    translated_via_gemini = False
     if lang != "en" and is_text_untranslated(card_data):
         has_key = api_key or os.environ.get("GEMINI_API_KEY")
         if has_key:
             _translate_card_data(card_data, lang, api_key)
+            translated_via_gemini = True
+
+    # Record text provenance (this branch only runs for non-English requests).
+    if translated_via_gemini:
+        card_data["_text_source"] = "machine"
+    elif is_text_untranslated(card_data):
+        card_data["_text_source"] = "english"
+    else:
+        card_data["_text_source"] = "official"
 
     # Cache the JSON details.
-    try:
-        with open(cache_json_path, "w", encoding="utf-8") as f:
-            json.dump(card_data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    cache.set_card(cache_key, card_data)
 
-    return process_cached_card(card_data, images_dir)
+    return process_cached_card(card_data, cache)

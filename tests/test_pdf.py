@@ -4,10 +4,10 @@ import pytest
 from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Table
 
+from mtg_deck_analyzer.cards import compute_statistics as _compute_statistics
 from mtg_deck_analyzer.pdf import (
     _build_card_image_cell,
     _build_styles,
-    _compute_statistics,
     create_no_image_placeholder,
     create_stats_table,
     generate_pdf,
@@ -89,6 +89,15 @@ class TestPlaceholderAndImageCell:
     def test_single_real_image_yields_rlimage(self, tmp_path):
         img = _make_png(tmp_path / "card.png")
         cell = _build_card_image_cell([img])
+        assert isinstance(cell, RLImage)
+
+    def test_single_file_like_stream_yields_rlimage(self, tmp_path):
+        # The web app feeds in-memory BytesIO streams (images read from the DB).
+        import io
+
+        png_bytes = (tmp_path / "card.png")
+        _make_png(png_bytes)
+        cell = _build_card_image_cell([io.BytesIO(png_bytes.read_bytes())])
         assert isinstance(cell, RLImage)
 
     def test_two_images_yield_sub_table(self, tmp_path):
