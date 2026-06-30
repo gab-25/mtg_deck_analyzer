@@ -24,11 +24,22 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "tailwind",
+    "theme",
     "mtg_deck_analyzer",
 ]
 
+TAILWIND_APP_NAME = "theme"
+
+# Use the standalone Tailwind CLI binary (via pytailwindcss) so neither the dev
+# environment nor the Docker image needs a Node.js toolchain.
+TAILWIND_USE_STANDALONE_BINARY = True
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise serves the collected static files directly from the app server
+    # (no separate web server needed); must sit right after SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -111,7 +122,29 @@ AUTH_PASSWORD_VALIDATORS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Authentication: log-in gates the whole app; both views below are named routes.
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "index"
+LOGOUT_REDIRECT_URL = "login"
+
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# In production (DEBUG off) WhiteNoise serves compressed, hash-versioned static
+# files from STATIC_ROOT. In development the plain finder-based storage is used
+# so the app works without running ``collectstatic`` first.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
 
 USE_TZ = True
 USE_I18N = True

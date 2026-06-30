@@ -43,12 +43,31 @@ def _fake_analyze(decklist, lang="en", api_key=None, skip_analysis=False, **kwar
 
 
 @pytest.fixture
-def client(client, monkeypatch):
+def client(client, monkeypatch, django_user_model):
     # Replace the heavy analysis pipeline with a deterministic stub.
     from mtg_deck_analyzer import views
 
     monkeypatch.setattr(views, "analyze_decklist", _fake_analyze)
+    # Every app view requires authentication; log in a throwaway user.
+    user = django_user_model.objects.create_user(username="tester", password="pw")
+    client.force_login(user)
     return client
+
+
+@pytest.mark.django_db
+def test_protected_view_redirects_to_login_when_anonymous(client):
+    client.logout()
+    r = client.get("/")
+    assert r.status_code == 302
+    assert r["Location"].startswith("/login")
+
+
+@pytest.mark.django_db
+def test_login_page_renders(client):
+    client.logout()
+    r = client.get("/login")
+    assert r.status_code == 200
+    assert "Sign in" in r.content.decode()
 
 
 @pytest.mark.django_db
@@ -63,10 +82,10 @@ def test_create_view_and_delete_deck(client):
     r = client.post(
         "/decks",
         data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
-        HTTP_HX_REQUEST="true",
     )
-    assert r.status_code == 204
-    target = r["HX-Redirect"]
+    # Post/Redirect/Get to the new deck's detail page.
+    assert r.status_code == 302
+    target = r["Location"]
 
     detail = client.get(target)
     assert detail.status_code == 200
@@ -81,7 +100,8 @@ def test_create_view_and_delete_deck(client):
     assert "Mono Green" in client.get("/").content.decode()
 
     deck_id = target.rsplit("/", 1)[-1]
-    assert client.delete(f"/decks/{deck_id}").status_code == 200
+    delete = client.post(f"/decks/{deck_id}/delete")
+    assert delete.status_code == 302
     assert client.get(target).status_code == 404
 
 
@@ -90,10 +110,9 @@ def test_create_with_empty_decklist_returns_error(client):
     r = client.post(
         "/decks",
         data={"name": "x", "decklist": "   ", "lang": "en"},
-        HTTP_HX_REQUEST="true",
     )
     assert r.status_code == 422
-    assert "alert-error" in r.content.decode()
+    assert "No cards could be parsed" in r.content.decode()
 
 
 @pytest.mark.django_db
@@ -106,9 +125,8 @@ def test_pdf_download(client):
     r = client.post(
         "/decks",
         data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
-        HTTP_HX_REQUEST="true",
     )
-    deck_id = r["HX-Redirect"].rsplit("/", 1)[-1]
+    deck_id = r["Location"].rsplit("/", 1)[-1]
     pdf = client.get(f"/decks/{deck_id}/pdf")
     assert pdf.status_code == 200
     assert pdf["content-type"] == "application/pdf"

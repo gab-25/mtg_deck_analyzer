@@ -1,11 +1,12 @@
-"""Django views: HTMX + DaisyUI front-end for the deck analyzer."""
+"""Django views: server-rendered (Tailwind) front-end for the deck analyzer."""
 
 import os
 import tempfile
 
 import markdown as md
+from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from .caching.db_cache import DbCardCache
@@ -80,21 +81,24 @@ def _build_categories(stored_cards: list) -> list:
     return categories
 
 
+def _index_context(**extra) -> dict:
+    """Builds the context the index page (and create errors) render with."""
+    return {
+        "decks": Deck.objects.order_by("-created_at"),
+        "languages": LANG_DISPLAY_NAMES,
+        "default_lang": _default_lang(),
+        "has_api_key": bool(_resolved_api_key()),
+        **extra,
+    }
+
+
+@login_required
 @require_http_methods(["GET"])
 def index(request):
-    decks = Deck.objects.order_by("-created_at")
-    return render(
-        request,
-        "index.html",
-        {
-            "decks": decks,
-            "languages": LANG_DISPLAY_NAMES,
-            "default_lang": _default_lang(),
-            "has_api_key": bool(_resolved_api_key()),
-        },
-    )
+    return render(request, "index.html", _index_context())
 
 
+@login_required
 @require_http_methods(["POST"])
 def create_deck(request):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
@@ -111,10 +115,13 @@ def create_deck(request):
             skip_analysis=skip_analysis,
         )
     except ValueError as e:
+        # Re-render the form with the error and the user's input preserved.
         return render(
             request,
-            "partials/form_error.html",
-            {"error": str(e)},
+            "index.html",
+            _index_context(
+                error=str(e), form_name=name, form_decklist=decklist
+            ),
             status=422,
         )
 
@@ -132,20 +139,13 @@ def create_deck(request):
         cards=cards_for_storage(result["processed_cards"]),
     )
 
-    target = f"/decks/{deck.id}"
-    # HTMX expects a redirect via header so it swaps the whole page location.
-    if request.headers.get("HX-Request"):
-        resp = HttpResponse(status=204)
-        resp["HX-Redirect"] = target
-        return resp
-    return HttpResponse(status=303, headers={"Location": target})
+    # Post/Redirect/Get: send the browser to the new deck's detail page.
+    return redirect("deck_detail", deck_id=deck.id)
 
 
-@require_http_methods(["GET", "DELETE"])
+@login_required
+@require_http_methods(["GET"])
 def deck_detail(request, deck_id: int):
-    if request.method == "DELETE":
-        return _delete_deck(deck_id)
-
     deck = get_object_or_404(Deck, pk=deck_id)
 
     analysis_html = None
@@ -166,12 +166,14 @@ def deck_detail(request, deck_id: int):
     )
 
 
-def _delete_deck(deck_id: int):
+@login_required
+@require_http_methods(["POST"])
+def delete_deck(request, deck_id: int):
     Deck.objects.filter(pk=deck_id).delete()
-    # Empty body removes the row from the HTMX-managed list.
-    return HttpResponse(status=200)
+    return redirect("index")
 
 
+@login_required
 @require_http_methods(["GET"])
 def deck_pdf(request, deck_id: int):
     deck = get_object_or_404(Deck, pk=deck_id)
@@ -191,6 +193,7 @@ def deck_pdf(request, deck_id: int):
     )
 
 
+@login_required
 @require_http_methods(["GET"])
 def media(request, name: str):
     """Serves a cached card image from the database."""
