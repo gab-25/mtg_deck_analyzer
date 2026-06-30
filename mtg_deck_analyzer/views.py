@@ -8,19 +8,19 @@ from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
-from .cards import classify_card
-from .constants import (
+from .caching.db_cache import DbCardCache
+from .domain.cards import classify_card
+from .domain.constants import (
     CATEGORY_ORDER,
     DEFAULT_LANG,
     LANG_DISPLAY_NAMES,
     normalize_lang,
 )
-from .db_cache import DbCardCache
+from .domain.storage import cards_for_pdf, cards_for_storage, image_urls
+from .domain.text_utils import slugify
 from .models import Deck
-from .pdf import generate_pdf
-from .service import analyze_decklist
-from .storage import cards_for_pdf, cards_for_storage, image_urls
-from .text_utils import slugify
+from .pipeline import analyze_decklist
+from .rendering.pdf import generate_pdf
 
 # Plural display labels for card categories (web shows them as section headers).
 CATEGORY_LABELS = {

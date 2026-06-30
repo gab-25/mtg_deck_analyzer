@@ -3,7 +3,7 @@
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import HRFlowable, Paragraph, Spacer
 
-from mtg_deck_analyzer.text_utils import (
+from mtg_deck_analyzer.domain.text_utils import (
     convert_markdown_inline,
     escape_for_paragraph,
     get_card_slug,

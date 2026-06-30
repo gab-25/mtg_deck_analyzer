@@ -39,17 +39,22 @@ mtg_deck_analyzer/
 ├── apps.py            # Django app configuration
 ├── models.py          # ORM models (Deck, ScryfallCard, ScryfallImage)
 ├── migrations/        # Database migrations
-├── db_cache.py        # Database-backed Scryfall cache backend
-├── storage.py         # Card image (de)serialization for storage/PDF
 ├── templates/         # Django templates
-├── service.py         # Analysis pipeline (parse → fetch → analyze → stats)
-├── constants.py       # Shared constants (Scryfall headers, language maps, categories)
-├── decklist.py        # Decklist text parsing
-├── cards.py           # Card classification and aggregate statistics
-├── scryfall.py        # Card data/image fetching and local caching
-├── gemini.py          # Card translation and strategic analysis (Google Gemini)
-├── text_utils.py      # Slugs and Markdown -> ReportLab Flowables conversion
-└── pdf.py             # PDF generation
+├── pipeline.py        # Analysis pipeline (parse → fetch → analyze → stats)
+├── domain/            # Pure domain logic (no I/O, no Django)
+│   ├── constants.py   #   Shared constants (Scryfall headers, language maps, categories)
+│   ├── decklist.py    #   Decklist text parsing
+│   ├── cards.py       #   Card classification and aggregate statistics
+│   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
+│   └── storage.py     #   Card image (de)serialization for storage/PDF
+├── integrations/      # External service clients
+│   ├── scryfall.py    #   Card data/image fetching from Scryfall
+│   └── gemini.py      #   Card translation and strategic analysis (Google Gemini)
+├── caching/           # Scryfall cache backends
+│   ├── file_cache.py  #   Filesystem-backed cache (default, standalone/tests)
+│   └── db_cache.py    #   Database-backed cache backend
+└── rendering/
+    └── pdf.py         # PDF generation
 ```
 
 ---

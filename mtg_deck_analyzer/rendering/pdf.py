@@ -18,9 +18,9 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .cards import classify_card, compute_statistics, infer_deck_type
-from .constants import CATEGORY_ORDER
-from .text_utils import markdown_to_flowables
+from ..domain.cards import classify_card, compute_statistics, infer_deck_type
+from ..domain.constants import CATEGORY_ORDER
+from ..domain.text_utils import markdown_to_flowables
 
 # PDF labels are always English; only the card title and description follow the
 # requested language (those come from the Scryfall card data).

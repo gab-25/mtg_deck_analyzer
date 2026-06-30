@@ -6,7 +6,7 @@ import os
 from google import genai
 from google.genai import types
 
-from .constants import GEMINI_MODEL, LANG_MAP
+from ..domain.constants import GEMINI_MODEL, LANG_MAP
 
 
 def translate_card_via_gemini(

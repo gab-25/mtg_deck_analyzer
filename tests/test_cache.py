@@ -2,8 +2,9 @@
 
 import pytest
 
-from mtg_deck_analyzer.db_cache import DbCardCache
-from mtg_deck_analyzer.scryfall import FileCardCache, fetch_card_data
+from mtg_deck_analyzer.caching.db_cache import DbCardCache
+from mtg_deck_analyzer.caching.file_cache import FileCardCache
+from mtg_deck_analyzer.integrations.scryfall import fetch_card_data
 
 
 def _exercise_cache(cache):

@@ -1,12 +1,12 @@
 """Database-backed Scryfall cache.
 
-Implements the cache-backend interface expected by ``scryfall.fetch_card_data``
+Implements the cache-backend interface expected by ``integrations.scryfall.fetch_card_data``
 (``get_card``/``set_card``/``has_image``/``get_image``/``set_image``), storing
 card JSON and image bytes in the database (via the Django ORM) instead of on the
 filesystem.
 """
 
-from .models import ScryfallCard, ScryfallImage
+from ..models import ScryfallCard, ScryfallImage
 
 
 class DbCardCache:

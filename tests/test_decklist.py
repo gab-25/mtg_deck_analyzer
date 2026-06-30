@@ -1,6 +1,6 @@
 """Tests for decklist parsing."""
 
-from mtg_deck_analyzer.decklist import parse_decklist, parse_decklist_text
+from mtg_deck_analyzer.domain.decklist import parse_decklist, parse_decklist_text
 
 
 def _write(tmp_path, contents):

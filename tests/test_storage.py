@@ -2,7 +2,7 @@
 
 import io
 
-from mtg_deck_analyzer.storage import (
+from mtg_deck_analyzer.domain.storage import (
     cards_for_pdf,
     cards_for_storage,
     image_urls,
