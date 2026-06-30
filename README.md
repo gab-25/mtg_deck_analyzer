@@ -1,6 +1,6 @@
 # MTG Deck Analyzer
 
-A **FastAPI** web app for Magic: The Gathering. Paste a decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with **Google Gemini** (via the official `google-genai` SDK), and renders an interactive report (**HTMX + DaisyUI**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
+A **Django** web app for Magic: The Gathering. Paste a decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with **Google Gemini** (via the official `google-genai` SDK), and renders an interactive report (**HTMX + DaisyUI**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
 
 See [Web Service](#web-service) to get it running.
 
@@ -27,15 +27,21 @@ See [Web Service](#web-service) to get it running.
 The code is organized as a flat, direct Python package:
 
 ```
+manage.py              # Django management entrypoint
 mtg_deck_analyzer/
 ├── __init__.py        # Package metadata and dotenv loading
-├── __main__.py        # Server entrypoint (mtg-deck-analyzer)
-├── app.py             # FastAPI routes (HTMX + DaisyUI)
-├── db.py              # SQLAlchemy engine/session (Postgres)
+├── __main__.py        # Server entrypoint (mtg-deck-analyzer): migrate + runserver
+├── settings.py        # Django settings (DATABASE_URL parsing, apps, middleware)
+├── settings_test.py   # Test settings (in-memory SQLite)
+├── urls.py            # URL routing
+├── wsgi.py / asgi.py  # WSGI/ASGI application entry points
+├── views.py           # Django views (HTMX + DaisyUI)
+├── apps.py            # Django app configuration
 ├── models.py          # ORM models (Deck, ScryfallCard, ScryfallImage)
+├── migrations/        # Database migrations
 ├── db_cache.py        # Database-backed Scryfall cache backend
 ├── storage.py         # Card image (de)serialization for storage/PDF
-├── templates/         # Jinja2 templates
+├── templates/         # Django templates
 ├── service.py         # Analysis pipeline (parse → fetch → analyze → stats)
 ├── constants.py       # Shared constants (Scryfall headers, language maps, categories)
 ├── decklist.py        # Decklist text parsing
@@ -76,7 +82,7 @@ The app is configured entirely through environment variables (loaded from a
 
 ## Web Service
 
-The app is a **FastAPI** web service with a **Postgres** database and
+The app is a **Django** web service with a **Postgres** database and
 **HTMX + DaisyUI** pages. You paste a decklist, pick a language, and get a web
 page with the deck fact sheet, the Gemini strategy analysis, and the full card
 list — plus a one-click **PDF download** of the report.
@@ -108,13 +114,14 @@ uv run mtg-deck-analyzer
 
 The relevant variables are:
 
-- `DATABASE_URL` — any SQLAlchemy URL (default `postgresql+psycopg://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite+pysqlite:///./mtg.db` for a quick, dependency-free run.
+- `DATABASE_URL` — a Postgres or SQLite URL (default `postgresql://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite:///./mtg.db` for a quick, dependency-free run. A `+driver` suffix on the scheme (e.g. `postgresql+psycopg://…`) is accepted and ignored.
 - `GEMINI_API_KEY` — optional; enables the strategic analysis.
 - `DEFAULT_LANG` — optional; default target language code (defaults to `en`).
 - `HOST` / `PORT` — server bind address (defaults `0.0.0.0:8000`).
 - `RELOAD` — set to `1` for auto-reload during development.
+- `SECRET_KEY` / `DEBUG` — Django secret key and debug flag (sensible defaults for local development).
 
-Tables are created automatically on startup.
+Database migrations are applied automatically on startup.
 
 The Gemini API key and the default language are resolved from the
 environment variables described in [Configuration](#configuration) above.

@@ -25,13 +25,13 @@
     <div class="stat">
         <div class="stat-title">Estimated value</div>
         <div class="stat-value">
-            {% if deck.total_value_eur > 0 %}€{{ "%.2f"|format(deck.total_value_eur) }}{% else %}—{% endif %}
+            {% if deck.total_value_eur > 0 %}€{{ deck.total_value_eur|floatformat:2 }}{% else %}—{% endif %}
         </div>
         <div class="stat-desc">Cardmarket</div>
     </div>
     <div class="stat">
         <div class="stat-title">Average CMC</div>
-        <div class="stat-value">{{ "%.2f"|format(deck.avg_cmc) }}</div>
+        <div class="stat-value">{{ deck.avg_cmc|floatformat:2 }}</div>
         <div class="stat-desc">non-lands</div>
     </div>
 </div>
@@ -65,20 +65,22 @@
                 <div>
                     <div class="flex items-baseline justify-between gap-2">
                         <span class="font-semibold">
-                            {% if loop.first %}{{ card.quantity }}x {% endif %}{{ face.name }}
+                            {% if forloop.first %}{{ card.quantity }}x {% endif %}{{ face.name }}
                         </span>
                         {% if face.mana_cost %}
                         <span class="text-sm text-base-content/70">{{ face.mana_cost }}</span>
                         {% endif %}
                     </div>
-                    {% if loop.first and card.text_source in ['machine', 'english'] %}
-                    <div class="mt-1">
+                    {% if forloop.first %}
                         {% if card.text_source == 'machine' %}
-                        <span class="badge badge-warning badge-sm" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
-                        {% else %}
-                        <span class="badge badge-ghost badge-sm" title="No official localization available; showing English text">English text</span>
+                        <div class="mt-1">
+                            <span class="badge badge-warning badge-sm" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
+                        </div>
+                        {% elif card.text_source == 'english' %}
+                        <div class="mt-1">
+                            <span class="badge badge-ghost badge-sm" title="No official localization available; showing English text">English text</span>
+                        </div>
                         {% endif %}
-                    </div>
                     {% endif %}
                     {% if face.type_line %}
                     <div class="text-xs italic text-base-content/60">{{ face.type_line }}</div>
@@ -90,9 +92,9 @@
                 {% endfor %}
                 {% if card.price > 0 %}
                 <div class="mt-auto text-sm text-base-content/70">
-                    €{{ "%.2f"|format(card.price) }}
+                    €{{ card.price|floatformat:2 }}
                     {% if card.quantity > 1 %}
-                    <span class="text-xs text-base-content/50">(€{{ "%.2f"|format(card.total_price) }} tot)</span>
+                    <span class="text-xs text-base-content/50">(€{{ card.total_price|floatformat:2 }} tot)</span>
                     {% endif %}
                 </div>
                 {% endif %}

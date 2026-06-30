@@ -1,15 +1,12 @@
-"""FastAPI application: HTMX + DaisyUI front-end for the deck analyzer."""
+"""Django views: HTMX + DaisyUI front-end for the deck analyzer."""
 
 import os
 import tempfile
-from contextlib import asynccontextmanager
 
 import markdown as md
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from django.http import FileResponse, HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_http_methods
 
 from .cards import classify_card
 from .constants import (
@@ -18,16 +15,12 @@ from .constants import (
     LANG_DISPLAY_NAMES,
     normalize_lang,
 )
-from .db import get_session, init_db
 from .db_cache import DbCardCache
 from .models import Deck
 from .pdf import generate_pdf
 from .service import analyze_decklist
 from .storage import cards_for_pdf, cards_for_storage, image_urls
 from .text_utils import slugify
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 # Plural display labels for card categories (web shows them as section headers).
 CATEGORY_LABELS = {
@@ -41,17 +34,6 @@ CATEGORY_LABELS = {
     "Battle": "Battles",
     "Other": "Other",
 }
-
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
-    yield
-
-
-app = FastAPI(title="MTG Deck Analyzer", lifespan=lifespan)
 
 
 def _resolved_api_key() -> str | None:
@@ -98,12 +80,10 @@ def _build_categories(stored_cards: list) -> list:
     return categories
 
 
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request, session: Session = Depends(get_session)):
-    decks = (
-        session.execute(select(Deck).order_by(Deck.created_at.desc())).scalars().all()
-    )
-    return templates.TemplateResponse(
+@require_http_methods(["GET"])
+def index(request):
+    decks = Deck.objects.order_by("-created_at")
+    return render(
         request,
         "index.html",
         {
@@ -115,36 +95,31 @@ def index(request: Request, session: Session = Depends(get_session)):
     )
 
 
-@app.post("/decks")
-def create_deck(
-    request: Request,
-    name: str = Form(...),
-    decklist: str = Form(...),
-    lang: str = Form("en"),
-    skip_analysis: bool = Form(False),
-    session: Session = Depends(get_session),
-):
-    name = name.strip() or "Untitled Deck"
-    lang = normalize_lang(lang)
+@require_http_methods(["POST"])
+def create_deck(request):
+    name = (request.POST.get("name") or "").strip() or "Untitled Deck"
+    decklist = request.POST.get("decklist", "")
+    lang = normalize_lang(request.POST.get("lang", "en"))
+    skip_analysis = request.POST.get("skip_analysis") in {"true", "on", "1"}
 
     try:
         result = analyze_decklist(
             decklist,
             lang=lang,
             api_key=_resolved_api_key(),
-            cache=DbCardCache(session),
+            cache=DbCardCache(),
             skip_analysis=skip_analysis,
         )
     except ValueError as e:
-        return templates.TemplateResponse(
+        return render(
             request,
             "partials/form_error.html",
             {"error": str(e)},
-            status_code=422,
+            status=422,
         )
 
     stats = result["stats"]
-    deck = Deck(
+    deck = Deck.objects.create(
         name=name,
         lang=lang,
         raw_decklist=decklist,
@@ -156,24 +131,22 @@ def create_deck(
         category_counts=stats["category_counts"],
         cards=cards_for_storage(result["processed_cards"]),
     )
-    session.add(deck)
-    session.commit()
-    session.refresh(deck)
 
     target = f"/decks/{deck.id}"
     # HTMX expects a redirect via header so it swaps the whole page location.
     if request.headers.get("HX-Request"):
-        return Response(status_code=204, headers={"HX-Redirect": target})
-    return RedirectResponse(target, status_code=303)
+        resp = HttpResponse(status=204)
+        resp["HX-Redirect"] = target
+        return resp
+    return HttpResponse(status=303, headers={"Location": target})
 
 
-@app.get("/decks/{deck_id}", response_class=HTMLResponse)
-def deck_detail(
-    deck_id: int, request: Request, session: Session = Depends(get_session)
-):
-    deck = session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found")
+@require_http_methods(["GET", "DELETE"])
+def deck_detail(request, deck_id: int):
+    if request.method == "DELETE":
+        return _delete_deck(deck_id)
+
+    deck = get_object_or_404(Deck, pk=deck_id)
 
     analysis_html = None
     if deck.analysis_md:
@@ -181,7 +154,7 @@ def deck_detail(
             deck.analysis_md, extensions=["extra", "sane_lists"]
         )
 
-    return templates.TemplateResponse(
+    return render(
         request,
         "deck.html",
         {
@@ -193,36 +166,35 @@ def deck_detail(
     )
 
 
-@app.get("/decks/{deck_id}/pdf")
-def deck_pdf(deck_id: int, session: Session = Depends(get_session)):
-    deck = session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found")
+def _delete_deck(deck_id: int):
+    Deck.objects.filter(pk=deck_id).delete()
+    # Empty body removes the row from the HTMX-managed list.
+    return HttpResponse(status=200)
 
-    processed = cards_for_pdf(deck.cards or [], DbCardCache(session))
+
+@require_http_methods(["GET"])
+def deck_pdf(request, deck_id: int):
+    deck = get_object_or_404(Deck, pk=deck_id)
+
+    processed = cards_for_pdf(deck.cards or [], DbCardCache())
 
     fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
     generate_pdf(deck.name, deck.analysis_md, processed, tmp_path)
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"
-    return FileResponse(tmp_path, media_type="application/pdf", filename=filename)
+    return FileResponse(
+        open(tmp_path, "rb"),
+        content_type="application/pdf",
+        as_attachment=True,
+        filename=filename,
+    )
 
 
-@app.get("/media/{name}")
-def media(name: str, session: Session = Depends(get_session)):
+@require_http_methods(["GET"])
+def media(request, name: str):
     """Serves a cached card image from the database."""
-    data = DbCardCache(session).get_image(name)
+    data = DbCardCache().get_image(name)
     if data is None:
-        raise HTTPException(status_code=404, detail="Image not found")
-    return Response(content=data, media_type="image/jpeg")
-
-
-@app.delete("/decks/{deck_id}")
-def delete_deck(deck_id: int, session: Session = Depends(get_session)):
-    deck = session.get(Deck, deck_id)
-    if deck is not None:
-        session.delete(deck)
-        session.commit()
-    # Empty body removes the row from the HTMX-managed list.
-    return Response(status_code=200)
+        return HttpResponse("Image not found", status=404)
+    return HttpResponse(data, content_type="image/jpeg")

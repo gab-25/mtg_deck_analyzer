@@ -24,6 +24,7 @@
                     hx-disabled-elt="#analyze-btn"
                     class="mt-4 flex flex-col gap-4"
                 >
+                    {% csrf_token %}
                     <label class="form-control w-full">
                         <div class="label"><span class="label-text">Deck name</span></div>
                         <input
@@ -50,7 +51,7 @@
                         <label class="form-control">
                             <div class="label"><span class="label-text">Language</span></div>
                             <select name="lang" class="select select-bordered">
-                                {% for code, label in languages.items() %}
+                                {% for code, label in languages.items %}
                                 <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>
                                     {{ label }}
                                 </option>
@@ -90,7 +91,7 @@
                         <div class="text-sm text-base-content/60">
                             <span class="badge badge-sm badge-ghost">{{ deck.deck_type }}</span>
                             {{ deck.total_cards }} cards
-                            {% if deck.total_value_eur > 0 %}&bull; €{{ "%.2f"|format(deck.total_value_eur) }}{% endif %}
+                            {% if deck.total_value_eur > 0 %}&bull; €{{ deck.total_value_eur|floatformat:2 }}{% endif %}
                         </div>
                     </a>
                     <button

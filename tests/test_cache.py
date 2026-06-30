@@ -1,23 +1,9 @@
 """Tests for the Scryfall cache backends (filesystem and database)."""
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-from mtg_deck_analyzer.db import Base
 from mtg_deck_analyzer.db_cache import DbCardCache
 from mtg_deck_analyzer.scryfall import FileCardCache, fetch_card_data
-
-
-@pytest.fixture
-def db_session():
-    engine = create_engine("sqlite+pysqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    session = sessionmaker(bind=engine)()
-    try:
-        yield session
-    finally:
-        session.close()
 
 
 def _exercise_cache(cache):
@@ -41,13 +27,15 @@ def test_file_card_cache_roundtrip(tmp_path):
     _exercise_cache(FileCardCache(str(tmp_path)))
 
 
-def test_db_card_cache_roundtrip(db_session):
-    _exercise_cache(DbCardCache(db_session))
+@pytest.mark.django_db
+def test_db_card_cache_roundtrip():
+    _exercise_cache(DbCardCache())
 
 
-def test_fetch_card_data_uses_cache_without_network(db_session):
+@pytest.mark.django_db
+def test_fetch_card_data_uses_cache_without_network():
     """A cached English card is processed straight from the cache (no HTTP)."""
-    cache = DbCardCache(db_session)
+    cache = DbCardCache()
     cache.set_card(
         "card_en_forest",
         {
@@ -69,10 +57,11 @@ def test_fetch_card_data_uses_cache_without_network(db_session):
     assert card["text_source"] == "official"  # English is always official
 
 
-def test_fetch_card_data_marks_english_fallback(db_session, monkeypatch):
+@pytest.mark.django_db
+def test_fetch_card_data_marks_english_fallback(monkeypatch):
     """A non-English request with only untranslated text and no key -> 'english'."""
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    cache = DbCardCache(db_session)
+    cache = DbCardCache()
     cache.set_card(
         "card_it_forest",
         {
@@ -88,7 +77,8 @@ def test_fetch_card_data_marks_english_fallback(db_session, monkeypatch):
     assert card["text_source"] == "english"
 
 
-def test_fetch_card_data_returns_none_for_cached_not_found(db_session):
-    cache = DbCardCache(db_session)
+@pytest.mark.django_db
+def test_fetch_card_data_returns_none_for_cached_not_found():
+    cache = DbCardCache()
     cache.set_card("card_en_nope", {"error": "not_found"})
     assert fetch_card_data("Nope", "en", cache) is None

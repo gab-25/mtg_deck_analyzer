@@ -1,4 +1,4 @@
-# Web service image for the MTG Deck Analyzer.
+# Web service image for the MTG Deck Analyzer (Django).
 FROM python:3.14-slim
 
 # Install uv (fast Python package manager).
