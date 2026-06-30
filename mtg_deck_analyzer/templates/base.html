@@ -5,26 +5,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}MTG Deck Analyzer{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     {% tailwind_css %}
 </head>
-<body class="min-h-screen bg-slate-900 text-slate-100">
+<body class="flex min-h-screen flex-col bg-slate-900 text-slate-100">
     <header class="flex items-center gap-2 bg-slate-800 px-4 py-2 shadow-sm">
         <div class="flex-1">
             <a href="/" class="btn-ghost text-xl font-semibold">🧙 MTG Deck Analyzer</a>
         </div>
         <nav class="flex flex-none items-center gap-2">
-            <a href="/" class="btn-ghost">New Analysis</a>
+            <a href="{% url 'new_deck' %}" class="btn-primary">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                Create deck
+            </a>
             {% if user.is_authenticated %}
-            <span class="text-sm text-slate-400">{{ user.get_username }}</span>
+            <span class="flex items-center gap-2 text-sm text-slate-400">
+                <i class="fa-solid fa-circle-user" aria-hidden="true"></i>
+                {{ user.get_username }}
+            </span>
             <form method="post" action="{% url 'logout' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn-ghost">Sign out</button>
+                <button type="submit" class="btn-ghost">
+                    <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                    Sign out
+                </button>
             </form>
             {% endif %}
         </nav>
     </header>
 
-    <main class="container mx-auto max-w-6xl px-4 py-8">
+    <main class="container mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {% block content %}{% endblock %}
     </main>
 

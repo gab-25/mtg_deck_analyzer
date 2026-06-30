@@ -16,7 +16,10 @@
             <span class="badge badge-neutral">{{ lang_display }}</span>
         </div>
     </div>
-    <a href="/decks/{{ deck.id }}/pdf" class="btn-outline">⬇ Download PDF</a>
+    <a href="/decks/{{ deck.id }}/pdf" class="btn-outline">
+        <i class="fa-solid fa-download" aria-hidden="true"></i>
+        Download PDF
+    </a>
 </div>
 
 <div class="surface mb-6 grid grid-cols-1 divide-y divide-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">

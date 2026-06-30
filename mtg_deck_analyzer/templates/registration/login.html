@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign in &bull; MTG Deck Analyzer</title>
+    <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     {% tailwind_css %}
 </head>
 <body class="min-h-screen bg-slate-900 text-slate-100">
@@ -48,7 +49,10 @@
 
                 <input type="hidden" name="next" value="{{ next }}" />
 
-                <button type="submit" class="btn-primary">Sign in</button>
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+                    Sign in
+                </button>
             </form>
         </div>
     </main>

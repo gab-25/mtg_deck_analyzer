@@ -1,0 +1,11 @@
+{
+  // Django templates are HTML files but contain {% %}/{{ }} tags that
+  // Prettier mangles (splitting tags across lines breaks Django parsing).
+  // Disable auto-formatting for HTML in this project.
+  "languages": {
+    "HTML": {
+      "format_on_save": "off",
+      "formatter": "none",
+    },
+  },
+}

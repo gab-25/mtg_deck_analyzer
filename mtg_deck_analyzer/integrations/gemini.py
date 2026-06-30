@@ -6,7 +6,7 @@ import os
 from google import genai
 from google.genai import types
 
-from ..domain.constants import GEMINI_MODEL, LANG_MAP
+from ..domain.constants import DECK_TYPES, GEMINI_MODEL, LANG_MAP
 
 
 def translate_card_via_gemini(
@@ -59,6 +59,48 @@ def translate_card_via_gemini(
     except Exception as e:
         print(f"\n[Warning] Gemini card translation failed: {e}")
         return {}
+
+
+def recognize_deck_type(
+    deck_list_text: str, api_key: str = None
+) -> str | None:
+    """Asks Gemini to classify the deck into one of :data:`DECK_TYPES`.
+
+    Returns the matched type, or None if Gemini is unavailable or returns an
+    unexpected value (callers should fall back to a heuristic in that case).
+    """
+    allowed = ", ".join(f'"{t}"' for t in DECK_TYPES)
+    prompt = f"""You are an expert Magic: The Gathering deck classifier.
+Classify the following deck into exactly one of these types: {allowed}.
+Base your decision on the deck's size, format and composition.
+
+Return a JSON object with a single key "deck_type" whose value is exactly one
+of the allowed types (verbatim, including capitalization and spacing).
+
+Deck list:
+{deck_list_text}
+"""
+
+    try:
+        if api_key:
+            client = genai.Client(api_key=api_key)
+        elif os.environ.get("GEMINI_API_KEY"):
+            client = genai.Client()
+        else:
+            return None  # No API key: caller falls back to the heuristic.
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=config,
+        )
+
+        deck_type = json.loads(response.text.strip()).get("deck_type", "").strip()
+        return deck_type if deck_type in DECK_TYPES else None
+    except Exception as e:
+        print(f"\n[Warning] Gemini deck-type recognition failed: {e}")
+        return None
 
 
 def log_analysis_unavailable() -> None:

@@ -74,7 +74,26 @@ def test_login_page_renders(client):
 def test_index_renders(client):
     r = client.get("/")
     assert r.status_code == 200
+    assert "Your decks" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_create_page_renders_form(client):
+    r = client.get("/decks/new")
+    assert r.status_code == 200
     assert "Analyze a deck" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_index_search_filters_by_name(client):
+    from mtg_deck_analyzer.models import Deck
+
+    Deck.objects.create(name="Mono Green", raw_decklist="1 Forest")
+    Deck.objects.create(name="Mono Red", raw_decklist="1 Mountain")
+
+    body = client.get("/", {"q": "green"}).content.decode()
+    assert "Mono Green" in body
+    assert "Mono Red" not in body
 
 
 @pytest.mark.django_db

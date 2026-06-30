@@ -81,13 +81,11 @@ def _build_categories(stored_cards: list) -> list:
     return categories
 
 
-def _index_context(**extra) -> dict:
-    """Builds the context the index page (and create errors) render with."""
+def _create_context(**extra) -> dict:
+    """Builds the context the deck-creation form renders with."""
     return {
-        "decks": Deck.objects.order_by("-created_at"),
         "languages": LANG_DISPLAY_NAMES,
         "default_lang": _default_lang(),
-        "has_api_key": bool(_resolved_api_key()),
         **extra,
     }
 
@@ -95,7 +93,17 @@ def _index_context(**extra) -> dict:
 @login_required
 @require_http_methods(["GET"])
 def index(request):
-    return render(request, "index.html", _index_context())
+    query = (request.GET.get("q") or "").strip()
+    decks = Deck.objects.order_by("-created_at")
+    if query:
+        decks = decks.filter(name__icontains=query)
+    return render(request, "index.html", {"decks": decks, "query": query})
+
+
+@login_required
+@require_http_methods(["GET"])
+def new_deck(request):
+    return render(request, "create.html", _create_context())
 
 
 @login_required
@@ -104,7 +112,6 @@ def create_deck(request):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
     lang = normalize_lang(request.POST.get("lang", "en"))
-    skip_analysis = request.POST.get("skip_analysis") in {"true", "on", "1"}
 
     try:
         result = analyze_decklist(
@@ -112,14 +119,13 @@ def create_deck(request):
             lang=lang,
             api_key=_resolved_api_key(),
             cache=DbCardCache(),
-            skip_analysis=skip_analysis,
         )
     except ValueError as e:
         # Re-render the form with the error and the user's input preserved.
         return render(
             request,
-            "index.html",
-            _index_context(
+            "create.html",
+            _create_context(
                 error=str(e), form_name=name, form_decklist=decklist
             ),
             status=422,
