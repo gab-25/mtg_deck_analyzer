@@ -12,6 +12,7 @@
         </nav>
         <h1 class="text-3xl font-bold">{{ deck.name }}</h1>
         <div class="mt-2 flex flex-wrap gap-2">
+            {% include "partials/status_badge.html" with deck=deck %}
             <span class="badge badge-primary">{{ deck.deck_type }}</span>
             <span class="badge badge-neutral">{{ lang_display }}</span>
         </div>

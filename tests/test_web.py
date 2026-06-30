@@ -98,15 +98,21 @@ def test_index_search_filters_by_name(client):
 
 @pytest.mark.django_db
 def test_create_view_and_delete_deck(client):
+    from mtg_deck_analyzer.models import Deck
+
     r = client.post(
         "/decks",
         data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
     )
-    # Post/Redirect/Get to the new deck's detail page.
+    # Post/Redirect/Get back to the deck list.
     assert r.status_code == 302
-    target = r["Location"]
+    assert r["Location"] == "/"
 
-    detail = client.get(target)
+    # Analysis runs inline in tests, so the deck is ready immediately.
+    deck = Deck.objects.get(name="Mono Green")
+    assert deck.status == Deck.Status.READY
+
+    detail = client.get(f"/decks/{deck.id}")
     assert detail.status_code == 200
     body = detail.content.decode()
     assert "Mono Green" in body
@@ -118,10 +124,9 @@ def test_create_view_and_delete_deck(client):
     # Listed on the index.
     assert "Mono Green" in client.get("/").content.decode()
 
-    deck_id = target.rsplit("/", 1)[-1]
-    delete = client.post(f"/decks/{deck_id}/delete")
+    delete = client.post(f"/decks/{deck.id}/delete")
     assert delete.status_code == 302
-    assert client.get(target).status_code == 404
+    assert client.get(f"/decks/{deck.id}").status_code == 404
 
 
 @pytest.mark.django_db
@@ -135,17 +140,103 @@ def test_create_with_empty_decklist_returns_error(client):
 
 
 @pytest.mark.django_db
+def test_pending_deck_redirects_to_index(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="In Progress",
+        raw_decklist="1 Forest",
+        status=Deck.Status.PROCESSING,
+    )
+    # No status page: the detail view sends in-progress decks back to the list.
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 302
+    assert r["Location"] == "/"
+
+
+@pytest.mark.django_db
+def test_index_shows_processing_status_and_polls(client):
+    from mtg_deck_analyzer.models import Deck
+
+    Deck.objects.create(
+        name="In Progress",
+        raw_decklist="1 Forest",
+        status=Deck.Status.PROCESSING,
+    )
+    body = client.get("/").content.decode()
+    assert "Analyzing" in body
+    # The list region polls itself while something is still processing.
+    assert 'hx-trigger="every' in body
+
+
+@pytest.mark.django_db
+def test_index_stops_polling_when_all_ready(client):
+    from mtg_deck_analyzer.models import Deck
+
+    Deck.objects.create(name="Done", raw_decklist="1 Forest", status=Deck.Status.READY)
+    body = client.get("/").content.decode()
+    assert "hx-trigger" not in body
+
+
+@pytest.mark.django_db
+def test_htmx_request_returns_list_fragment(client):
+    from mtg_deck_analyzer.models import Deck
+
+    Deck.objects.create(name="Solo", raw_decklist="1 Forest", status=Deck.Status.READY)
+    r = client.get("/", HTTP_HX_REQUEST="true")
+    body = r.content.decode()
+    assert "Solo" in body
+    # A fragment (the list region), not the whole page.
+    assert "<!DOCTYPE html>" not in body
+    assert 'id="deck-list-region"' in body
+
+
+@pytest.mark.django_db
+def test_failed_deck_shows_error_page(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Broken",
+        raw_decklist="1 Forest",
+        status=Deck.Status.FAILED,
+        error="Scryfall is unreachable.",
+    )
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert "Analysis failed" in body
+    assert "Scryfall is unreachable." in body
+
+
+@pytest.mark.django_db
+def test_pdf_unavailable_until_ready(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="In Progress",
+        raw_decklist="1 Forest",
+        status=Deck.Status.PENDING,
+    )
+    r = client.get(f"/decks/{deck.id}/pdf")
+    # Redirects back to the detail page instead of producing an empty PDF.
+    assert r.status_code == 302
+    assert r["Location"].endswith(f"/decks/{deck.id}")
+
+
+@pytest.mark.django_db
 def test_unknown_deck_returns_404(client):
     assert client.get("/decks/9999").status_code == 404
 
 
 @pytest.mark.django_db
 def test_pdf_download(client):
-    r = client.post(
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
         "/decks",
         data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
     )
-    deck_id = r["Location"].rsplit("/", 1)[-1]
+    deck_id = Deck.objects.get(name="Mono Green").id
     pdf = client.get(f"/decks/{deck_id}/pdf")
     assert pdf.status_code == 200
     assert pdf["content-type"] == "application/pdf"

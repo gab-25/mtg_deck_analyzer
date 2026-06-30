@@ -25,42 +25,5 @@
     </form>
 </div>
 
-{% if decks %}
-<ul id="deck-list" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-    {% for deck in decks %}
-    <li id="deck-{{ deck.id }}" class="surface flex items-center justify-between gap-2 p-4">
-        <a href="{% url 'deck_detail' deck.id %}" class="flex-1">
-            <div class="font-semibold">{{ deck.name }}</div>
-            <div class="mt-0.5 text-sm text-slate-400">
-                <span class="badge badge-neutral">{{ deck.deck_type }}</span>
-                {{ deck.total_cards }} cards
-                {% if deck.total_value_eur > 0 %}&bull; €{{ deck.total_value_eur|floatformat:2 }}{% endif %}
-            </div>
-        </a>
-        <form
-            method="post"
-            action="{% url 'delete_deck' deck.id %}"
-            onsubmit="return confirm('Delete this deck?');"
-        >
-            {% csrf_token %}
-            <button
-                type="submit"
-                class="btn-icon-danger"
-                title="Delete"
-            >
-                <i class="fa-solid fa-trash" aria-hidden="true"></i>
-            </button>
-        </form>
-    </li>
-    {% endfor %}
-</ul>
-{% else %}
-<div class="surface p-8 text-center text-slate-400">
-    {% if query %}
-    No decks match “{{ query }}”.
-    {% else %}
-    No decks yet. <a href="{% url 'new_deck' %}" class="text-indigo-400 hover:underline">Create your first deck</a>.
-    {% endif %}
-</div>
-{% endif %}
+{% include "partials/deck_list.html" %}
 {% endblock %}

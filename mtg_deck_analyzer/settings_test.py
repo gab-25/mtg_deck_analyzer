@@ -12,3 +12,6 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+
+# Run the deck analysis inline (no background thread) so tests are deterministic.
+ASYNC_DECK_ANALYSIS = False

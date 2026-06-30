@@ -7,9 +7,24 @@ from django.utils import timezone
 class Deck(models.Model):
     """A submitted deck together with its fetched cards and analysis."""
 
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        READY = "ready", "Ready"
+        FAILED = "failed", "Failed"
+
     name = models.CharField(max_length=255)
     lang = models.CharField(max_length=8, default="en")
     raw_decklist = models.TextField()
+
+    # Lifecycle of the background analysis. Defaults to READY so decks created
+    # directly (e.g. in tests/fixtures) need no extra handling; the async
+    # creation flow sets PENDING explicitly and the worker advances it.
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.READY
+    )
+    # Populated with the failure reason when ``status`` is FAILED.
+    error = models.TextField(null=True, blank=True)
 
     # Strategic analysis (GitHub-flavored Markdown), or NULL when unavailable.
     analysis_md = models.TextField(null=True, blank=True)

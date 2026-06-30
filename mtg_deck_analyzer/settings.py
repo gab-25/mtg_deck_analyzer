@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "tailwind",
     "theme",
+    "django_htmx",
     "mtg_deck_analyzer",
 ]
 
@@ -46,6 +47,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Populates ``request.htmx`` from the HX-* request headers.
+    "django_htmx.middleware.HtmxMiddleware",
 ]
 
 ROOT_URLCONF = "mtg_deck_analyzer.urls"
@@ -150,3 +153,12 @@ USE_TZ = True
 USE_I18N = True
 TIME_ZONE = "UTC"
 LANGUAGE_CODE = "en-us"
+
+# Run the (multi-minute) Scryfall + Gemini deck analysis in a background thread
+# so the create request returns immediately. Disabled in tests, where the work
+# must run inline for deterministic assertions (see ``settings_test``).
+ASYNC_DECK_ANALYSIS = os.environ.get("ASYNC_DECK_ANALYSIS", "1").lower() in {
+    "1",
+    "true",
+    "yes",
+}

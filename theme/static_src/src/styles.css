@@ -70,6 +70,12 @@
     .badge-warning {
         @apply bg-amber-500/80 font-medium text-slate-900;
     }
+    .badge-error {
+        @apply bg-rose-600 font-medium text-white;
+    }
+    .badge-success {
+        @apply bg-emerald-600 font-medium text-white;
+    }
 
     /* Alerts — base class + a semantic modifier */
     .alert {

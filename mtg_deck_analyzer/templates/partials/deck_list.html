@@ -1,0 +1,60 @@
+{% comment %}
+The deck-list region. While any deck is still being analyzed it polls itself via
+HTMX (`hx-get` on the index, swapping its own outer HTML) every few seconds; once
+nothing is processing the re-rendered region drops the trigger and polling stops.
+{% endcomment %}
+<div
+    id="deck-list-region"
+    {% if has_processing %}
+    hx-get="{% url 'index' %}{% if query %}?q={{ query|urlencode }}{% endif %}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+    {% endif %}
+>
+    {% if decks %}
+    <ul id="deck-list" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {% for deck in decks %}
+        <li id="deck-{{ deck.id }}" class="surface flex items-center justify-between gap-2 p-4">
+            {% if deck.status == 'pending' or deck.status == 'processing' %}
+            <div class="flex-1">
+                <div class="font-semibold">{{ deck.name }}</div>
+                <div class="mt-0.5 text-sm text-slate-400">
+                    {% include "partials/status_badge.html" with deck=deck %}
+                </div>
+            </div>
+            {% else %}
+            <a href="{% url 'deck_detail' deck.id %}" class="flex-1">
+                <div class="font-semibold">{{ deck.name }}</div>
+                <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
+                    {% include "partials/status_badge.html" with deck=deck %}
+                    {% if deck.status == 'ready' %}
+                    <span class="badge badge-neutral">{{ deck.deck_type }}</span>
+                    {{ deck.total_cards }} cards
+                    {% if deck.total_value_eur > 0 %}&bull; €{{ deck.total_value_eur|floatformat:2 }}{% endif %}
+                    {% endif %}
+                </div>
+            </a>
+            {% endif %}
+            <form
+                method="post"
+                action="{% url 'delete_deck' deck.id %}"
+                onsubmit="return confirm('Delete this deck?');"
+            >
+                {% csrf_token %}
+                <button type="submit" class="btn-icon-danger" title="Delete">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                </button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="surface p-8 text-center text-slate-400">
+        {% if query %}
+        No decks match “{{ query }}”.
+        {% else %}
+        No decks yet. <a href="{% url 'new_deck' %}" class="text-indigo-400 hover:underline">Create your first deck</a>.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
