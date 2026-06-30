@@ -5,62 +5,62 @@
 {% block content %}
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div>
-        <div class="text-sm breadcrumbs text-base-content/60">
-            <ul><li><a href="/">Decks</a></li><li>{{ deck.name }}</li></ul>
-        </div>
+        <nav class="text-sm text-slate-400">
+            <a href="/" class="hover:underline">Decks</a>
+            <span class="px-1">/</span>
+            <span>{{ deck.name }}</span>
+        </nav>
         <h1 class="text-3xl font-bold">{{ deck.name }}</h1>
         <div class="mt-2 flex flex-wrap gap-2">
             <span class="badge badge-primary">{{ deck.deck_type }}</span>
-            <span class="badge badge-ghost">{{ lang_display }}</span>
+            <span class="badge badge-neutral">{{ lang_display }}</span>
         </div>
     </div>
-    <a href="/decks/{{ deck.id }}/pdf" class="btn btn-outline">⬇ Download PDF</a>
+    <a href="/decks/{{ deck.id }}/pdf" class="btn-outline">⬇ Download PDF</a>
 </div>
 
-<div class="stats stats-vertical w-full shadow sm:stats-horizontal mb-6">
-    <div class="stat">
-        <div class="stat-title">Total cards</div>
-        <div class="stat-value text-primary">{{ deck.total_cards }}</div>
+<div class="surface mb-6 grid grid-cols-1 divide-y divide-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+    <div class="p-5">
+        <div class="text-sm text-slate-400">Total cards</div>
+        <div class="text-3xl font-semibold text-indigo-400">{{ deck.total_cards }}</div>
     </div>
-    <div class="stat">
-        <div class="stat-title">Estimated value</div>
-        <div class="stat-value">
+    <div class="p-5">
+        <div class="text-sm text-slate-400">Estimated value</div>
+        <div class="text-3xl font-semibold">
             {% if deck.total_value_eur > 0 %}€{{ deck.total_value_eur|floatformat:2 }}{% else %}—{% endif %}
         </div>
-        <div class="stat-desc">Cardmarket</div>
+        <div class="text-xs text-slate-500">Cardmarket</div>
     </div>
-    <div class="stat">
-        <div class="stat-title">Average CMC</div>
-        <div class="stat-value">{{ deck.avg_cmc|floatformat:2 }}</div>
-        <div class="stat-desc">non-lands</div>
+    <div class="p-5">
+        <div class="text-sm text-slate-400">Average CMC</div>
+        <div class="text-3xl font-semibold">{{ deck.avg_cmc|floatformat:2 }}</div>
+        <div class="text-xs text-slate-500">non-lands</div>
     </div>
 </div>
 
 {% if analysis_html %}
-<div class="card bg-base-100 shadow-xl mb-6">
-    <div class="card-body">
-        <h2 class="card-title">Deck Strategy &amp; Analysis</h2>
-        <div class="analysis max-w-none">{{ analysis_html | safe }}</div>
-    </div>
+<div class="panel mb-6">
+    <h2 class="text-xl font-semibold">Deck Strategy &amp; Analysis</h2>
+    <div class="analysis mt-2 max-w-none text-slate-200">{{ analysis_html | safe }}</div>
 </div>
 {% endif %}
 
-<h2 class="text-2xl font-bold mb-4">Card List</h2>
+<h2 class="mb-4 text-2xl font-bold">Card List</h2>
 {% for category in categories %}
 <section class="mb-6">
     <h3 class="mb-3 text-lg font-semibold">
         {{ category.label }}
-        <span class="badge badge-neutral">{{ category.count }}</span>
+        <span class="badge badge-neutral text-sm">{{ category.count }}</span>
     </h3>
     <div class="grid gap-4 md:grid-cols-2">
         {% for card in category.cards %}
-        <div class="card card-side bg-base-100 shadow">
-            <figure class="flex shrink-0 gap-1 p-2">
+        <div class="surface flex overflow-hidden">
+            <div class="flex shrink-0 gap-1 p-2">
                 {% for img in card.images %}
                 <img src="{{ img }}" alt="card image" class="w-24 rounded" loading="lazy" />
                 {% endfor %}
-            </figure>
-            <div class="card-body gap-2 p-3">
+            </div>
+            <div class="flex flex-col gap-2 p-3">
                 {% for face in card.faces %}
                 <div>
                     <div class="flex items-baseline justify-between gap-2">
@@ -68,33 +68,33 @@
                             {% if forloop.first %}{{ card.quantity }}x {% endif %}{{ face.name }}
                         </span>
                         {% if face.mana_cost %}
-                        <span class="text-sm text-base-content/70">{{ face.mana_cost }}</span>
+                        <span class="text-sm text-slate-400">{{ face.mana_cost }}</span>
                         {% endif %}
                     </div>
                     {% if forloop.first %}
                         {% if card.text_source == 'machine' %}
                         <div class="mt-1">
-                            <span class="badge badge-warning badge-sm" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
+                            <span class="badge badge-warning" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
                         </div>
                         {% elif card.text_source == 'english' %}
                         <div class="mt-1">
-                            <span class="badge badge-ghost badge-sm" title="No official localization available; showing English text">English text</span>
+                            <span class="badge badge-neutral" title="No official localization available; showing English text">English text</span>
                         </div>
                         {% endif %}
                     {% endif %}
                     {% if face.type_line %}
-                    <div class="text-xs italic text-base-content/60">{{ face.type_line }}</div>
+                    <div class="text-xs italic text-slate-400">{{ face.type_line }}</div>
                     {% endif %}
                     {% if face.rules_text %}
-                    <div class="mt-1 whitespace-pre-line text-sm text-base-content/80">{{ face.rules_text }}</div>
+                    <div class="mt-1 whitespace-pre-line text-sm text-slate-300">{{ face.rules_text }}</div>
                     {% endif %}
                 </div>
                 {% endfor %}
                 {% if card.price > 0 %}
-                <div class="mt-auto text-sm text-base-content/70">
+                <div class="mt-auto text-sm text-slate-400">
                     €{{ card.price|floatformat:2 }}
                     {% if card.quantity > 1 %}
-                    <span class="text-xs text-base-content/50">(€{{ card.total_price|floatformat:2 }} tot)</span>
+                    <span class="text-xs text-slate-500">(€{{ card.total_price|floatformat:2 }} tot)</span>
                     {% endif %}
                 </div>
                 {% endif %}
