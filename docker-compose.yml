@@ -17,17 +17,24 @@ services:
 
   zitadel:
     image: ghcr.io/zitadel/zitadel:v2.55.0
-    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters!" --tlsMode disabled'
+    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled'
     environment:
       - ZITADEL_DATABASE_POSTGRES_HOST=db
       - ZITADEL_DATABASE_POSTGRES_PORT=5432
       - ZITADEL_DATABASE_POSTGRES_DATABASE=zitadel
       - ZITADEL_DATABASE_POSTGRES_USER_USERNAME=zitadel
       - ZITADEL_DATABASE_POSTGRES_USER_PASSWORD=zitadel
+      - ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE=disable
       - ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME=postgres
       - ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD=postgres
-      - ZITADEL_DATABASE_POSTGRES_SSL_MODE=disable
-      - ZITADEL_EXTERNALDOMAIN=localhost:8080
+      - ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE=disable
+      - ZITADEL_EXTERNALDOMAIN=localhost
+      - ZITADEL_EXTERNALPORT=8080
+      - ZITADEL_EXTERNALSECURE=false
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=zitadel-admin
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD=Password1!
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_ADDRESS=admin@example.com
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED=true
     ports:
       - "8080:8080"
     depends_on:
