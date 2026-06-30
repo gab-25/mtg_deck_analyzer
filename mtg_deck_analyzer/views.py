@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import threading
+import uuid
 
 import markdown as md
 from django.conf import settings
@@ -97,12 +98,16 @@ def _create_context(**extra) -> dict:
     }
 
 
-def _run_analysis(deck_id: int, decklist: str, lang: str, api_key: str | None):
+def _run_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | None):
     """Runs the heavy analysis for ``deck_id`` and persists the outcome."""
     try:
         Deck.objects.filter(pk=deck_id).update(status=Deck.Status.PROCESSING)
         result = analyze_decklist(
-            decklist, lang=lang, api_key=api_key, cache=DbCardCache()
+            decklist,
+            lang=lang,
+            api_key=api_key,
+            cache=DbCardCache(),
+            progress=lambda msg: logger.info("[deck %s] %s", deck_id, msg),
         )
         stats = result["stats"]
         Deck.objects.filter(pk=deck_id).update(
@@ -135,7 +140,7 @@ def _run_analysis_threaded(deck_id, decklist, lang, api_key):
         connection.close()
 
 
-def _start_analysis(deck_id: int, decklist: str, lang: str, api_key: str | None):
+def _start_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | None):
     """Kicks off the analysis, in a background thread unless disabled (tests)."""
     if getattr(settings, "ASYNC_DECK_ANALYSIS", True):
         threading.Thread(
@@ -208,7 +213,7 @@ def create_deck(request):
 
 @login_required
 @require_http_methods(["GET"])
-def deck_detail(request, deck_id: int):
+def deck_detail(request, deck_id: uuid.UUID):
     deck = get_object_or_404(Deck, pk=deck_id)
 
     # While the analysis is still running there's nothing to show yet — send the
@@ -238,14 +243,14 @@ def deck_detail(request, deck_id: int):
 
 @login_required
 @require_http_methods(["POST"])
-def delete_deck(request, deck_id: int):
+def delete_deck(request, deck_id: uuid.UUID):
     Deck.objects.filter(pk=deck_id).delete()
     return redirect("index")
 
 
 @login_required
 @require_http_methods(["GET"])
-def deck_pdf(request, deck_id: int):
+def deck_pdf(request, deck_id: uuid.UUID):
     deck = get_object_or_404(Deck, pk=deck_id)
 
     # The PDF needs the fetched cards; they only exist once analysis is done.

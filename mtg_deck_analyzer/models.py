@@ -1,5 +1,7 @@
 """Django ORM models."""
 
+import uuid
+
 from django.db import models
 from django.utils import timezone
 
@@ -12,6 +14,9 @@ class Deck(models.Model):
         PROCESSING = "processing", "Processing"
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
+
+    # UUID primary key so deck URLs aren't sequentially enumerable.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     name = models.CharField(max_length=255)
     lang = models.CharField(max_length=8, default="en")

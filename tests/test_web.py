@@ -225,7 +225,9 @@ def test_pdf_unavailable_until_ready(client):
 
 @pytest.mark.django_db
 def test_unknown_deck_returns_404(client):
-    assert client.get("/decks/9999").status_code == 404
+    assert (
+        client.get("/decks/00000000-0000-0000-0000-000000000000").status_code == 404
+    )
 
 
 @pytest.mark.django_db

@@ -162,3 +162,31 @@ ASYNC_DECK_ANALYSIS = os.environ.get("ASYNC_DECK_ANALYSIS", "1").lower() in {
     "true",
     "yes",
 }
+
+# Surface application logs (including the background deck-analysis progress) on
+# the console. Level is controlled by ``LOG_LEVEL`` (defaults to INFO).
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "{asctime} {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "mtg_deck_analyzer": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+}
