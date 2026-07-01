@@ -3,28 +3,29 @@
 {% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
+{# .page-narrow caps width at 960px; this page overrides it to 640px, so it stays inline. #}
 <div class="page-narrow" style="max-width:640px">
-    <a href="{% url 'index' %}" class="link-back" style="margin-bottom:18px">
-        <span class="ms" style="font-size:18px">arrow_back</span>All decks
+    <a href="{% url 'index' %}" class="link-back mb-[18px]">
+        <span class="ms text-[18px]">arrow_back</span>All decks
     </a>
 
-    <div class="panel-card" style="padding:32px;text-align:center">
-        <div style="width:56px;height:56px;border-radius:50%;background:rgba(208,90,62,.12);border:1px solid rgba(208,90,62,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
-            <span class="ms" style="font-size:28px;color:var(--danger)">error</span>
+    <div class="panel-card p-8 text-center">
+        <div class="w-[56px] h-[56px] rounded-full bg-[rgba(208,90,62,.12)] border border-[rgba(208,90,62,.3)] flex items-center justify-center mx-auto mt-0 mb-[18px]">
+            <span class="ms text-[28px] text-danger">error</span>
         </div>
-        <h1 class="font-cinzel" style="font-weight:600;font-size:24px;margin:0 0 8px">Analysis failed</h1>
-        <p style="color:var(--txt2);font-weight:300;margin:0 0 18px">
-            We couldn’t finish analyzing <span style="color:var(--txt);font-weight:500">{{ deck.name }}</span>.
+        <h1 class="font-cinzel font-semibold text-[24px] m-0 mb-2">Analysis failed</h1>
+        <p class="text-txt2 font-light m-0 mb-[18px]">
+            We couldn’t finish analyzing <span class="text-txt font-medium">{{ deck.name }}</span>.
         </p>
         {% if deck.error %}
-        <div class="alert alert-error" style="text-align:left;margin-bottom:18px">{{ deck.error }}</div>
+        <div class="alert alert-error text-left mb-[18px]">{{ deck.error }}</div>
         {% endif %}
-        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
-            <form method="post" action="{% url 'reanalyze_deck' deck.id %}" style="margin:0">
+        <div class="flex justify-center gap-2.5 flex-wrap">
+            <form method="post" action="{% url 'reanalyze_deck' deck.id %}" class="m-0">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-grad"><span class="ms" style="font-size:20px">autorenew</span>Try again</button>
+                <button type="submit" class="btn btn-grad"><span class="ms text-[20px]">autorenew</span>Try again</button>
             </form>
-            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line"><span class="ms" style="font-size:18px">edit</span>Edit</a>
+            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line"><span class="ms text-[18px]">edit</span>Edit</a>
             {% url 'delete_deck' deck.id as delete_url %}
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>

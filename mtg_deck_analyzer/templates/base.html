@@ -16,25 +16,25 @@
     <div class="bg-glow"></div>
     <div class="bg-grid"></div>
 
-    <div style="position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column">
+    <div class="relative z-[1] min-h-screen flex flex-col">
         <header class="app-nav no-print">
             <a href="{% url 'index' %}" class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
                 <span class="brand-name">MTG DECK ANALYZER</span>
-                <span class="brand-badge"><span class="ms" style="font-size:12px">auto_awesome</span>AI</span>
+                <span class="brand-badge"><span class="ms text-[12px]">auto_awesome</span>AI</span>
             </a>
-            <nav style="display:flex;align-items:center;gap:13px;flex-wrap:wrap">
+            <nav class="flex items-center gap-[13px] flex-wrap">
                 <a href="{% url 'new_deck' %}" class="btn btn-grad">
-                    <span class="ms" style="font-size:20px">add</span>New deck
+                    <span class="ms text-[20px]">add</span>New deck
                 </a>
                 {% if user.is_authenticated %}
-                <div style="display:flex;align-items:center;gap:11px">
+                <div class="flex items-center gap-[11px]">
                     <div class="avatar">{{ user.get_username|slice:":2" }}</div>
-                    <div style="line-height:1.15">
-                        <div style="font-size:13.5px;font-weight:600">{{ user.get_username }}</div>
-                        <form method="post" action="{% url 'logout' %}" style="margin:0">
+                    <div class="leading-[1.15]">
+                        <div class="text-[13.5px] font-semibold">{{ user.get_username }}</div>
+                        <form method="post" action="{% url 'logout' %}" class="m-0">
                             {% csrf_token %}
-                            <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;color:var(--txt3)">
+                            <button type="submit" class="bg-transparent border-none p-0 cursor-pointer text-[11px] text-txt3">
                                 Sign out
                             </button>
                         </form>
@@ -44,20 +44,20 @@
             </nav>
         </header>
 
-        <main style="flex:1">
+        <main class="flex-1">
             {% block content %}{% endblock %}
         </main>
 
-        <footer class="no-print" style="padding:22px;text-align:center;font-size:12px;color:var(--txt3)">
-            MTG Deck Analyzer <span style="opacity:.7">v{{ app_version }}</span> &bull; card data from Scryfall &bull; analysis by Google Gemini
+        <footer class="no-print p-[22px] text-center text-[12px] text-txt3">
+            MTG Deck Analyzer <span class="opacity-70">v{{ app_version }}</span> &bull; card data from Scryfall &bull; analysis by Google Gemini
         </footer>
     </div>
 
     {% if messages %}
     {% for message in messages %}
     <div class="snackbar no-print">
-        <span class="ms" style="font-size:20px;color:var(--teal)">check_circle</span>
-        <span style="font-size:14px">{{ message }}</span>
+        <span class="ms text-[20px] text-teal">check_circle</span>
+        <span class="text-[14px]">{{ message }}</span>
     </div>
     {% endfor %}
     {% endif %}

@@ -6,19 +6,18 @@ returns an empty body and so clears the container — closing the modal.
 {% endcomment %}
 <div
     id="card-image-modal"
-    class="no-print"
-    style="position:fixed;inset:0;z-index:75;background:rgba(6,7,11,.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:32px;cursor:zoom-out"
+    class="no-print fixed inset-0 z-[75] flex items-center justify-center p-8 cursor-zoom-out bg-[rgba(6,7,11,.8)] backdrop-blur-[6px]"
     hx-get="{% url 'card_image_modal' %}"
     hx-target="#card-image-modal-container"
     hx-swap="innerHTML"
 >
-    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:fadeup .28s ease both">
-        <div style="position:relative;width:340px;max-width:80vw;aspect-ratio:488/680;border-radius:18px;overflow:hidden;background:#0c0e15;border:1px solid var(--line);box-shadow:0 40px 100px -30px rgba(0,0,0,.9),0 0 60px -18px rgba(124,92,255,.5)">
-            <img src="{{ image_url }}" alt="card image" style="position:relative;width:100%;height:100%;object-fit:cover;display:block" />
+    <div class="flex flex-col items-center gap-4" style="animation:fadeup .28s ease both">
+        <div class="relative w-[340px] max-w-[80vw] aspect-[488/680] rounded-[18px] overflow-hidden bg-[#0c0e15] border border-line" style="box-shadow:0 40px 100px -30px rgba(0,0,0,.9),0 0 60px -18px rgba(124,92,255,.5)">
+            <img src="{{ image_url }}" alt="card image" class="relative w-full h-full object-cover block" />
         </div>
         <button type="button"
-            style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);color:var(--txt2);border:1px solid var(--line2);border-radius:100px;padding:8px 15px;font:500 13px 'Space Grotesk';cursor:pointer">
-            <span class="ms" style="font-size:17px">close</span>Close
+            class="flex items-center gap-1.5 bg-[rgba(255,255,255,.06)] text-txt2 border border-line2 rounded-full py-2 px-[15px] font-medium text-[13px] cursor-pointer">
+            <span class="ms text-[17px]">close</span>Close
         </button>
     </div>
 </div>

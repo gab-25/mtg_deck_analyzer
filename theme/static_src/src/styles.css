@@ -9,109 +9,698 @@
   */
 @source "../../../**/*.{html,py,js}";
 
-/* Dark theme defaults — the whole app is rendered on a dark surface. */
-@layer base {
+/* Expose the vault palette as Tailwind color tokens so templates can use clean
+   semantic utilities (text-txt3, bg-panel2, border-line2, …) instead of inline
+   styles. `inline` makes the utilities reference the existing --* variables
+   below directly, so :root stays the single source of truth (no duplication). */
+@theme inline {
+    --color-bg: var(--bg);
+    --color-panel: var(--panel);
+    --color-panel2: var(--panel2);
+    --color-line: var(--line);
+    --color-line2: var(--line2);
+    --color-txt: var(--txt);
+    --color-txt2: var(--txt2);
+    --color-txt3: var(--txt3);
+    --color-violet: var(--violet);
+    --color-violet2: var(--violet2);
+    --color-gold: var(--gold);
+    --color-teal: var(--teal);
+    --color-danger: var(--danger);
+}
+
+/* ============================================================================
+   "Vault" design system — violet / teal / gold on near-black.
+   Ported from the standalone Claude Design mockup. These rules are intentionally
+   *unlayered*: unlayered CSS beats every Tailwind @layer (base/components/
+   utilities), so the theme wins the cascade over Tailwind's preflight without
+   needing !important. Fonts and Material Symbols are still loaded via the
+   <link> tags in partials/design_head.html.
+   ============================================================================ */
+:root {
+    --bg: #0a0b10;
+    --panel: #141722;
+    --panel2: #0f1118;
+    --line: rgba(140, 120, 255, 0.14);
+    --line2: rgba(255, 255, 255, 0.08);
+    --txt: #e8e6f0;
+    --txt2: #a7a3bd;
+    --txt3: #6f6b86;
+    --violet: #7c5cff;
+    --violet2: #a78bff;
+    --gold: #e8b64c;
+    --teal: #3dd0b5;
+    --danger: #d05a3e;
+}
+
+/* Dark canvas — overrides Tailwind preflight's base body styles. */
+html,
+body {
+    margin: 0;
+}
+body {
+    background: var(--bg);
+    font-family: "Space Grotesk", sans-serif;
+    color: var(--txt);
+    -webkit-font-smoothing: antialiased;
+}
+.font-cinzel {
+    font-family: "Cinzel", serif;
+}
+.font-mono2 {
+    font-family: "Space Mono", monospace;
+}
+
+.ms {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-feature-settings: "liga";
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: #2a2740;
+    border-radius: 100px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3a3658;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+select {
+    appearance: none;
+    -webkit-appearance: none;
+}
+textarea {
+    resize: vertical;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes fadeup {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes floaty {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-7px);
+    }
+}
+@keyframes slideup {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 16px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+@media print {
+    .no-print {
+        display: none !important;
+    }
     body {
-        @apply bg-slate-900 text-slate-100 antialiased;
+        background: #fff;
+        color: #111;
     }
 }
 
-/**
-  * Global UI components.
-  *
-  * Reusable building blocks shared across templates. Compose a base class with a
-  * modifier in the markup, e.g. `class="badge badge-primary"` or `class="alert alert-error"`.
-  * Keep visual variants here so templates stay declarative and consistent.
-  */
-@layer components {
-    /* Buttons */
-    .btn-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-60;
-    }
-    .btn-outline {
-        @apply inline-flex items-center justify-center gap-2 rounded-md border border-slate-600 px-4 py-2 text-sm transition-colors hover:bg-slate-800;
-    }
-    .btn-ghost {
-        @apply inline-flex items-center justify-center gap-2 rounded px-3 py-2 text-sm transition-colors hover:bg-slate-700;
-    }
-    .btn-danger {
-        @apply inline-flex items-center justify-center gap-2 rounded-md bg-rose-600 px-4 py-2 font-medium text-white transition-colors hover:bg-rose-500 disabled:opacity-60;
-    }
-
-    /* Surfaces — the dark panels everything sits on */
-    .surface {
-        @apply rounded-lg bg-slate-800 shadow;
-    }
-    .panel {
-        @apply rounded-lg bg-slate-800 p-6 shadow-xl;
-    }
-
-    /* Form controls */
-    .form-control {
-        @apply flex flex-col gap-1;
-    }
-    .form-label {
-        @apply text-sm font-medium text-slate-300;
-    }
-    .form-input {
-        @apply rounded-md border border-slate-600 bg-slate-900 px-3 py-2 focus:border-indigo-500 focus:outline-none;
-    }
-
-    /* Badges — base class + a color modifier */
-    .badge {
-        @apply inline-block rounded px-2 py-0.5 text-xs;
-    }
-    .badge-neutral {
-        @apply bg-slate-700;
-    }
-    .badge-primary {
-        @apply bg-indigo-600 font-medium text-white;
-    }
-    .badge-warning {
-        @apply bg-amber-500/80 font-medium text-slate-900;
-    }
-    .badge-error {
-        @apply bg-rose-600 font-medium text-white;
-    }
-    .badge-success {
-        @apply bg-emerald-600 font-medium text-white;
-    }
-
-    /* Alerts — base class + a semantic modifier */
-    .alert {
-        @apply rounded-md border px-4 py-3 text-sm;
-    }
-    .alert-warning {
-        @apply border-amber-500/30 bg-amber-500/15 text-amber-200;
-    }
-    .alert-error {
-        @apply border-rose-500/30 bg-rose-500/15 text-rose-200;
-    }
+/* Ambient background glow + faint grid (fixed, non-interactive). */
+.bg-glow,
+.bg-grid {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+.bg-glow {
+    background:
+        radial-gradient(900px 520px at 12% -12%, rgba(124, 92, 255, 0.2), transparent 60%),
+        radial-gradient(820px 620px at 102% 2%, rgba(61, 208, 181, 0.1), transparent 55%),
+        radial-gradient(760px 720px at 50% 128%, rgba(232, 182, 76, 0.06), transparent 60%);
+}
+.bg-grid {
+    opacity: 0.5;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(circle at 50% 22%, black, transparent 80%);
+    mask-image: radial-gradient(circle at 50% 22%, black, transparent 80%);
 }
 
-/* Markdown-rendered deck analysis (output of python-markdown, served via |safe). */
-.analysis h2 {
-    font-size: 1.25rem;
+/* Page shells */
+.page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 34px 26px 90px;
+}
+.page-narrow {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 22px 26px 90px;
+}
+.kicker {
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--violet2);
+}
+.field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--txt2);
+}
+.link-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--txt2);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.link-back:hover {
+    color: var(--txt);
+}
+
+/* Top nav */
+.app-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 13px 26px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10, 11, 16, 0.74);
+    backdrop-filter: blur(14px);
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    text-decoration: none;
+    color: var(--txt);
+}
+.brand-name {
+    font-family: "Cinzel", serif;
     font-weight: 700;
-    margin: 1rem 0 0.5rem;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+}
+.brand-badge {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--violet2);
+    border: 1px solid var(--line);
+    padding: 3px 7px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 100px;
+    background: linear-gradient(135deg, var(--violet), var(--teal));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #0a0b10;
+    text-transform: uppercase;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border-radius: 10px;
+    padding: 11px 17px;
+    font: 600 14px "Space Grotesk";
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition:
+        filter 0.15s,
+        box-shadow 0.15s,
+        background 0.15s,
+        border-color 0.15s;
+}
+.btn-sm {
+    padding: 9px 13px;
+    font-size: 13.5px;
+    font-weight: 500;
+    border-radius: 10px;
+}
+.btn-block {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 11px;
+}
+.btn-grad {
+    background: linear-gradient(135deg, var(--violet), #6a4bff);
+    color: #fff;
+    border: none;
+}
+.btn-grad:hover {
+    filter: brightness(1.09);
+    box-shadow: 0 12px 30px -12px rgba(124, 92, 255, 0.7);
+}
+.btn-line {
+    background: transparent;
+    color: var(--txt);
+    border: 1px solid var(--line2);
+}
+.btn-line:hover {
+    border-color: var(--violet);
+    background: rgba(124, 92, 255, 0.06);
+}
+.btn-danger-line {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(208, 90, 62, 0.35);
+}
+.btn-danger-line:hover {
+    background: rgba(208, 90, 62, 0.1);
+}
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+}
+.btn-danger:hover {
+    filter: brightness(1.1);
+}
+
+/* Form controls */
+.field {
+    width: 100%;
+    background: #0c0e15;
+    border: 1px solid var(--line2);
+    border-radius: 11px;
+    padding: 13px 14px;
+    color: var(--txt);
+    font: 400 15px "Space Grotesk";
+    outline: none;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
+}
+.field:focus {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.22);
+}
+textarea.field {
+    font: 400 14px "Space Mono";
+    line-height: 1.7;
+}
+.select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.select-wrap .ms {
+    position: absolute;
+    right: 10px;
+    pointer-events: none;
+    color: var(--txt3);
+    font-size: 18px;
+}
+select.field {
+    padding-right: 34px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-wrap .ms {
+    position: absolute;
+    left: 12px;
+    color: var(--txt3);
+    font-size: 19px;
+    pointer-events: none;
+}
+.search-wrap .field {
+    padding-left: 38px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+    border-radius: 10px;
+    width: 210px;
+}
+
+/* Surfaces */
+.panel-card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+}
+.stat-card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 18px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.stat-num {
+    font: 700 24px "Space Mono";
+}
+.stat-label {
+    font-size: 12px;
+    color: var(--txt3);
+    letter-spacing: 0.04em;
+}
+
+/* Deck cards */
+.deck-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(322px, 1fr));
+    gap: 16px;
+}
+.deck-card {
+    position: relative;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    text-decoration: none;
+    color: var(--txt);
+    display: block;
+    transition:
+        border-color 0.18s,
+        transform 0.18s,
+        box-shadow 0.18s;
+}
+.deck-card:hover {
+    border-color: rgba(124, 92, 255, 0.55);
+    transform: translateY(-3px);
+    box-shadow: 0 26px 54px -26px rgba(124, 92, 255, 0.45);
+}
+.pip-bar {
+    display: flex;
+    height: 5px;
+}
+.pip {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+}
+.pip-sm {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+}
+
+/* Pills / chips / statuses */
+.chip {
+    font-size: 12px;
+    color: var(--violet2);
+    background: rgba(124, 92, 255, 0.1);
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.status {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 100px;
+}
+.status-ready {
+    color: var(--teal);
+    background: rgba(61, 208, 181, 0.12);
+    border: 1px solid rgba(61, 208, 181, 0.3);
+}
+.status-pending {
+    color: var(--gold);
+    background: rgba(232, 182, 76, 0.12);
+    border: 1px solid rgba(232, 182, 76, 0.3);
+}
+.status-failed {
+    color: var(--danger);
+    background: rgba(208, 90, 62, 0.12);
+    border: 1px solid rgba(208, 90, 62, 0.3);
+}
+.spinner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+}
+.spinner-lg {
+    width: 34px;
+    height: 34px;
+    border-width: 3px;
+}
+
+/* Card list rows */
+.card-row {
+    display: flex;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line2);
+    align-items: center;
+    cursor: pointer;
+    background: transparent;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    width: 100%;
+    text-align: left;
+    color: var(--txt);
+    transition: background 0.15s;
+}
+.card-row:hover {
+    background: rgba(124, 92, 255, 0.05);
+}
+.card-thumb {
+    flex: none;
+    width: 96px;
+    height: 68px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0c0e15;
+    border: 1px solid var(--line2);
+    position: relative;
+}
+.card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 18%;
+}
+.group-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--line2);
+    border-top: 1px solid var(--line2);
+}
+.mv-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #0c0e15;
+    border: 1px solid var(--line2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 12px "Space Mono";
+    color: var(--txt2);
+}
+
+/* AI analysis prose (rendered markdown, served via |safe) */
+.analysis {
+    font-weight: 300;
+    font-size: 15px;
+    line-height: 1.72;
+    color: var(--txt);
+}
+.analysis h1,
+.analysis h2 {
+    font-family: "Cinzel", serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    margin: 22px 0 10px;
+    color: var(--txt);
 }
 .analysis h3 {
-    font-size: 1.05rem;
     font-weight: 600;
-    margin: 0.75rem 0 0.35rem;
-}
-.analysis ul {
-    list-style: disc;
-    padding-left: 1.5rem;
-    margin: 0.35rem 0;
-}
-.analysis li {
-    margin: 0.2rem 0;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--violet2);
+    margin: 18px 0 8px;
 }
 .analysis p {
-    margin: 0.5rem 0;
+    margin: 0 0 14px;
+}
+.analysis ul,
+.analysis ol {
+    margin: 0 0 14px;
+    padding-left: 1.3rem;
+}
+/* Restore list markers — Tailwind preflight resets them to `none`. */
+.analysis ul {
+    list-style: disc;
+}
+.analysis ol {
+    list-style: decimal;
+}
+.analysis li {
+    margin: 0.25rem 0;
+}
+.analysis strong {
+    color: var(--txt);
+    font-weight: 600;
 }
 .analysis a {
-    color: var(--color-indigo-400);
+    color: var(--violet2);
     text-decoration: underline;
+}
+.analysis code {
+    font-family: "Space Mono";
+    background: rgba(124, 92, 255, 0.1);
+    border-radius: 6px;
+    padding: 1px 5px;
+    font-size: 0.9em;
+}
+
+/* Snackbar / toast (Django messages) */
+.snackbar {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    background: #191c2b;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 13px 18px;
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.8);
+    animation: slideup 0.35s ease both;
+}
+
+/* Modals */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(6, 7, 11, 0.66);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.modal-card {
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    padding: 24px;
+    box-shadow: 0 40px 100px -40px rgba(0, 0, 0, 0.9);
+}
+
+/* Alerts */
+.alert {
+    border-radius: 11px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.alert-error {
+    color: var(--danger);
+    background: rgba(208, 90, 62, 0.08);
+    border: 1px solid rgba(208, 90, 62, 0.28);
+}
+.alert-info {
+    color: var(--gold);
+    background: rgba(232, 182, 76, 0.08);
+    border: 1px solid rgba(232, 182, 76, 0.25);
+}
+
+@media (max-width: 900px) {
+    .detail-grid,
+    .editor-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .detail-sidebar,
+    .editor-sidebar {
+        position: static !important;
+    }
+}
+@media (max-width: 640px) {
+    .home-stats {
+        grid-template-columns: 1fr !important;
+    }
 }

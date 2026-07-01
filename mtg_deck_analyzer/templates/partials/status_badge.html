@@ -3,9 +3,9 @@ Status pill for a deck. Reused in the deck list and the detail header — includ
 with the deck in scope: {% include "partials/status_badge.html" with deck=deck %}
 {% endcomment %}
 {% if deck.status == 'ready' %}
-<span class="status status-ready"><span class="ms" style="font-size:13px">check</span>Analyzed</span>
+<span class="status status-ready"><span class="ms text-[13px]">check</span>Analyzed</span>
 {% elif deck.status == 'failed' %}
-<span class="status status-failed"><span class="ms" style="font-size:13px">error</span>Failed</span>
+<span class="status status-failed"><span class="ms text-[13px]">error</span>Failed</span>
 {% else %}
 <span class="status status-pending"><span class="spinner"></span>Analyzing</span>
 {% endif %}

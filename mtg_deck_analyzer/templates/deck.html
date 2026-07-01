@@ -3,61 +3,70 @@
 {% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
+{% comment %}
+.page-narrow caps width at 960px; this page overrides it to 1180px, so the
+max-width stays inline — a utility would lose to the unlayered component rule.
+{% endcomment %}
 <div class="page-narrow" data-screen-label="Deck detail" style="max-width:1180px">
-    <a href="{% url 'index' %}" class="link-back no-print" style="margin-bottom:18px">
-        <span class="ms" style="font-size:18px">arrow_back</span>All decks
+    <a href="{% url 'index' %}" class="link-back no-print mb-[18px]">
+        <span class="ms text-[18px]">arrow_back</span>All decks
     </a>
 
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px">
+    <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
         <div>
-            <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+            <div class="flex items-center gap-[9px] mb-2.5">
                 {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
-                <span style="font-size:12.5px;color:var(--txt3);margin-left:2px">{{ lang_display }}</span>
+                <span class="ml-0.5 text-[12.5px] text-txt3">{{ lang_display }}</span>
             </div>
-            <h1 class="font-cinzel" style="font-weight:600;font-size:32px;margin:0 0 11px;letter-spacing:.02em">{{ deck.name }}</h1>
+            <h1 class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
             <span class="chip">{{ deck.deck_type }}</span>
         </div>
-        <div class="no-print" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+        <div class="no-print flex gap-[9px] flex-wrap items-center">
             <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line btn-sm">
-                <span class="ms" style="font-size:18px">edit</span>Edit
+                <span class="ms text-[18px]">edit</span>Edit
             </a>
             {% url 'reanalyze_deck' deck.id as reanalyze_url %}
             {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the AI analysis for this deck? The deck goes back to “Analyzing” while it runs." trigger_label="Re-analyze" trigger_icon="autorenew" %}
             <a href="{% url 'deck_pdf' deck.id %}" class="btn btn-line btn-sm">
-                <span class="ms" style="font-size:18px">picture_as_pdf</span>Export PDF
+                <span class="ms text-[18px]">picture_as_pdf</span>Export PDF
             </a>
             {% url 'delete_deck' deck.id as delete_url %}
-            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn-danger" danger=True %}
+            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>
     </div>
 
-    <div class="detail-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:22px;align-items:start">
-        <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+    <div class="detail-grid grid grid-cols-[minmax(0,1fr)_336px] gap-[22px] items-start">
+        <div class="flex flex-col gap-5 min-w-0">
 
             {% if analysis_html %}
-            <div class="panel-card" style="background:linear-gradient(180deg,rgba(124,92,255,.05),var(--panel2));overflow:hidden">
-                <div style="display:flex;align-items:center;gap:9px;padding:16px 18px;border-bottom:1px solid var(--line2)">
-                    <span class="ms" style="color:var(--violet2);font-size:21px">auto_awesome</span>
-                    <span style="font-weight:600;font-size:15px;letter-spacing:.04em">AI Analysis</span>
+            {% comment %}
+            The violet-tinted gradient overrides .panel-card's default gradient;
+            it stays inline because .panel-card is unlayered and would beat a
+            layered bg-* utility. (Same reason as .page-narrow's width above.)
+            {% endcomment %}
+            <div class="panel-card overflow-hidden" style="background:linear-gradient(180deg,rgba(124,92,255,.05),var(--panel2))">
+                <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
+                    <span class="ms text-violet2 text-[21px]">auto_awesome</span>
+                    <span class="font-semibold text-[15px] tracking-[.04em]">AI Analysis</span>
                 </div>
-                <div style="padding:20px 18px">
+                <div class="py-5 px-[18px]">
                     <div class="analysis">{{ analysis_html|safe }}</div>
                 </div>
             </div>
             {% endif %}
 
-            <div class="panel-card" style="overflow:hidden">
-                <div style="display:flex;align-items:center;gap:9px;padding:16px 18px;border-bottom:1px solid var(--line2)">
-                    <span class="ms" style="color:var(--txt2);font-size:20px">playing_cards</span>
-                    <span style="font-weight:600;font-size:15px">Cards</span>
-                    <span style="font-size:12px;color:var(--txt3)">{{ deck.total_cards }}</span>
+            <div class="panel-card overflow-hidden">
+                <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
+                    <span class="ms text-txt2 text-[20px]">playing_cards</span>
+                    <span class="font-semibold text-[15px]">Cards</span>
+                    <span class="text-[12px] text-txt3">{{ deck.total_cards }}</span>
                 </div>
                 <div>
                     {% for group in card_groups %}
                     <div class="group-head">
-                        <span style="width:9px;height:9px;border-radius:50%;background:{{ group.hex }}"></span>
-                        <span style="font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt2)">{{ group.label }}</span>
-                        <span class="font-mono2" style="font-weight:700;font-size:11px;color:var(--txt3)">{{ group.count }}</span>
+                        <span class="w-[9px] h-[9px] rounded-full" style="background:{{ group.hex }}"></span>
+                        <span class="font-semibold text-[12.5px] tracking-[.06em] uppercase text-txt2">{{ group.label }}</span>
+                        <span class="font-mono2 font-bold text-[11px] text-txt3">{{ group.count }}</span>
                     </div>
                     {% for c in group.cards %}
                     <button
@@ -72,20 +81,20 @@
                     >
                         <div class="card-thumb">
                             {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />{% endif %}
-                            <span class="font-mono2" style="position:absolute;top:4px;left:4px;min-width:19px;height:19px;padding:0 5px;border-radius:100px;background:rgba(10,11,16,.82);font-weight:700;font-size:11px;color:var(--txt);display:flex;align-items:center;justify-content:center">{{ c.quantity }}×</span>
-                            {% if c.image %}<span class="ms" style="position:absolute;right:4px;bottom:4px;font-size:15px;color:var(--txt2);background:rgba(10,11,16,.72);border-radius:6px;padding:2px">zoom_in</span>{% endif %}
+                            <span class="font-mono2 absolute top-1 left-1 min-w-[19px] h-[19px] py-0 px-[5px] flex items-center justify-center rounded-full bg-[rgba(10,11,16,.82)] font-bold text-[11px] text-txt">{{ c.quantity }}×</span>
+                            {% if c.image %}<span class="ms absolute right-1 bottom-1 p-0.5 text-[15px] text-txt2 bg-[rgba(10,11,16,.72)] rounded-md">zoom_in</span>{% endif %}
                         </div>
-                        <div style="flex:1;min-width:0">
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                <span style="font-weight:600;font-size:14.5px">{{ c.name }}</span>
-                                <span style="font-size:11px;color:{{ c.type_hex }};border:1px solid var(--line2);padding:2px 7px;border-radius:100px">{{ c.type }}</span>
-                                {% if c.text_source == 'machine' %}<span style="font-size:10px;color:var(--gold);border:1px solid rgba(232,182,76,.3);padding:2px 6px;border-radius:100px" title="Rules text machine-translated by Gemini">auto-translated</span>{% endif %}
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-[14.5px]">{{ c.name }}</span>
+                                <span class="py-0.5 px-[7px] text-[11px] border border-line2 rounded-full" style="color:{{ c.type_hex }}">{{ c.type }}</span>
+                                {% if c.text_source == 'machine' %}<span class="py-0.5 px-1.5 text-[10px] text-gold border border-[rgba(232,182,76,.3)] rounded-full" title="Rules text machine-translated by Gemini">auto-translated</span>{% endif %}
                             </div>
-                            {% if c.oracle %}<div style="font-size:12.5px;color:var(--txt3);font-weight:300;line-height:1.45;margin-top:4px;max-width:560px;white-space:pre-line">{{ c.oracle }}</div>{% endif %}
+                            {% if c.oracle %}<div class="mt-1 max-w-[560px] text-[12.5px] text-txt3 font-light leading-[1.45] whitespace-pre-line">{{ c.oracle }}</div>{% endif %}
                         </div>
-                        <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                        <div class="flex-none flex flex-col items-end gap-1.5">
                             <span class="mv-badge">{{ c.mv }}</span>
-                            {% if c.price > 0 %}<span class="font-mono2" style="font-weight:700;font-size:13px;color:var(--gold)">€{{ c.price|floatformat:2 }}</span>{% endif %}
+                            {% if c.price > 0 %}<span class="font-mono2 font-bold text-[13px] text-gold">€{{ c.price|floatformat:2 }}</span>{% endif %}
                         </div>
                     </button>
                     {% endfor %}
@@ -94,45 +103,45 @@
             </div>
         </div>
 
-        <div class="detail-sidebar" style="display:flex;flex-direction:column;gap:16px;position:sticky;top:78px">
+        <div class="detail-sidebar flex flex-col gap-4 sticky top-[78px]">
             {% if value_stats.total > 0 %}
-            <div class="panel-card" style="padding:18px">
-                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:14px">Value</div>
-                <div class="font-mono2" style="font-weight:700;font-size:30px;color:var(--gold)">€{{ value_stats.total|floatformat:2 }}</div>
-                <div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2);font-size:13px">
-                    <span style="color:var(--txt3)">Avg / card</span><span class="font-mono2" style="font-weight:700;font-size:13px">€{{ value_stats.avg|floatformat:2 }}</span>
+            <div class="panel-card p-[18px]">
+                <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Value</div>
+                <div class="font-mono2 font-bold text-[30px] text-gold">€{{ value_stats.total|floatformat:2 }}</div>
+                <div class="flex justify-between mt-3.5 pt-[13px] border-t border-line2 text-[13px]">
+                    <span class="text-txt3">Avg / card</span><span class="font-mono2 font-bold text-[13px]">€{{ value_stats.avg|floatformat:2 }}</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:13px">
-                    <span style="color:var(--txt3)">Most expensive</span><span class="font-mono2" style="font-weight:700;font-size:13px">€{{ value_stats.max|floatformat:2 }}</span>
+                <div class="flex justify-between mt-[9px] text-[13px]">
+                    <span class="text-txt3">Most expensive</span><span class="font-mono2 font-bold text-[13px]">€{{ value_stats.max|floatformat:2 }}</span>
                 </div>
             </div>
             {% endif %}
 
-            <div class="panel-card" style="padding:18px">
-                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:16px">Mana curve</div>
-                <div style="display:flex;align-items:flex-end;gap:7px;height:120px">
+            <div class="panel-card p-[18px]">
+                <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Mana curve</div>
+                <div class="flex items-end gap-[7px] h-[120px]">
                     {% for b in mana_curve %}
-                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
-                        <span class="font-mono2" style="font-weight:700;font-size:11px;color:var(--txt2)">{{ b.count }}</span>
-                        <div style="width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--violet2),var(--violet));min-height:3px;height:{{ b.pct }}%"></div>
-                        <span class="font-mono2" style="font-size:11px;color:var(--txt3)">{{ b.label }}</span>
+                    <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                        <span class="font-mono2 font-bold text-[11px] text-txt2">{{ b.count }}</span>
+                        <div class="w-full min-h-[3px] rounded-t-[5px] rounded-b-[2px] bg-[linear-gradient(180deg,var(--violet2),var(--violet))]" style="height:{{ b.pct }}%"></div>
+                        <span class="font-mono2 text-[11px] text-txt3">{{ b.label }}</span>
                     </div>
                     {% endfor %}
                 </div>
-                <div style="text-align:center;font-size:11px;color:var(--txt3);margin-top:10px">Avg CMC {{ deck.avg_cmc|floatformat:2 }} · non-lands</div>
+                <div class="text-center mt-2.5 text-[11px] text-txt3">Avg CMC {{ deck.avg_cmc|floatformat:2 }} · non-lands</div>
             </div>
 
-            <div class="panel-card" style="padding:18px">
-                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:16px">Card types</div>
-                <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="panel-card p-[18px]">
+                <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Card types</div>
+                <div class="flex flex-col gap-3">
                     {% for t in type_bars %}
                     <div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
-                            <span style="color:var(--txt2)">{{ t.label }}</span>
-                            <span class="font-mono2" style="font-weight:700;font-size:12px;color:var(--txt3)">{{ t.count }}</span>
+                        <div class="flex justify-between mb-[5px] text-[13px]">
+                            <span class="text-txt2">{{ t.label }}</span>
+                            <span class="font-mono2 font-bold text-[12px] text-txt3">{{ t.count }}</span>
                         </div>
-                        <div style="height:7px;border-radius:100px;background:#0c0e15;overflow:hidden">
-                            <div style="height:100%;border-radius:100px;background:{{ t.hex }};width:{{ t.pct }}%"></div>
+                        <div class="h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
+                            <div class="h-full rounded-full" style="background:{{ t.hex }};width:{{ t.pct }}%"></div>
                         </div>
                     </div>
                     {% endfor %}

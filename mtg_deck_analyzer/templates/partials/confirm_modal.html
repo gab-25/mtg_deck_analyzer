@@ -24,25 +24,25 @@ Params:
 {% endcomment %}
 <div class="inline-flex">
     <input type="checkbox" id="{{ id }}" class="peer sr-only" />
-    <label for="{{ id }}" class="{{ trigger_class|default:'btn btn-line btn-sm' }}" style="cursor:pointer"
+    <label for="{{ id }}" class="{{ trigger_class|default:'btn btn-line btn-sm' }} cursor-pointer"
         {% if trigger_title %}title="{{ trigger_title }}" aria-label="{{ trigger_title }}"{% endif %}>
-        {% if trigger_icon %}<span class="ms" style="font-size:18px">{{ trigger_icon }}</span>{% endif %}
+        {% if trigger_icon %}<span class="ms text-[18px]">{{ trigger_icon }}</span>{% endif %}
         {% if trigger_label %}{{ trigger_label }}{% endif %}
     </label>
-    <div class="fixed inset-0 z-50 hidden items-center justify-center p-4 peer-checked:flex"
-        style="background:rgba(6,7,11,.66);backdrop-filter:blur(5px)">
-        <label for="{{ id }}" class="absolute inset-0" style="cursor:pointer" aria-hidden="true"></label>
+    <div class="fixed inset-0 z-50 hidden items-center justify-center p-4 peer-checked:flex bg-[rgba(6,7,11,.66)] backdrop-blur-[5px]">
+        <label for="{{ id }}" class="absolute inset-0 cursor-pointer" aria-hidden="true"></label>
         <div class="modal-card relative" style="animation:fadeup .22s ease both">
-            <div style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;
-                {% if danger %}background:rgba(208,90,62,.12);border:1px solid rgba(208,90,62,.3){% else %}background:rgba(124,92,255,.12);border:1px solid var(--line){% endif %}">
-                <span class="ms" style="font-size:24px;{% if danger %}color:var(--danger){% else %}color:var(--violet2){% endif %}">{{ trigger_icon|default:'help' }}</span>
+            {# The danger/default accent (background + border) is conditional, so it stays inline. #}
+            <div class="w-[46px] h-[46px] rounded-full flex items-center justify-center mb-4"
+                style="{% if danger %}background:rgba(208,90,62,.12);border:1px solid rgba(208,90,62,.3){% else %}background:rgba(124,92,255,.12);border:1px solid var(--line){% endif %}">
+                <span class="ms text-[24px]" style="{% if danger %}color:var(--danger){% else %}color:var(--violet2){% endif %}">{{ trigger_icon|default:'help' }}</span>
             </div>
-            <p style="font-size:14px;font-weight:300;color:var(--txt2);line-height:1.55;margin:0 0 22px">{{ message }}</p>
-            <div style="display:flex;gap:10px">
-                <label for="{{ id }}" class="btn btn-line" style="flex:1;cursor:pointer">Cancel</label>
-                <form method="post" action="{{ action }}" style="flex:1;margin:0">
+            <p class="text-[14px] font-light text-txt2 leading-[1.55] m-0 mb-[22px]">{{ message }}</p>
+            <div class="flex gap-2.5">
+                <label for="{{ id }}" class="btn btn-line flex-1">Cancel</label>
+                <form method="post" action="{{ action }}" class="flex-1 m-0">
                     {% csrf_token %}
-                    <button type="submit" class="{{ confirm_class|default:'btn btn-grad' }}" style="width:100%">
+                    <button type="submit" class="{{ confirm_class|default:'btn btn-grad' }} w-full">
                         {{ confirm_label|default:'Confirm' }}
                     </button>
                 </form>
