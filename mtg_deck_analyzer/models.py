@@ -1,60 +1,73 @@
-"""SQLAlchemy ORM models."""
+"""Django ORM models."""
 
-import datetime
+import uuid
 
-from sqlalchemy import DateTime, Float, Integer, LargeBinary, String, Text
-from sqlalchemy import JSON as SA_JSON
-from sqlalchemy.orm import Mapped, mapped_column
-
-from .db import Base
+from django.db import models
+from django.utils import timezone
 
 
-def _utcnow() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
-
-
-class Deck(Base):
+class Deck(models.Model):
     """A submitted deck together with its fetched cards and analysis."""
 
-    __tablename__ = "decks"
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        READY = "ready", "Ready"
+        FAILED = "failed", "Failed"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    lang: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
-    raw_decklist: Mapped[str] = mapped_column(Text, nullable=False)
+    # UUID primary key so deck URLs aren't sequentially enumerable.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    name = models.CharField(max_length=255)
+    lang = models.CharField(max_length=8, default="en")
+    raw_decklist = models.TextField()
+
+    # Lifecycle of the background analysis. Defaults to READY so decks created
+    # directly (e.g. in tests/fixtures) need no extra handling; the async
+    # creation flow sets PENDING explicitly and the worker advances it.
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.READY
+    )
+    # Populated with the failure reason when ``status`` is FAILED.
+    error = models.TextField(null=True, blank=True)
 
     # Strategic analysis (GitHub-flavored Markdown), or NULL when unavailable.
-    analysis_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analysis_md = models.TextField(null=True, blank=True)
 
     # Aggregate statistics.
-    deck_type: Mapped[str] = mapped_column(String(64), default="Custom")
-    total_cards: Mapped[int] = mapped_column(Integer, default=0)
-    total_value_eur: Mapped[float] = mapped_column(Float, default=0.0)
-    avg_cmc: Mapped[float] = mapped_column(Float, default=0.0)
-    category_counts: Mapped[dict] = mapped_column(SA_JSON, default=dict)
+    deck_type = models.CharField(max_length=64, default="Custom")
+    total_cards = models.IntegerField(default=0)
+    total_value_eur = models.FloatField(default=0.0)
+    avg_cmc = models.FloatField(default=0.0)
+    category_counts = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "data": {...}}]`` where each
     # card's ``image_paths`` are stored as cache-relative basenames.
-    cards: Mapped[list] = mapped_column(SA_JSON, default=list)
+    cards = models.JSONField(default=list)
 
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "decks"
 
 
-class ScryfallCard(Base):
+class ScryfallCard(models.Model):
     """Cached Scryfall card JSON, keyed by ``card_<lang>_<slug>`` (the Scryfall cache)."""
 
-    __tablename__ = "scryfall_cards"
+    key = models.CharField(max_length=255, primary_key=True)
+    data = models.JSONField()
+    created_at = models.DateTimeField(default=timezone.now)
 
-    key: Mapped[str] = mapped_column(String(255), primary_key=True)
-    data: Mapped[dict] = mapped_column(SA_JSON, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)
+    class Meta:
+        db_table = "scryfall_cards"
 
 
-class ScryfallImage(Base):
+class ScryfallImage(models.Model):
     """Cached card image bytes, keyed by basename (``img_<id>_<lang>.jpg``)."""
 
-    __tablename__ = "scryfall_images"
+    name = models.CharField(max_length=255, primary_key=True)
+    data = models.BinaryField()
+    created_at = models.DateTimeField(default=timezone.now)
 
-    name: Mapped[str] = mapped_column(String(255), primary_key=True)
-    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=_utcnow)
+    class Meta:
+        db_table = "scryfall_images"

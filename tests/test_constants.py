@@ -1,6 +1,6 @@
 """Tests for the unified language registry."""
 
-from mtg_deck_analyzer.constants import (
+from mtg_deck_analyzer.domain.constants import (
     LANG_DISPLAY_NAMES,
     LANG_MAP,
     LANGUAGES,

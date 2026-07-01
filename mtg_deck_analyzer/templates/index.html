@@ -1,115 +1,29 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="grid gap-8 lg:grid-cols-5">
-    <section class="lg:col-span-3">
-        <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl">Analyze a deck</h2>
-                <p class="text-base-content/70">
-                    Paste a decklist (one card per line, e.g. <code>1 Llanowar Elves</code>).
-                    Card data and images are fetched from Scryfall.
-                </p>
-
-                {% if not has_api_key %}
-                <div class="alert alert-warning mt-2">
-                    <span>No Gemini API key configured — the strategic analysis will be skipped.</span>
-                </div>
-                {% endif %}
-
-                <form
-                    hx-post="/decks"
-                    hx-target="#form-error"
-                    hx-swap="innerHTML"
-                    hx-disabled-elt="#analyze-btn"
-                    class="mt-4 flex flex-col gap-4"
-                >
-                    <label class="form-control w-full">
-                        <div class="label"><span class="label-text">Deck name</span></div>
-                        <input
-                            type="text"
-                            name="name"
-                            placeholder="My Simic Ramp"
-                            class="input input-bordered w-full"
-                            required
-                        />
-                    </label>
-
-                    <label class="form-control w-full">
-                        <div class="label"><span class="label-text">Decklist</span></div>
-                        <textarea
-                            name="decklist"
-                            rows="12"
-                            class="textarea textarea-bordered w-full font-mono text-sm"
-                            placeholder="1 Aid from the Cowl&#10;1 Apex Devastator&#10;15 Forest"
-                            required
-                        ></textarea>
-                    </label>
-
-                    <div class="flex flex-wrap items-end gap-4">
-                        <label class="form-control">
-                            <div class="label"><span class="label-text">Language</span></div>
-                            <select name="lang" class="select select-bordered">
-                                {% for code, label in languages.items() %}
-                                <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </label>
-
-                        <label class="label cursor-pointer gap-2">
-                            <input type="checkbox" name="skip_analysis" value="true" class="checkbox" />
-                            <span class="label-text">Skip Gemini analysis</span>
-                        </label>
-                    </div>
-
-                    <div id="form-error"></div>
-
-                    <button id="analyze-btn" type="submit" class="btn btn-primary">
-                        <span class="loading loading-spinner loading-sm htmx-indicator"></span>
-                        Analyze deck
-                    </button>
-                    <p class="text-xs text-base-content/50">
-                        Fetching a brand-new deck can take a minute or two (Scryfall rate limits).
-                    </p>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <section class="lg:col-span-2">
-        <h2 class="mb-4 text-xl font-bold">Recent decks</h2>
-        {% if decks %}
-        <ul id="deck-list" class="flex flex-col gap-3">
-            {% for deck in decks %}
-            <li id="deck-{{ deck.id }}" class="card bg-base-100 shadow">
-                <div class="card-body flex-row items-center justify-between p-4">
-                    <a href="/decks/{{ deck.id }}" class="flex-1">
-                        <div class="font-semibold">{{ deck.name }}</div>
-                        <div class="text-sm text-base-content/60">
-                            <span class="badge badge-sm badge-ghost">{{ deck.deck_type }}</span>
-                            {{ deck.total_cards }} cards
-                            {% if deck.total_value_eur > 0 %}&bull; €{{ "%.2f"|format(deck.total_value_eur) }}{% endif %}
-                        </div>
-                    </a>
-                    <button
-                        class="btn btn-ghost btn-sm btn-square text-error"
-                        hx-delete="/decks/{{ deck.id }}"
-                        hx-target="#deck-{{ deck.id }}"
-                        hx-swap="outerHTML"
-                        hx-confirm="Delete '{{ deck.name }}'?"
-                        title="Delete"
-                    >✕</button>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <div class="rounded-box bg-base-100 p-6 text-center text-base-content/60 shadow">
-            No decks analyzed yet.
-        </div>
+<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-2xl font-bold">Your decks</h1>
+    <form method="get" action="{% url 'index' %}" class="flex items-center gap-2">
+        <input
+            type="search"
+            name="q"
+            value="{{ query }}"
+            placeholder="Search decks…"
+            class="form-input w-56"
+            autofocus
+        />
+        <button type="submit" class="btn-outline">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+            Search
+        </button>
+        {% if query %}
+        <a href="{% url 'index' %}" class="btn-ghost">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            Clear
+        </a>
         {% endif %}
-    </section>
+    </form>
 </div>
+
+{% include "partials/deck_list.html" %}
 {% endblock %}

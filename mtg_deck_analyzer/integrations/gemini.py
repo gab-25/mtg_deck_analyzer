@@ -1,12 +1,15 @@
 """Google Gemini integration: card translation and deck analysis."""
 
 import json
+import logging
 import os
 
 from google import genai
 from google.genai import types
 
-from .constants import GEMINI_MODEL, LANG_MAP
+from ..domain.constants import DECK_TYPES, GEMINI_MODEL, LANG_MAP
+
+logger = logging.getLogger(__name__)
 
 
 def translate_card_via_gemini(
@@ -57,16 +60,59 @@ def translate_card_via_gemini(
             "printed_text": translated.get("printed_text", "").strip(),
         }
     except Exception as e:
-        print(f"\n[Warning] Gemini card translation failed: {e}")
+        logger.warning("Gemini card translation failed: %s", e)
         return {}
+
+
+def recognize_deck_type(
+    deck_list_text: str, api_key: str = None
+) -> str | None:
+    """Asks Gemini to classify the deck into one of :data:`DECK_TYPES`.
+
+    Returns the matched type, or None if Gemini is unavailable or returns an
+    unexpected value (callers should fall back to a heuristic in that case).
+    """
+    allowed = ", ".join(f'"{t}"' for t in DECK_TYPES)
+    prompt = f"""You are an expert Magic: The Gathering deck classifier.
+Classify the following deck into exactly one of these types: {allowed}.
+Base your decision on the deck's size, format and composition.
+
+Return a JSON object with a single key "deck_type" whose value is exactly one
+of the allowed types (verbatim, including capitalization and spacing).
+
+Deck list:
+{deck_list_text}
+"""
+
+    try:
+        if api_key:
+            client = genai.Client(api_key=api_key)
+        elif os.environ.get("GEMINI_API_KEY"):
+            client = genai.Client()
+        else:
+            return None  # No API key: caller falls back to the heuristic.
+
+        config = types.GenerateContentConfig(response_mime_type="application/json")
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=config,
+        )
+
+        deck_type = json.loads(response.text.strip()).get("deck_type", "").strip()
+        return deck_type if deck_type in DECK_TYPES else None
+    except Exception as e:
+        logger.warning("Gemini deck-type recognition failed: %s", e)
+        return None
 
 
 def log_analysis_unavailable() -> None:
     """Logs to the console how to enable the Gemini analysis (nothing goes into the PDF)."""
-    print("[Info] No Gemini API key configured: skipping deck analysis.")
-    print("       The PDF will be generated without the strategy section.")
-    print("       To enable it, obtain a Google Gemini API key and set the")
-    print('       environment variable: export GEMINI_API_KEY="your_api_key"')
+    logger.info(
+        "No Gemini API key configured: skipping deck analysis. The PDF will be "
+        "generated without the strategy section. To enable it, obtain a Google "
+        'Gemini API key and set the environment variable: export GEMINI_API_KEY="your_api_key"'
+    )
 
 
 def analyze_deck_list(deck_list_text: str, api_key: str = None, lang_code: str = "en") -> str:
@@ -83,8 +129,11 @@ def analyze_deck_list(deck_list_text: str, api_key: str = None, lang_code: str =
         else:
             client = genai.Client()
     except Exception as e:
-        print(f"\n[Warning] Failed to initialize Google GenAI Client: {e}")
-        print("Skipping deck analysis (nothing will be added to the PDF).")
+        logger.warning(
+            "Failed to initialize Google GenAI Client: %s. "
+            "Skipping deck analysis (nothing will be added to the PDF).",
+            e,
+        )
         return None
 
     prompt = f"""You are an expert Magic: The Gathering deck strategist.
@@ -109,7 +158,7 @@ Deck list:
 {deck_list_text}
 """
 
-    print("Connecting to Gemini for strategic analysis...")
+    logger.info("Connecting to Gemini for strategic analysis...")
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL,
@@ -117,6 +166,9 @@ Deck list:
         )
         return response.text
     except Exception as e:
-        print(f"\n[Warning] Gemini API generation failed: {e}")
-        print("Skipping deck analysis (nothing will be added to the PDF).")
+        logger.warning(
+            "Gemini API generation failed: %s. "
+            "Skipping deck analysis (nothing will be added to the PDF).",
+            e,
+        )
         return None

@@ -6,12 +6,17 @@ pipeline behind a single function so the workflow lives in exactly one place.
 
 import os
 
-from .cards import compute_statistics, infer_deck_type
-from .constants import normalize_lang
-from .decklist import parse_decklist_text
-from .gemini import analyze_deck_list, log_analysis_unavailable
-from .scryfall import FileCardCache, fetch_card_data
-from .text_utils import localize_card_names
+from .caching.file_cache import FileCardCache
+from .domain.cards import compute_statistics, infer_deck_type
+from .domain.constants import normalize_lang
+from .domain.decklist import parse_decklist_text
+from .domain.text_utils import localize_card_names
+from .integrations.gemini import (
+    analyze_deck_list,
+    log_analysis_unavailable,
+    recognize_deck_type,
+)
+from .integrations.scryfall import fetch_card_data
 
 
 def default_cache_dir() -> str:
@@ -35,8 +40,8 @@ def analyze_decklist(
 ) -> dict:
     """Runs the full analysis pipeline on raw decklist text.
 
-    ``cache`` is a Scryfall cache backend (see ``scryfall.FileCardCache`` or the
-    web app's ``DbCardCache``); it defaults to a filesystem cache under the
+    ``cache`` is a Scryfall cache backend (see ``caching.file_cache.FileCardCache``
+    or ``caching.db_cache.DbCardCache``); it defaults to a filesystem cache under the
     package's ``.cache`` directory. ``progress`` is an optional
     ``callable(message: str)`` used to report status (defaults to no-op).
 
@@ -76,17 +81,23 @@ def analyze_decklist(
     if not processed_cards:
         raise ValueError("Could not retrieve card details for any card.")
 
+    deck_text_repr = "\n".join(
+        f"{item['quantity']} {item['name']}" for item in deck_cards
+    )
+
     deck_analysis = None
+    # Default to the heuristic; Gemini refines it below when available.
+    deck_type = infer_deck_type(processed_cards)
     if not skip_analysis:
         if api_key:
-            deck_text_repr = "\n".join(
-                f"{item['quantity']} {item['name']}" for item in deck_cards
-            )
             deck_analysis = analyze_deck_list(
                 deck_text_repr, api_key=api_key, lang_code=lang
             )
             if deck_analysis and lang != "en":
                 deck_analysis = localize_card_names(deck_analysis, name_map)
+            recognized = recognize_deck_type(deck_text_repr, api_key=api_key)
+            if recognized:
+                deck_type = recognized
         else:
             log_analysis_unavailable()
 
@@ -99,7 +110,7 @@ def analyze_decklist(
         "deck_analysis": deck_analysis,
         "name_map": name_map,
         "stats": {
-            "deck_type": infer_deck_type(processed_cards),
+            "deck_type": deck_type,
             "total_cards": total_cards,
             "total_value_eur": total_price,
             "avg_cmc": avg_cmc,

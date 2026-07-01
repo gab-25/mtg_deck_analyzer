@@ -4,8 +4,8 @@ import pytest
 from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Table
 
-from mtg_deck_analyzer.cards import compute_statistics as _compute_statistics
-from mtg_deck_analyzer.pdf import (
+from mtg_deck_analyzer.domain.cards import compute_statistics as _compute_statistics
+from mtg_deck_analyzer.rendering.pdf import (
     _build_card_image_cell,
     _build_styles,
     create_no_image_placeholder,

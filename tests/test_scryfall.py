@@ -1,6 +1,6 @@
 """Tests for Scryfall data-processing helpers (no network access)."""
 
-from mtg_deck_analyzer.scryfall import (
+from mtg_deck_analyzer.integrations.scryfall import (
     _derive_text_source,
     _extract_price_eur,
     find_best_translated_card,

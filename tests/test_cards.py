@@ -1,6 +1,6 @@
 """Tests for card classification and deck-type inference."""
 
-from mtg_deck_analyzer.cards import classify_card, infer_deck_type
+from mtg_deck_analyzer.domain.cards import classify_card, infer_deck_type
 
 
 def _card(type_line):

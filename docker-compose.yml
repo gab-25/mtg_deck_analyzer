@@ -21,7 +21,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://mtg:mtg@db:5432/mtg
+      DATABASE_URL: postgresql://mtg:mtg@db:5432/mtg
       # Provide your Gemini key to enable the strategic analysis:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+    <nav class="mb-6 text-sm text-slate-400">
+        <a href="{% url 'index' %}" class="hover:underline">Decks</a>
+        <span class="px-1">/</span>
+        <span>{{ deck.name }}</span>
+    </nav>
+
+    <div class="panel text-center">
+        <div class="mb-4 text-4xl text-rose-400">
+            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-2xl font-bold">Analysis failed</h1>
+        <p class="mt-2 text-slate-400">
+            We couldn’t finish analyzing <span class="font-semibold">{{ deck.name }}</span>.
+        </p>
+        {% if deck.error %}
+        <div role="alert" class="alert alert-error mt-4 text-left">{{ deck.error }}</div>
+        {% endif %}
+        <div class="mt-6 flex justify-center gap-3">
+            <form method="post" action="{% url 'reanalyze_deck' deck.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                    Try again
+                </button>
+            </form>
+            <a href="{% url 'edit_deck' deck.id %}" class="btn-outline">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                Edit
+            </a>
+            <form
+                method="post"
+                action="{% url 'delete_deck' deck.id %}"
+                onsubmit="return confirm('Delete this deck?');"
+            >
+                {% csrf_token %}
+                <button type="submit" class="btn-outline">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

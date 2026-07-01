@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/**
+  * A catch-all path to Django template files, JavaScript, and Python files
+  * that contain Tailwind CSS classes and will be scanned by Tailwind to generate the final CSS file.
+  *
+  * If your final CSS file is not being updated after code changes, you may want to broaden or narrow
+  * the scope of this path.
+  */
+@source "../../../**/*.{html,py,js}";
+
+/* Dark theme defaults — the whole app is rendered on a dark surface. */
+@layer base {
+    body {
+        @apply bg-slate-900 text-slate-100 antialiased;
+    }
+}
+
+/**
+  * Global UI components.
+  *
+  * Reusable building blocks shared across templates. Compose a base class with a
+  * modifier in the markup, e.g. `class="badge badge-primary"` or `class="alert alert-error"`.
+  * Keep visual variants here so templates stay declarative and consistent.
+  */
+@layer components {
+    /* Buttons */
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-500 disabled:opacity-60;
+    }
+    .btn-outline {
+        @apply inline-flex items-center justify-center gap-2 rounded-md border border-slate-600 px-4 py-2 text-sm transition-colors hover:bg-slate-800;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded px-3 py-2 text-sm transition-colors hover:bg-slate-700;
+    }
+    .btn-icon-danger {
+        @apply inline-flex items-center justify-center rounded px-2 py-1 text-rose-400 transition-colors hover:bg-slate-700;
+    }
+
+    /* Surfaces — the dark panels everything sits on */
+    .surface {
+        @apply rounded-lg bg-slate-800 shadow;
+    }
+    .panel {
+        @apply rounded-lg bg-slate-800 p-6 shadow-xl;
+    }
+
+    /* Form controls */
+    .form-control {
+        @apply flex flex-col gap-1;
+    }
+    .form-label {
+        @apply text-sm font-medium text-slate-300;
+    }
+    .form-input {
+        @apply rounded-md border border-slate-600 bg-slate-900 px-3 py-2 focus:border-indigo-500 focus:outline-none;
+    }
+
+    /* Badges — base class + a color modifier */
+    .badge {
+        @apply inline-block rounded px-2 py-0.5 text-xs;
+    }
+    .badge-neutral {
+        @apply bg-slate-700;
+    }
+    .badge-primary {
+        @apply bg-indigo-600 font-medium text-white;
+    }
+    .badge-warning {
+        @apply bg-amber-500/80 font-medium text-slate-900;
+    }
+    .badge-error {
+        @apply bg-rose-600 font-medium text-white;
+    }
+    .badge-success {
+        @apply bg-emerald-600 font-medium text-white;
+    }
+
+    /* Alerts — base class + a semantic modifier */
+    .alert {
+        @apply rounded-md border px-4 py-3 text-sm;
+    }
+    .alert-warning {
+        @apply border-amber-500/30 bg-amber-500/15 text-amber-200;
+    }
+    .alert-error {
+        @apply border-rose-500/30 bg-rose-500/15 text-rose-200;
+    }
+}
+
+/* Markdown-rendered deck analysis (output of python-markdown, served via |safe). */
+.analysis h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+}
+.analysis h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.35rem;
+}
+.analysis ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin: 0.35rem 0;
+}
+.analysis li {
+    margin: 0.2rem 0;
+}
+.analysis p {
+    margin: 0.5rem 0;
+}
+.analysis a {
+    color: var(--color-indigo-400);
+    text-decoration: underline;
+}

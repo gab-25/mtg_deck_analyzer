@@ -23,6 +23,15 @@ LANGUAGES = {
 
 DEFAULT_LANG = "en"
 
+# Selectable deck types shown in the creation form. The empty value lets the
+# pipeline infer the type from the decklist (see ``infer_deck_type``).
+DECK_TYPES = [
+    "Commander / EDH",
+    "Constructed",
+    "Limited",
+    "Custom",
+]
+
 # Derived views kept for convenience and backward compatibility.
 LANG_MAP = {code: meta["gemini_name"] for code, meta in LANGUAGES.items()}
 LANG_DISPLAY_NAMES = {code: meta["display_name"] for code, meta in LANGUAGES.items()}
