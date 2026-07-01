@@ -22,17 +22,8 @@
             <i class="fa-solid fa-pen" aria-hidden="true"></i>
             Edit
         </a>
-        <form
-            method="post"
-            action="{% url 'reanalyze_deck' deck.id %}"
-            onsubmit="return confirm('Re-run the analysis for this deck?');"
-        >
-            {% csrf_token %}
-            <button type="submit" class="btn-outline">
-                <i class="fa-solid fa-rotate" aria-hidden="true"></i>
-                Re-run analysis
-            </button>
-        </form>
+        {% url 'reanalyze_deck' deck.id as reanalyze_url %}
+        {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the analysis for this deck?" trigger_label="Re-run analysis" trigger_icon="fa-solid fa-rotate" confirm_label="Re-run analysis" confirm_icon="fa-solid fa-rotate" %}
         <a href="/decks/{{ deck.id }}/pdf" class="btn-outline">
             <i class="fa-solid fa-download" aria-hidden="true"></i>
             Download PDF

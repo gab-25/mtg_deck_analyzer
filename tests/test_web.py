@@ -320,6 +320,36 @@ def test_deck_detail_card_images_link_to_modal(client):
 
 
 @pytest.mark.django_db
+def test_destructive_actions_use_confirm_modal(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Confirm Me",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        deck_type="Custom",
+        total_cards=1,
+        total_value_eur=0.0,
+        avg_cmc=0.0,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+
+    # The deck list delete button opens the confirm modal instead of the browser's
+    # native confirm() dialog.
+    index = client.get("/").content.decode()
+    assert "onsubmit=\"return confirm(" not in index
+    assert f'id="confirm-delete-{deck.id}"' in index
+    assert f'action="/decks/{deck.id}/delete"' in index
+
+    # The deck detail re-run action is guarded by its own confirm modal.
+    detail = client.get(f"/decks/{deck.id}").content.decode()
+    assert "onsubmit=\"return confirm(" not in detail
+    assert 'id="confirm-reanalyze"' in detail
+    assert f'action="/decks/{deck.id}/reanalyze"' in detail
+
+
+@pytest.mark.django_db
 def test_machine_translation_badge_shown(client):
     from mtg_deck_analyzer.models import Deck
 
