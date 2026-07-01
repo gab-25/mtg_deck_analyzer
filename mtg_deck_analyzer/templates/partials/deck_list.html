@@ -35,10 +35,6 @@ nothing is processing the re-rendered region drops the trigger and polling stops
                 </div>
             </a>
             {% endif %}
-            {% url 'delete_deck' deck.id as delete_url %}
-            {% with deck_id_str=deck.id|stringformat:"s" %}
-            {% include "partials/confirm_modal.html" with id="confirm-delete-"|add:deck_id_str action=delete_url message="Delete this deck?" trigger_icon="fa-solid fa-trash" trigger_class="btn-icon-danger" trigger_title="Delete" confirm_label="Delete" confirm_icon="fa-solid fa-trash" confirm_class="btn-danger" %}
-            {% endwith %}
         </li>
         {% endfor %}
     </ul>

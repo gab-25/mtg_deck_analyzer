@@ -335,18 +335,19 @@ def test_destructive_actions_use_confirm_modal(client):
         cards=[],
     )
 
-    # The deck list delete button opens the confirm modal instead of the browser's
-    # native confirm() dialog.
+    # The deck list no longer carries a delete control; deletion lives on the
+    # deck detail view.
     index = client.get("/").content.decode()
     assert "onsubmit=\"return confirm(" not in index
-    assert f'id="confirm-delete-{deck.id}"' in index
-    assert f'action="/decks/{deck.id}/delete"' in index
+    assert f'action="/decks/{deck.id}/delete"' not in index
 
-    # The deck detail re-run action is guarded by its own confirm modal.
+    # The deck detail re-run and delete actions are guarded by confirm modals.
     detail = client.get(f"/decks/{deck.id}").content.decode()
     assert "onsubmit=\"return confirm(" not in detail
     assert 'id="confirm-reanalyze"' in detail
     assert f'action="/decks/{deck.id}/reanalyze"' in detail
+    assert 'id="confirm-delete"' in detail
+    assert f'action="/decks/{deck.id}/delete"' in detail
 
 
 @pytest.mark.django_db
