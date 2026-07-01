@@ -376,10 +376,13 @@ def card_image_modal(request):
     """Returns the zoom-modal fragment for one cached card image (HTMX).
 
     The thumbnail buttons in the deck view ``hx-get`` this endpoint with the
-    image basename; the fragment carries the full-size image and a script that
-    opens it as a native ``<dialog>``.
+    image basename; the fragment is a full-screen CSS overlay carrying the
+    full-size image. Called without a ``name`` it returns an empty body, which
+    the overlay uses to close itself (clicking it clears the container).
     """
     name = request.GET.get("name", "")
+    if not name:
+        return HttpResponse("")  # Close: clear the modal container.
     if DbCardCache().get_image(name) is None:
         return HttpResponse("Image not found", status=404)
     return render(request, "partials/card_image_modal.html", {"image_url": f"/media/{name}"})

@@ -272,10 +272,16 @@ def test_card_image_modal_returns_dialog_fragment(client):
     r = client.get("/card-image", {"name": "img_seed.jpg"})
     assert r.status_code == 200
     body = r.content.decode()
-    # A fragment carrying the full-size image and the dialog that opens it.
+    # A CSS-overlay fragment carrying the full-size image — no inline JS.
     assert "<!DOCTYPE html>" not in body
     assert 'src="/media/img_seed.jpg"' in body
-    assert "showModal()" in body
+    assert "<script" not in body
+    assert "onclick" not in body
+
+    # No name -> empty body, which clears the container (closes the modal).
+    close = client.get("/card-image")
+    assert close.status_code == 200
+    assert close.content.decode().strip() == ""
 
 
 @pytest.mark.django_db
