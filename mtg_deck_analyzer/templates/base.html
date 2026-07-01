@@ -9,39 +9,57 @@
     {# Loads htmx (bundled by django-htmx) and, in DEBUG, its error-logging extension. #}
     {% htmx_script %}
     {% tailwind_css %}
+    {# Fonts + "vault" design system. Loaded after Tailwind so it wins the cascade. #}
+    {% include "partials/design_head.html" %}
 </head>
-<body class="flex min-h-screen flex-col bg-slate-900 text-slate-100">
-    <header class="flex items-center gap-2 bg-slate-800 px-4 py-2 shadow-sm">
-        <div class="flex-1">
-            <a href="/" class="btn-ghost text-xl font-semibold">🧙 MTG Deck Analyzer</a>
-        </div>
-        <nav class="flex flex-none items-center gap-2">
-            <a href="{% url 'new_deck' %}" class="btn-primary">
-                <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                Create deck
+<body>
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+
+    <div style="position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column">
+        <header class="app-nav no-print">
+            <a href="{% url 'index' %}" class="brand">
+                {% include "partials/brand_mark.html" with size=28 %}
+                <span class="brand-name">MTG DECK ANALYZER</span>
+                <span class="brand-badge"><span class="ms" style="font-size:12px">auto_awesome</span>AI</span>
             </a>
-            {% if user.is_authenticated %}
-            <span class="flex items-center gap-2 text-sm text-slate-400">
-                <i class="fa-solid fa-circle-user" aria-hidden="true"></i>
-                {{ user.get_username }}
-            </span>
-            <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn-ghost">
-                    <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-                    Sign out
-                </button>
-            </form>
-            {% endif %}
-        </nav>
-    </header>
+            <nav style="display:flex;align-items:center;gap:13px;flex-wrap:wrap">
+                <a href="{% url 'new_deck' %}" class="btn btn-grad">
+                    <span class="ms" style="font-size:20px">add</span>New deck
+                </a>
+                {% if user.is_authenticated %}
+                <div style="display:flex;align-items:center;gap:11px">
+                    <div class="avatar">{{ user.get_username|slice:":2" }}</div>
+                    <div style="line-height:1.15">
+                        <div style="font-size:13.5px;font-weight:600">{{ user.get_username }}</div>
+                        <form method="post" action="{% url 'logout' %}" style="margin:0">
+                            {% csrf_token %}
+                            <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;color:var(--txt3)">
+                                Sign out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </nav>
+        </header>
 
-    <main class="container mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        {% block content %}{% endblock %}
-    </main>
+        <main style="flex:1">
+            {% block content %}{% endblock %}
+        </main>
 
-    <footer class="p-6 text-center text-sm text-slate-500">
-        <p>MTG Deck Analyzer &bull; card data from Scryfall &bull; analysis by Google Gemini</p>
-    </footer>
+        <footer class="no-print" style="padding:22px;text-align:center;font-size:12px;color:var(--txt3)">
+            MTG Deck Analyzer <span style="opacity:.7">v{{ app_version }}</span> &bull; card data from Scryfall &bull; analysis by Google Gemini
+        </footer>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="snackbar no-print">
+        <span class="ms" style="font-size:20px;color:var(--teal)">check_circle</span>
+        <span style="font-size:14px">{{ message }}</span>
+    </div>
+    {% endfor %}
+    {% endif %}
 </body>
 </html>

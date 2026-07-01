@@ -3,130 +3,144 @@
 {% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-    <div>
-        <nav class="text-sm text-slate-400">
-            <a href="/" class="hover:underline">Decks</a>
-            <span class="px-1">/</span>
-            <span>{{ deck.name }}</span>
-        </nav>
-        <h1 class="text-3xl font-bold">{{ deck.name }}</h1>
-        <div class="mt-2 flex flex-wrap gap-2">
-            {% include "partials/status_badge.html" with deck=deck %}
-            <span class="badge badge-primary">{{ deck.deck_type }}</span>
-            <span class="badge badge-neutral">{{ lang_display }}</span>
-        </div>
-    </div>
-    <div class="flex gap-3">
-        <a href="{% url 'edit_deck' deck.id %}" class="btn-outline">
-            <i class="fa-solid fa-pen" aria-hidden="true"></i>
-            Edit
-        </a>
-        {% url 'reanalyze_deck' deck.id as reanalyze_url %}
-        {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the analysis for this deck?" trigger_label="Re-run analysis" trigger_icon="fa-solid fa-rotate" confirm_label="Re-run analysis" confirm_icon="fa-solid fa-rotate" %}
-        <a href="/decks/{{ deck.id }}/pdf" class="btn-outline">
-            <i class="fa-solid fa-download" aria-hidden="true"></i>
-            Download PDF
-        </a>
-        {% url 'delete_deck' deck.id as delete_url %}
-        {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck?" trigger_label="Delete" trigger_icon="fa-solid fa-trash" trigger_class="btn-outline" confirm_label="Delete" confirm_icon="fa-solid fa-trash" confirm_class="btn-danger" %}
-    </div>
-</div>
+<div class="page-narrow" data-screen-label="Deck detail" style="max-width:1180px">
+    <a href="{% url 'index' %}" class="link-back no-print" style="margin-bottom:18px">
+        <span class="ms" style="font-size:18px">arrow_back</span>All decks
+    </a>
 
-<div class="surface mb-6 grid grid-cols-1 divide-y divide-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-    <div class="p-5">
-        <div class="text-sm text-slate-400">Total cards</div>
-        <div class="text-3xl font-semibold text-indigo-400">{{ deck.total_cards }}</div>
-    </div>
-    <div class="p-5">
-        <div class="text-sm text-slate-400">Estimated value</div>
-        <div class="text-3xl font-semibold">
-            {% if deck.total_value_eur > 0 %}€{{ deck.total_value_eur|floatformat:2 }}{% else %}—{% endif %}
-        </div>
-        <div class="text-xs text-slate-500">Cardmarket</div>
-    </div>
-    <div class="p-5">
-        <div class="text-sm text-slate-400">Average CMC</div>
-        <div class="text-3xl font-semibold">{{ deck.avg_cmc|floatformat:2 }}</div>
-        <div class="text-xs text-slate-500">non-lands</div>
-    </div>
-</div>
-
-{% if analysis_html %}
-<div class="panel mb-6">
-    <h2 class="text-xl font-semibold">Deck Strategy &amp; Analysis</h2>
-    <div class="analysis mt-2 max-w-none text-slate-200">{{ analysis_html | safe }}</div>
-</div>
-{% endif %}
-
-<h2 class="mb-4 text-2xl font-bold">Card List</h2>
-{% for category in categories %}
-<section class="mb-6">
-    <h3 class="mb-3 text-lg font-semibold">
-        {{ category.label }}
-        <span class="badge badge-neutral text-sm">{{ category.count }}</span>
-    </h3>
-    <div class="grid gap-4 md:grid-cols-2">
-        {% for card in category.cards %}
-        <div class="surface flex overflow-hidden">
-            <div class="flex shrink-0 gap-1 p-2">
-                {% for img in card.images %}
-                <button
-                    type="button"
-                    class="cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-                    hx-get="{% url 'card_image_modal' %}?name={{ img.name|urlencode }}"
-                    hx-target="#card-image-modal-container"
-                    hx-swap="innerHTML"
-                    aria-label="Enlarge card image"
-                >
-                    <img src="{{ img.url }}" alt="card image" class="h-auto w-24 self-start rounded transition-transform hover:scale-105" loading="lazy" />
-                </button>
-                {% endfor %}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px">
+        <div>
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+                {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
+                <span style="font-size:12.5px;color:var(--txt3);margin-left:2px">{{ lang_display }}</span>
             </div>
-            <div class="flex flex-col gap-2 p-3">
-                {% for face in card.faces %}
+            <h1 class="font-cinzel" style="font-weight:600;font-size:32px;margin:0 0 11px;letter-spacing:.02em">{{ deck.name }}</h1>
+            <span class="chip">{{ deck.deck_type }}</span>
+        </div>
+        <div class="no-print" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line btn-sm">
+                <span class="ms" style="font-size:18px">edit</span>Edit
+            </a>
+            {% url 'reanalyze_deck' deck.id as reanalyze_url %}
+            {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the AI analysis for this deck? The deck goes back to “Analyzing” while it runs." trigger_label="Re-analyze" trigger_icon="autorenew" %}
+            <a href="{% url 'deck_pdf' deck.id %}" class="btn btn-line btn-sm">
+                <span class="ms" style="font-size:18px">picture_as_pdf</span>Export PDF
+            </a>
+            {% url 'delete_deck' deck.id as delete_url %}
+            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn-danger" danger=True %}
+        </div>
+    </div>
+
+    <div class="detail-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:22px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+
+            {% if analysis_html %}
+            <div class="panel-card" style="background:linear-gradient(180deg,rgba(124,92,255,.05),var(--panel2));overflow:hidden">
+                <div style="display:flex;align-items:center;gap:9px;padding:16px 18px;border-bottom:1px solid var(--line2)">
+                    <span class="ms" style="color:var(--violet2);font-size:21px">auto_awesome</span>
+                    <span style="font-weight:600;font-size:15px;letter-spacing:.04em">AI Analysis</span>
+                </div>
+                <div style="padding:20px 18px">
+                    <div class="analysis">{{ analysis_html|safe }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="panel-card" style="overflow:hidden">
+                <div style="display:flex;align-items:center;gap:9px;padding:16px 18px;border-bottom:1px solid var(--line2)">
+                    <span class="ms" style="color:var(--txt2);font-size:20px">playing_cards</span>
+                    <span style="font-weight:600;font-size:15px">Cards</span>
+                    <span style="font-size:12px;color:var(--txt3)">{{ deck.total_cards }}</span>
+                </div>
                 <div>
-                    <div class="flex items-baseline justify-between gap-2">
-                        <span class="font-semibold">
-                            {% if forloop.first %}{{ card.quantity }}x {% endif %}{{ face.name }}
-                        </span>
-                        {% if face.mana_cost %}
-                        <span class="text-sm text-slate-400">{{ face.mana_cost }}</span>
-                        {% endif %}
+                    {% for group in card_groups %}
+                    <div class="group-head">
+                        <span style="width:9px;height:9px;border-radius:50%;background:{{ group.hex }}"></span>
+                        <span style="font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt2)">{{ group.label }}</span>
+                        <span class="font-mono2" style="font-weight:700;font-size:11px;color:var(--txt3)">{{ group.count }}</span>
                     </div>
-                    {% if forloop.first %}
-                        {% if card.text_source == 'machine' %}
-                        <div class="mt-1">
-                            <span class="badge badge-warning" title="Rules text machine-translated by Gemini (not official)">Auto-translated</span>
-                        </div>
-                        {% elif card.text_source == 'english' %}
-                        <div class="mt-1">
-                            <span class="badge badge-neutral" title="No official localization available; showing English text">English text</span>
-                        </div>
+                    {% for c in group.cards %}
+                    <button
+                        type="button"
+                        class="card-row"
+                        {% if c.image_name %}
+                        hx-get="{% url 'card_image_modal' %}?name={{ c.image_name|urlencode }}"
+                        hx-target="#card-image-modal-container"
+                        hx-swap="innerHTML"
                         {% endif %}
-                    {% endif %}
-                    {% if face.type_line %}
-                    <div class="text-xs italic text-slate-400">{{ face.type_line }}</div>
-                    {% endif %}
-                    {% if face.rules_text %}
-                    <div class="mt-1 whitespace-pre-line text-sm text-slate-300">{{ face.rules_text }}</div>
-                    {% endif %}
+                        title="View card"
+                    >
+                        <div class="card-thumb">
+                            {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />{% endif %}
+                            <span class="font-mono2" style="position:absolute;top:4px;left:4px;min-width:19px;height:19px;padding:0 5px;border-radius:100px;background:rgba(10,11,16,.82);font-weight:700;font-size:11px;color:var(--txt);display:flex;align-items:center;justify-content:center">{{ c.quantity }}×</span>
+                            {% if c.image %}<span class="ms" style="position:absolute;right:4px;bottom:4px;font-size:15px;color:var(--txt2);background:rgba(10,11,16,.72);border-radius:6px;padding:2px">zoom_in</span>{% endif %}
+                        </div>
+                        <div style="flex:1;min-width:0">
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                <span style="font-weight:600;font-size:14.5px">{{ c.name }}</span>
+                                <span style="font-size:11px;color:{{ c.type_hex }};border:1px solid var(--line2);padding:2px 7px;border-radius:100px">{{ c.type }}</span>
+                                {% if c.text_source == 'machine' %}<span style="font-size:10px;color:var(--gold);border:1px solid rgba(232,182,76,.3);padding:2px 6px;border-radius:100px" title="Rules text machine-translated by Gemini">auto-translated</span>{% endif %}
+                            </div>
+                            {% if c.oracle %}<div style="font-size:12.5px;color:var(--txt3);font-weight:300;line-height:1.45;margin-top:4px;max-width:560px;white-space:pre-line">{{ c.oracle }}</div>{% endif %}
+                        </div>
+                        <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+                            <span class="mv-badge">{{ c.mv }}</span>
+                            {% if c.price > 0 %}<span class="font-mono2" style="font-weight:700;font-size:13px;color:var(--gold)">€{{ c.price|floatformat:2 }}</span>{% endif %}
+                        </div>
+                    </button>
+                    {% endfor %}
+                    {% endfor %}
                 </div>
-                {% endfor %}
-                {% if card.price > 0 %}
-                <div class="mt-auto text-sm text-slate-400">
-                    €{{ card.price|floatformat:2 }}
-                    {% if card.quantity > 1 %}
-                    <span class="text-xs text-slate-500">(€{{ card.total_price|floatformat:2 }} tot)</span>
-                    {% endif %}
-                </div>
-                {% endif %}
             </div>
         </div>
-        {% endfor %}
+
+        <div class="detail-sidebar" style="display:flex;flex-direction:column;gap:16px;position:sticky;top:78px">
+            {% if value_stats.total > 0 %}
+            <div class="panel-card" style="padding:18px">
+                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:14px">Value</div>
+                <div class="font-mono2" style="font-weight:700;font-size:30px;color:var(--gold)">€{{ value_stats.total|floatformat:2 }}</div>
+                <div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2);font-size:13px">
+                    <span style="color:var(--txt3)">Avg / card</span><span class="font-mono2" style="font-weight:700;font-size:13px">€{{ value_stats.avg|floatformat:2 }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:13px">
+                    <span style="color:var(--txt3)">Most expensive</span><span class="font-mono2" style="font-weight:700;font-size:13px">€{{ value_stats.max|floatformat:2 }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="panel-card" style="padding:18px">
+                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:16px">Mana curve</div>
+                <div style="display:flex;align-items:flex-end;gap:7px;height:120px">
+                    {% for b in mana_curve %}
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
+                        <span class="font-mono2" style="font-weight:700;font-size:11px;color:var(--txt2)">{{ b.count }}</span>
+                        <div style="width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--violet2),var(--violet));min-height:3px;height:{{ b.pct }}%"></div>
+                        <span class="font-mono2" style="font-size:11px;color:var(--txt3)">{{ b.label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div style="text-align:center;font-size:11px;color:var(--txt3);margin-top:10px">Avg CMC {{ deck.avg_cmc|floatformat:2 }} · non-lands</div>
+            </div>
+
+            <div class="panel-card" style="padding:18px">
+                <div style="font-weight:600;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);margin-bottom:16px">Card types</div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                    {% for t in type_bars %}
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+                            <span style="color:var(--txt2)">{{ t.label }}</span>
+                            <span class="font-mono2" style="font-weight:700;font-size:12px;color:var(--txt3)">{{ t.count }}</span>
+                        </div>
+                        <div style="height:7px;border-radius:100px;background:#0c0e15;overflow:hidden">
+                            <div style="height:100%;border-radius:100px;background:{{ t.hex }};width:{{ t.pct }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>
-</section>
-{% endfor %}
+</div>
 
 {# HTMX target: the card-image zoom modal is fetched and swapped in here on click. #}
 <div id="card-image-modal-container"></div>

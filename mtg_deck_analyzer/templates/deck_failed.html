@@ -3,38 +3,30 @@
 {% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-2xl">
-    <nav class="mb-6 text-sm text-slate-400">
-        <a href="{% url 'index' %}" class="hover:underline">Decks</a>
-        <span class="px-1">/</span>
-        <span>{{ deck.name }}</span>
-    </nav>
+<div class="page-narrow" style="max-width:640px">
+    <a href="{% url 'index' %}" class="link-back" style="margin-bottom:18px">
+        <span class="ms" style="font-size:18px">arrow_back</span>All decks
+    </a>
 
-    <div class="panel text-center">
-        <div class="mb-4 text-4xl text-rose-400">
-            <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+    <div class="panel-card" style="padding:32px;text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(208,90,62,.12);border:1px solid rgba(208,90,62,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+            <span class="ms" style="font-size:28px;color:var(--danger)">error</span>
         </div>
-        <h1 class="text-2xl font-bold">Analysis failed</h1>
-        <p class="mt-2 text-slate-400">
-            We couldn’t finish analyzing <span class="font-semibold">{{ deck.name }}</span>.
+        <h1 class="font-cinzel" style="font-weight:600;font-size:24px;margin:0 0 8px">Analysis failed</h1>
+        <p style="color:var(--txt2);font-weight:300;margin:0 0 18px">
+            We couldn’t finish analyzing <span style="color:var(--txt);font-weight:500">{{ deck.name }}</span>.
         </p>
         {% if deck.error %}
-        <div role="alert" class="alert alert-error mt-4 text-left">{{ deck.error }}</div>
+        <div class="alert alert-error" style="text-align:left;margin-bottom:18px">{{ deck.error }}</div>
         {% endif %}
-        <div class="mt-6 flex justify-center gap-3">
-            <form method="post" action="{% url 'reanalyze_deck' deck.id %}">
+        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
+            <form method="post" action="{% url 'reanalyze_deck' deck.id %}" style="margin:0">
                 {% csrf_token %}
-                <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-                    Try again
-                </button>
+                <button type="submit" class="btn btn-grad"><span class="ms" style="font-size:20px">autorenew</span>Try again</button>
             </form>
-            <a href="{% url 'edit_deck' deck.id %}" class="btn-outline">
-                <i class="fa-solid fa-pen" aria-hidden="true"></i>
-                Edit
-            </a>
+            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line"><span class="ms" style="font-size:18px">edit</span>Edit</a>
             {% url 'delete_deck' deck.id as delete_url %}
-            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck?" trigger_label="Delete" trigger_icon="fa-solid fa-trash" confirm_label="Delete" confirm_icon="fa-solid fa-trash" confirm_class="btn-danger" %}
+            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>
     </div>
 </div>

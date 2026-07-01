@@ -3,91 +3,67 @@
 {% block title %}Edit {{ deck.name }} — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-3xl">
-    <nav class="mb-6 text-sm text-slate-400">
-        <a href="{% url 'index' %}" class="hover:underline">Decks</a>
-        <span class="px-1">/</span>
-        <a href="{% url 'deck_detail' deck.id %}" class="hover:underline">{{ deck.name }}</a>
-        <span class="px-1">/</span>
-        <span class="text-slate-300">Edit</span>
-    </nav>
+<div class="page-narrow" data-screen-label="Deck editor">
+    <a href="{% url 'deck_detail' deck.id %}" class="link-back" style="margin-bottom:18px">
+        <span class="ms" style="font-size:18px">arrow_back</span>Cancel
+    </a>
+    <div class="kicker">Edit deck</div>
+    <h1 class="font-cinzel" style="font-weight:600;font-size:32px;margin:7px 0 24px;letter-spacing:.02em">{{ deck.name }}</h1>
 
-    <header class="mb-8">
-        <h1 class="text-3xl font-bold tracking-tight">Edit deck</h1>
-        <p class="mt-2 max-w-2xl text-slate-400">
-            Update the deck details. If you change the decklist or language, the
-            analysis is re-run automatically.
-        </p>
-    </header>
-
-    <div class="panel">
-        <form
-            method="post"
-            action="{% url 'update_deck' deck.id %}"
-            class="flex flex-col gap-5"
-        >
-            {% csrf_token %} {% if error %}
-            <div role="alert" class="alert alert-error">
-                {{ error }}
+    <form method="post" action="{% url 'update_deck' deck.id %}">
+        {% csrf_token %}
+        <div class="editor-grid" style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+                {% if error %}<div class="alert alert-error"><span class="ms" style="font-size:16px">error</span>{{ error }}</div>{% endif %}
+                <div>
+                    <label class="field-label" style="margin-bottom:8px">Deck name</label>
+                    <input type="text" name="name" value="{{ form_name }}" placeholder="e.g. Izzet Spellslinger"
+                        class="field" style="font-size:16px;font-weight:500" required />
+                </div>
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                        <label class="field-label">Card list</label>
+                    </div>
+                    <textarea name="decklist" spellcheck="false" class="field" style="min-height:340px"
+                        placeholder="1 Sol Ring&#10;4 Lightning Bolt&#10;2 Counterspell&#10;…" required>{{ form_decklist }}</textarea>
+                    <div style="font-size:12px;color:var(--txt3);margin-top:8px;font-weight:300">
+                        One card per line, Moxfield style: <span class="font-mono2" style="color:var(--txt2)">quantity name</span>.
+                        Images and prices are pulled from Scryfall automatically.
+                    </div>
+                </div>
             </div>
-            {% endif %}
 
-            <label class="form-control">
-                <span class="form-label">Deck name</span>
-                <input
-                    type="text"
-                    name="name"
-                    value="{{ form_name }}"
-                    placeholder="My Simic Ramp"
-                    class="form-input w-full"
-                    required
-                />
-            </label>
+            <div class="editor-sidebar" style="display:flex;flex-direction:column;gap:16px;position:sticky;top:78px">
+                <div class="panel-card" style="background:linear-gradient(180deg,rgba(124,92,255,.06),var(--panel2));padding:18px">
+                    <div style="display:flex;align-items:center;gap:7px;font-weight:600;font-size:12.5px;letter-spacing:.06em;color:var(--violet2);margin-bottom:12px">
+                        <span class="ms" style="font-size:18px">auto_awesome</span>AI DETECTED TYPE
+                    </div>
+                    <div class="font-cinzel" style="font-weight:600;font-size:20px;color:var(--txt)">{{ deck.deck_type }}</div>
+                    <div style="font-size:12.5px;color:var(--txt3);font-weight:300;margin-top:6px;line-height:1.5">
+                        Changing the card list or language re-runs the analysis and may refine this type.
+                    </div>
+                </div>
 
-            <label class="form-control">
-                <span class="form-label">Decklist</span>
-                <span class="text-xs text-slate-500">
-                    One card per line, e.g.
-                    <code class="rounded bg-slate-700 px-1 py-0.5"
-                        >1 Llanowar Elves</code
-                    >.
-                </span>
-                <textarea
-                    name="decklist"
-                    rows="14"
-                    class="form-input mt-1 w-full resize-none font-mono text-sm"
-                    placeholder="1 Aid from the Cowl&#10;1 Apex Devastator&#10;15 Forest"
-                    required
-                >{{ form_decklist }}</textarea>
-            </label>
-
-            <div class="flex flex-col gap-3 border-t border-slate-700 pt-5">
-                <div class="flex flex-wrap items-end gap-4">
-                    <label class="form-control w-1/3">
-                        <span class="form-label">Language</span>
-                        <select name="lang" class="form-input w-full">
+                <div class="panel-card" style="padding:18px">
+                    <label class="field-label" style="margin-bottom:9px">Analysis language</label>
+                    <div class="select-wrap">
+                        <select name="lang" class="field">
                             {% for code, label in languages.items %}
                             <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
-                    </label>
-
-                    <div class="ml-auto flex gap-3">
-                        <a href="{% url 'deck_detail' deck.id %}" class="btn-outline">
-                            Cancel
-                        </a>
-                        <button type="submit" class="btn-primary">
-                            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-                            Save changes
-                        </button>
+                        <span class="ms">expand_more</span>
                     </div>
                 </div>
-                <p class="text-xs text-slate-500">
-                    Changing the decklist or language can take a minute or two to
-                    re-analyze (Scryfall rate limits).
-                </p>
+
+                <button type="submit" class="btn btn-grad btn-block">
+                    <span class="ms" style="font-size:20px">save</span>Save changes
+                </button>
+                <div style="font-size:12px;color:var(--txt3);font-weight:300;text-align:center;line-height:1.5">
+                    Changing the card list or language can take a minute or two to re-analyze.
+                </div>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 {% endblock %}

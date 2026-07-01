@@ -2,6 +2,8 @@
 The deck-list region. While any deck is still being analyzed it polls itself via
 HTMX (`hx-get` on the index, swapping its own outer HTML) every few seconds; once
 nothing is processing the re-rendered region drops the trigger and polling stops.
+
+Each deck is annotated by the view with `.pips` (a list of {letter, hex}).
 {% endcomment %}
 <div
     id="deck-list-region"
@@ -12,39 +14,54 @@ nothing is processing the re-rendered region drops the trigger and polling stops
     {% endif %}
 >
     {% if decks %}
-    <ul id="deck-list" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="deck-grid">
         {% for deck in decks %}
-        <li id="deck-{{ deck.id }}" class="surface flex items-center justify-between gap-2 p-4">
-            {% if deck.status == 'pending' or deck.status == 'processing' %}
-            <div class="flex-1">
-                <div class="font-semibold">{{ deck.name }}</div>
-                <div class="mt-0.5 text-sm text-slate-400">
+        {% if deck.status == 'pending' or deck.status == 'processing' %}
+        <div class="deck-card" style="cursor:default">
+            <div class="pip-bar">{% for pip in deck.pips %}<div style="flex:1;background:{{ pip.hex }}"></div>{% endfor %}</div>
+            <div style="padding:17px 18px 16px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+                    <div class="font-cinzel" style="font-weight:600;font-size:18px;line-height:1.2">{{ deck.name }}</div>
                     {% include "partials/status_badge.html" with deck=deck %}
                 </div>
+                <div style="font-size:12.5px;color:var(--txt3)">The AI is analyzing this deck…</div>
             </div>
-            {% else %}
-            <a href="{% url 'deck_detail' deck.id %}" class="flex-1">
-                <div class="font-semibold">{{ deck.name }}</div>
-                <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-400">
+        </div>
+        {% else %}
+        <a href="{% url 'deck_detail' deck.id %}" class="deck-card">
+            <div class="pip-bar">{% for pip in deck.pips %}<div style="flex:1;background:{{ pip.hex }}"></div>{% endfor %}</div>
+            <div style="padding:17px 18px 16px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+                    <div class="font-cinzel" style="font-weight:600;font-size:18px;line-height:1.2">{{ deck.name }}</div>
                     {% include "partials/status_badge.html" with deck=deck %}
-                    {% if deck.status == 'ready' %}
-                    <span class="badge badge-neutral">{{ deck.deck_type }}</span>
-                    {{ deck.total_cards }} cards
-                    {% if deck.total_value_eur > 0 %}&bull; €{{ deck.total_value_eur|floatformat:2 }}{% endif %}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+                    <span class="chip">{{ deck.deck_type }}</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding-top:13px;border-top:1px solid var(--line2)">
+                    <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)">
+                        <span class="ms" style="font-size:17px;color:var(--txt3)">playing_cards</span>{{ deck.total_cards }} cards
+                    </div>
+                    {% if deck.total_value_eur > 0 %}
+                    <div class="font-mono2" style="font-weight:700;font-size:15px;color:var(--gold)">€{{ deck.total_value_eur|floatformat:2 }}</div>
                     {% endif %}
                 </div>
-            </a>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <div class="surface p-8 text-center text-slate-400">
-        {% if query %}
-        No decks match “{{ query }}”.
-        {% else %}
-        No decks yet. <a href="{% url 'new_deck' %}" class="text-indigo-400 hover:underline">Create your first deck</a>.
+                <div style="font-size:11px;color:var(--txt3);margin-top:9px">Updated {{ deck.created_at|timesince }} ago</div>
+            </div>
+        </a>
         {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:70px 20px;color:var(--txt3)">
+        <span class="ms" style="font-size:44px;opacity:.5">{% if query %}search_off{% else %}style{% endif %}</span>
+        <div style="margin-top:12px;font-size:15px">
+            {% if query %}
+            No decks match “{{ query }}”.
+            {% else %}
+            No decks yet. <a href="{% url 'new_deck' %}" style="color:var(--violet2);text-decoration:none">Create your first deck</a>.
+            {% endif %}
+        </div>
     </div>
     {% endif %}
 </div>

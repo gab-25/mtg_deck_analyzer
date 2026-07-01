@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import tempfile
 import threading
 import uuid
@@ -45,22 +46,102 @@ CATEGORY_LABELS = {
     "Other": "Other",
 }
 
+# WUBRG pip colors and per-category accent colors, mirroring the design mockup.
+COLOR_HEX = {
+    "W": "#f3ecd2",
+    "U": "#4b8fd6",
+    "B": "#7c6f86",
+    "R": "#d05a3e",
+    "G": "#4c9e6a",
+    "C": "#b7b0a8",
+}
+TYPE_HEX = {
+    "Creature": "#8fd08f",
+    "Instant": "#7fb6e0",
+    "Sorcery": "#c79be0",
+    "Land": "#d6c08a",
+    "Artifact": "#b7b0a8",
+    "Enchantment": "#e0a8c8",
+    "Planeswalker": "#e8b64c",
+    "Battle": "#d05a3e",
+    "Other": "#b7b0a8",
+}
 
-def _resolved_api_key() -> str | None:
-    return os.environ.get("GEMINI_API_KEY")
+_MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
 
 
-def _default_lang() -> str:
-    return normalize_lang(os.environ.get("DEFAULT_LANG", DEFAULT_LANG))
+def _deck_pips(stored_cards: list) -> list:
+    """Derives the deck's color identity from its cards' mana costs.
+
+    Colors aren't stored on cards, so we scan the mana symbols of every face and
+    collect the distinct WUBRG letters, returned in canonical WUBRG order. Falls
+    back to a single colorless pip for lands-only / artifact decks.
+    """
+    found = set()
+    for item in stored_cards:
+        for face in item.get("data", {}).get("faces", []):
+            for symbol in _MANA_SYMBOL_RE.findall(face.get("mana_cost", "") or ""):
+                for ch in symbol:
+                    if ch in "WUBRG":
+                        found.add(ch)
+    order = [c for c in "WUBRG" if c in found] or ["C"]
+    return [{"letter": c, "hex": COLOR_HEX[c]} for c in order]
 
 
-def _build_categories(stored_cards: list) -> list:
-    """Groups stored cards by category into a template-friendly structure."""
+def _mana_curve(stored_cards: list) -> list:
+    """Buckets non-land cards by mana value (0–6, then 7+), weighted by quantity."""
+    buckets = [0] * 8  # indices 0..6 exact, 7 => "7+"
+    for item in stored_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        idx = min(int(data.get("cmc", 0) or 0), 7)
+        buckets[idx] += item["quantity"]
+    peak = max(buckets) or 1
+    labels = ["0", "1", "2", "3", "4", "5", "6", "7+"]
+    return [
+        {"label": labels[i], "count": buckets[i], "pct": round(buckets[i] / peak * 100)}
+        for i in range(8)
+    ]
+
+
+def _type_bars(category_counts: dict) -> list:
+    """Turns the stored category counts into proportional bars for the sidebar."""
+    total = sum(category_counts.values()) or 1
+    bars = []
+    for cat in CATEGORY_ORDER:
+        count = category_counts.get(cat, 0)
+        if not count:
+            continue
+        bars.append(
+            {
+                "label": CATEGORY_LABELS.get(cat, cat),
+                "count": count,
+                "hex": TYPE_HEX.get(cat, "#b7b0a8"),
+                "pct": round(count / total * 100),
+            }
+        )
+    return bars
+
+
+def _value_stats(stored_cards: list, total_value: float) -> dict:
+    """Value summary for the sidebar: total, average per card and most expensive."""
+    prices = [item["data"].get("price_eur", 0.0) for item in stored_cards]
+    total_cards = sum(item["quantity"] for item in stored_cards) or 1
+    return {
+        "total": total_value,
+        "avg": total_value / total_cards,
+        "max": max(prices) if prices else 0.0,
+    }
+
+
+def _detail_card_groups(stored_cards: list) -> list:
+    """Groups cards by category into row view-models for the deck detail page."""
     grouped = {cat: [] for cat in CATEGORY_ORDER}
     for item in stored_cards:
         grouped[classify_card(item["data"])].append(item)
 
-    categories = []
+    groups = []
     for cat in CATEGORY_ORDER:
         items = grouped[cat]
         if not items:
@@ -68,31 +149,44 @@ def _build_categories(stored_cards: list) -> list:
         cards = []
         for item in items:
             data = item["data"]
-            qty = item["quantity"]
+            faces = data.get("faces", [])
+            oracle = "\n".join(
+                f.get("rules_text", "") for f in faces if f.get("rules_text")
+            )
+            urls = image_urls(data)
+            paths = data.get("image_paths", [])
             price = data.get("price_eur", 0.0)
             cards.append(
                 {
-                    "quantity": qty,
+                    "name": data.get("name", ""),
+                    "type": cat,
+                    "type_hex": TYPE_HEX.get(cat, "#b7b0a8"),
+                    "mv": int(data.get("cmc", 0) or 0),
+                    "oracle": oracle,
                     "price": price,
-                    "total_price": price * qty,
-                    "images": [
-                        {"url": url, "name": name}
-                        for url, name in zip(
-                            image_urls(data), data.get("image_paths", [])
-                        )
-                    ],
-                    "faces": data.get("faces", []),
+                    "quantity": item["quantity"],
+                    "image": urls[0] if urls else "",
+                    "image_name": paths[0] if paths else "",
                     "text_source": data.get("text_source"),
                 }
             )
-        categories.append(
+        groups.append(
             {
                 "label": CATEGORY_LABELS.get(cat, cat),
+                "hex": TYPE_HEX.get(cat, "#b7b0a8"),
                 "count": sum(i["quantity"] for i in items),
                 "cards": cards,
             }
         )
-    return categories
+    return groups
+
+
+def _resolved_api_key() -> str | None:
+    return os.environ.get("GEMINI_API_KEY")
+
+
+def _default_lang() -> str:
+    return normalize_lang(os.environ.get("DEFAULT_LANG", DEFAULT_LANG))
 
 
 def _create_context(**extra) -> dict:
@@ -173,16 +267,34 @@ def _start_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str |
 @require_http_methods(["GET"])
 def index(request):
     query = (request.GET.get("q") or "").strip()
-    decks = Deck.objects.order_by("-created_at")
+    decks = list(Deck.objects.order_by("-created_at"))
     if query:
-        decks = decks.filter(name__icontains=query)
+        needle = query.lower()
+        decks = [d for d in decks if needle in d.name.lower()]
+
+    # Annotate each deck with its color pips for the list cards.
+    for deck in decks:
+        deck.pips = _deck_pips(deck.cards or [])
 
     # Whether any listed deck is still being analyzed; drives the HTMX polling.
-    has_processing = decks.filter(
-        status__in=[Deck.Status.PENDING, Deck.Status.PROCESSING]
-    ).exists()
+    has_processing = any(
+        d.status in {Deck.Status.PENDING, Deck.Status.PROCESSING} for d in decks
+    )
 
-    context = {"decks": decks, "query": query, "has_processing": has_processing}
+    # Library-wide stats for the header cards (independent of the search filter).
+    all_decks = Deck.objects.all()
+    stat_total = all_decks.count()
+    stat_analyzed = all_decks.filter(status=Deck.Status.READY).count()
+    stat_value = sum(d.total_value_eur for d in all_decks)
+
+    context = {
+        "decks": decks,
+        "query": query,
+        "has_processing": has_processing,
+        "stat_total": stat_total,
+        "stat_analyzed": stat_analyzed,
+        "stat_value": stat_value,
+    }
     # HTMX poll: return just the list region so it can swap itself in place.
     template = "partials/deck_list.html" if request.htmx else "index.html"
     return render(request, template, context)
@@ -246,14 +358,19 @@ def deck_detail(request, deck_id: uuid.UUID):
             deck.analysis_md, extensions=["extra", "sane_lists"]
         )
 
+    stored_cards = deck.cards or []
     return render(
         request,
         "deck.html",
         {
             "deck": deck,
             "lang_display": LANG_DISPLAY_NAMES.get(deck.lang, deck.lang),
-            "categories": _build_categories(deck.cards or []),
             "analysis_html": analysis_html,
+            "pips": _deck_pips(stored_cards),
+            "card_groups": _detail_card_groups(stored_cards),
+            "mana_curve": _mana_curve(stored_cards),
+            "type_bars": _type_bars(deck.category_counts or {}),
+            "value_stats": _value_stats(stored_cards, deck.total_value_eur),
         },
     )
 

@@ -74,7 +74,7 @@ def test_login_page_renders(client):
 def test_index_renders(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert "Your decks" in r.content.decode()
+    assert "Your Decks" in r.content.decode()
 
 
 @pytest.mark.django_db
@@ -116,7 +116,7 @@ def test_create_view_and_delete_deck(client):
     assert detail.status_code == 200
     body = detail.content.decode()
     assert "Mono Green" in body
-    assert "Card List" in body
+    assert "Cards" in body
     assert "Lands" in body
     # The analysis Markdown is rendered to HTML.
     assert "Overview" in body
@@ -389,4 +389,4 @@ def test_machine_translation_badge_shown(client):
 
     r = client.get(f"/decks/{deck.id}")
     assert r.status_code == 200
-    assert "Auto-translated" in r.content.decode()
+    assert "auto-translated" in r.content.decode()
