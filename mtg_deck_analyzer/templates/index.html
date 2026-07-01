@@ -1,29 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-2xl font-bold">Your decks</h1>
-    <form method="get" action="{% url 'index' %}" class="flex items-center gap-2">
-        <input
-            type="search"
-            name="q"
-            value="{{ query }}"
-            placeholder="Search decks…"
-            class="form-input w-56"
-            autofocus
-        />
-        <button type="submit" class="btn-outline">
-            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            Search
-        </button>
-        {% if query %}
-        <a href="{% url 'index' %}" class="btn-ghost">
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-            Clear
-        </a>
-        {% endif %}
-    </form>
-</div>
+<div class="page" data-screen-label="Home">
+    <div class="flex items-end justify-between gap-5 flex-wrap mb-6">
+        <div>
+            <div class="kicker">Collection</div>
+            <h1 class="font-cinzel font-semibold text-[34px] mt-[7px] mb-1.5 tracking-[.03em]">Your Decks</h1>
+            <p class="m-0 text-txt2 font-light text-[14.5px]">
+                {{ stat_total }} deck{{ stat_total|pluralize }} in your library
+            </p>
+        </div>
+        <form method="get" action="{% url 'index' %}" class="flex gap-[11px] items-center flex-wrap">
+            <div class="search-wrap">
+                <span class="ms">search</span>
+                <input type="search" name="q" value="{{ query }}" placeholder="Search decks" class="field" />
+            </div>
+            {% if query %}
+            <a href="{% url 'index' %}" class="btn btn-line btn-sm">
+                <span class="ms text-[18px]">close</span>Clear
+            </a>
+            {% endif %}
+            <a href="{% url 'new_deck' %}" class="btn btn-grad">
+                <span class="ms text-[20px]">add</span>New deck
+            </a>
+        </form>
+    </div>
 
-{% include "partials/deck_list.html" %}
+    <div class="home-stats grid grid-cols-3 gap-[13px] mb-[26px]">
+        <div class="stat-card">
+            <span class="ms text-[26px] text-violet2">style</span>
+            <div><div class="stat-num">{{ stat_total }}</div><div class="stat-label">Decks</div></div>
+        </div>
+        <div class="stat-card">
+            <span class="ms text-[26px] text-gold">payments</span>
+            <div><div class="stat-num text-gold">€{{ stat_value|floatformat:2 }}</div><div class="stat-label">Collection value</div></div>
+        </div>
+        <div class="stat-card">
+            <span class="ms text-[26px] text-teal">check_circle</span>
+            <div><div class="stat-num text-teal">{{ stat_analyzed }}</div><div class="stat-label">Analyzed</div></div>
+        </div>
+    </div>
+
+    {% include "partials/deck_list.html" %}
+</div>
 {% endblock %}

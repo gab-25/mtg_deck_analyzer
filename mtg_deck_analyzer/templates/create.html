@@ -3,151 +3,69 @@
 {% block title %}Create a deck — MTG Deck Analyzer{% endblock %}
 
 {% block content %}
-<div class="mx-auto max-w-5xl">
-    <nav class="mb-6 text-sm text-slate-400">
-        <a href="{% url 'index' %}" class="hover:underline">Decks</a>
-        <span class="px-1">/</span>
-        <span class="text-slate-300">Create</span>
-    </nav>
+<div class="page-narrow" data-screen-label="Deck editor">
+    <a href="{% url 'index' %}" class="link-back mb-[18px]">
+        <span class="ms text-[18px]">arrow_back</span>Cancel
+    </a>
+    <div class="kicker">New analysis</div>
+    <h1 class="font-cinzel font-semibold text-[32px] mt-[7px] mb-6 tracking-[.02em]">Analyze a deck</h1>
 
-    <header class="mb-8">
-        <h1 class="text-3xl font-bold tracking-tight">Analyze a deck</h1>
-        <p class="mt-2 max-w-2xl text-slate-400">
-            Paste a decklist and we’ll pull every card from Scryfall, then run a
-            full strategic breakdown with Google Gemini.
-        </p>
-    </header>
-
-    <div class="grid gap-6 lg:grid-cols-3">
-        <!-- Form -->
-        <div class="lg:col-span-2">
-            <div class="panel">
-                <form
-                    method="post"
-                    action="{% url 'create_deck' %}"
-                    class="flex flex-col gap-5"
-                >
-                    {% csrf_token %} {% if error %}
-                    <div role="alert" class="alert alert-error">
-                        {{ error }}
+    <form method="post" action="{% url 'create_deck' %}">
+        {% csrf_token %}
+        <div class="editor-grid grid grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
+            <div class="flex flex-col gap-5 min-w-0">
+                {% if error %}<div class="alert alert-error"><span class="ms text-[16px]">error</span>{{ error }}</div>{% endif %}
+                <div>
+                    <label class="field-label mb-2">Deck name</label>
+                    {# font-size/weight override .field's own font (unlayered), so they stay inline. #}
+                    <input type="text" name="name" value="{{ form_name }}" placeholder="e.g. Izzet Spellslinger"
+                        class="field" style="font-size:16px;font-weight:500" required />
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="field-label">Card list</label>
                     </div>
-                    {% endif %}
-
-                    <label class="form-control">
-                        <span class="form-label">Deck name</span>
-                        <input
-                            type="text"
-                            name="name"
-                            value="{{ form_name }}"
-                            placeholder="My Simic Ramp"
-                            class="form-input w-full"
-                            required
-                        />
-                    </label>
-
-                    <label class="form-control">
-                        <span class="form-label">Decklist</span>
-                        <span class="text-xs text-slate-500">
-                            One card per line, e.g.
-                            <code class="rounded bg-slate-700 px-1 py-0.5"
-                                >1 Llanowar Elves</code
-                            >.
-                        </span>
-                        <textarea
-                            name="decklist"
-                            rows="14"
-                            class="form-input mt-1 w-full resize-none font-mono text-sm"
-                            placeholder="1 Aid from the Cowl&#10;1 Apex Devastator&#10;15 Forest"
-                            required
-                        >{{ form_decklist }}</textarea>
-                    </label>
-
-                    <div
-                        class="flex flex-col gap-3 border-t border-slate-700 pt-5"
-                    >
-                        <div class="flex flex-wrap items-end gap-4">
-                            <label class="form-control w-1/3">
-                                <span class="form-label">Language</span>
-                                <select name="lang" class="form-input w-full">
-                                    {% for code, label in languages.items %}
-                                    <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
-                                    {% endfor %}
-                                </select>
-                            </label>
-
-                            <button type="submit" class="btn-primary ml-auto">
-                                <i
-                                    class="fa-solid fa-wand-magic-sparkles"
-                                    aria-hidden="true"
-                                ></i>
-                                Analyze deck
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-500">
-                            Fetching a brand-new deck can take a minute or two
-                            (Scryfall rate limits).
-                        </p>
+                    <textarea name="decklist" spellcheck="false" class="field min-h-[340px]"
+                        placeholder="1 Sol Ring&#10;4 Lightning Bolt&#10;2 Counterspell&#10;…" required>{{ form_decklist }}</textarea>
+                    <div class="text-[12px] text-txt3 mt-2 font-light">
+                        One card per line, Moxfield style: <span class="font-mono2 text-txt2">quantity name</span>.
+                        Images and prices are pulled from Scryfall automatically.
                     </div>
-                </form>
+                </div>
+            </div>
+
+            <div class="editor-sidebar flex flex-col gap-4 sticky top-[78px]">
+                {# The gradient overrides .panel-card's default background (unlayered), so it stays inline. #}
+                <div class="panel-card p-[18px]" style="background:linear-gradient(180deg,rgba(124,92,255,.06),var(--panel2))">
+                    <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-violet2 mb-3">
+                        <span class="ms text-[18px]">auto_awesome</span>AI ANALYSIS
+                    </div>
+                    <div class="text-[12.5px] text-txt3 font-light leading-[1.55]">
+                        On save, the deck is created as <span class="text-gold">pending</span> and the server
+                        detects the archetype, surfaces synergies and writes the full breakdown asynchronously.
+                    </div>
+                </div>
+
+                <div class="panel-card p-[18px]">
+                    <label class="field-label mb-[9px]">Analysis language</label>
+                    <div class="select-wrap">
+                        <select name="lang" class="field">
+                            {% for code, label in languages.items %}
+                            <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="ms">expand_more</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-grad btn-block">
+                    <span class="ms text-[20px]">auto_awesome</span>Analyze deck
+                </button>
+                <div class="text-[12px] text-txt3 font-light text-center leading-[1.5]">
+                    Fetching a brand-new deck can take a minute or two (Scryfall rate limits).
+                </div>
             </div>
         </div>
-
-        <!-- What happens -->
-        <aside class="flex flex-col gap-4">
-            <div class="surface p-5">
-                <h2
-                    class="text-sm font-semibold uppercase tracking-wide text-slate-400"
-                >
-                    What happens
-                </h2>
-                <ol class="mt-4 flex flex-col gap-4">
-                    <li class="flex gap-3">
-                        <span
-                            class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-slate-700 text-sm font-semibold"
-                            >1</span
-                        >
-                        <div>
-                            <div class="font-medium">Fetch cards</div>
-                            <p class="text-sm text-slate-400">
-                                Card data, prices and images are pulled from
-                                Scryfall.
-                            </p>
-                        </div>
-                    </li>
-                    <li class="flex gap-3">
-                        <span
-                            class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white"
-                            >2</span
-                        >
-                        <div>
-                            <div class="flex items-center gap-2 font-medium">
-                                Gemini analysis
-                                <span class="badge badge-primary"
-                                    >Always on</span
-                                >
-                            </div>
-                            <p class="text-sm text-slate-400">
-                                A strategic breakdown of your deck — strengths,
-                                weaknesses and play patterns.
-                            </p>
-                        </div>
-                    </li>
-                    <li class="flex gap-3">
-                        <span
-                            class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-slate-700 text-sm font-semibold"
-                            >3</span
-                        >
-                        <div>
-                            <div class="font-medium">Stats &amp; PDF</div>
-                            <p class="text-sm text-slate-400">
-                                Curve, value and category counts — exportable as
-                                a PDF.
-                            </p>
-                        </div>
-                    </li>
-                </ol>
-            </div>
-        </aside>
-    </div>
+    </form>
 </div>
 {% endblock %}

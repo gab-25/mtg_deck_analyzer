@@ -1,0 +1,18 @@
+{% comment %}
+The gradient "eye/lens" brand mark from the mockup. Include with a pixel size:
+  {% include "partials/brand_mark.html" with size=28 %}
+Each include gets a unique gradient id via `gid` so multiple marks on one page
+don't collide.
+{% endcomment %}
+<svg width="{{ size|default:32 }}" height="{{ size|default:32 }}" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+    <defs>
+        <linearGradient id="brand-{{ gid|default:size|default:'d' }}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a78bff" />
+            <stop offset="1" stop-color="#3dd0b5" />
+        </linearGradient>
+    </defs>
+    <path d="M20 4 C31 4 38 20 38 20 C38 20 31 36 20 36 C9 36 2 20 2 20 C2 20 9 4 20 4 Z"
+        stroke="url(#brand-{{ gid|default:size|default:'d' }})" stroke-width="2.4" fill="rgba(124,92,255,.08)" />
+    <circle cx="20" cy="20" r="6.4" fill="url(#brand-{{ gid|default:size|default:'d' }})" />
+    <circle cx="20" cy="20" r="2.4" fill="#0a0b10" />
+</svg>

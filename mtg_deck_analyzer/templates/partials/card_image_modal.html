@@ -1,19 +1,23 @@
 {% comment %}
 Zoom-modal fragment served over HTMX and swapped into #card-image-modal-container
-on the deck view. It's a full-screen CSS overlay (no inline JS): clicking anywhere
-on it hx-gets this same endpoint with no name, which returns an empty body and so
-clears the container — closing the modal.
+on the deck view. It's a full-screen CSS overlay (no inline JS): clicking the
+backdrop or the Close button hx-gets this same endpoint with no name, which
+returns an empty body and so clears the container — closing the modal.
 {% endcomment %}
 <div
     id="card-image-modal"
-    class="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/70 p-4"
+    class="no-print fixed inset-0 z-[75] flex items-center justify-center p-8 cursor-zoom-out bg-[rgba(6,7,11,.8)] backdrop-blur-[6px]"
     hx-get="{% url 'card_image_modal' %}"
     hx-target="#card-image-modal-container"
     hx-swap="innerHTML"
 >
-    <img
-        src="{{ image_url }}"
-        alt="card image"
-        class="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl"
-    />
+    <div class="flex flex-col items-center gap-4" style="animation:fadeup .28s ease both">
+        <div class="relative w-[340px] max-w-[80vw] aspect-[488/680] rounded-[18px] overflow-hidden bg-[#0c0e15] border border-line" style="box-shadow:0 40px 100px -30px rgba(0,0,0,.9),0 0 60px -18px rgba(124,92,255,.5)">
+            <img src="{{ image_url }}" alt="card image" class="relative w-full h-full object-cover block" />
+        </div>
+        <button type="button"
+            class="flex items-center gap-1.5 bg-[rgba(255,255,255,.06)] text-txt2 border border-line2 rounded-full py-2 px-[15px] font-medium text-[13px] cursor-pointer">
+            <span class="ms text-[17px]">close</span>Close
+        </button>
+    </div>
 </div>

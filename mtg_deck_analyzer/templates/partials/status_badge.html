@@ -1,20 +1,11 @@
 {% comment %}
-Status badge for a deck. Reused in the deck list and the detail header — include
+Status pill for a deck. Reused in the deck list and the detail header — include
 with the deck in scope: {% include "partials/status_badge.html" with deck=deck %}
 {% endcomment %}
 {% if deck.status == 'ready' %}
-<span class="badge badge-success">
-    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-    Ready
-</span>
+<span class="status status-ready"><span class="ms text-[13px]">check</span>Analyzed</span>
 {% elif deck.status == 'failed' %}
-<span class="badge badge-error">
-    <i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-    Failed
-</span>
+<span class="status status-failed"><span class="ms text-[13px]">error</span>Failed</span>
 {% else %}
-<span class="badge badge-primary">
-    <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
-    Analyzing…
-</span>
+<span class="status status-pending"><span class="spinner"></span>Analyzing</span>
 {% endif %}

@@ -7,54 +7,78 @@
     <title>Sign in &bull; MTG Deck Analyzer</title>
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     {% tailwind_css %}
+    {% include "partials/design_head.html" %}
+    <style>
+      @media (max-width:820px){ .login-card{grid-template-columns:1fr!important} .login-hero{display:none!important} }
+    </style>
 </head>
-<body class="min-h-screen bg-slate-900 text-slate-100">
-    <main class="flex min-h-screen items-center justify-center px-4">
-        <div class="panel w-full max-w-sm">
-            <h1 class="text-center text-2xl font-semibold">🧙 MTG Deck Analyzer</h1>
-            <p class="mt-1 text-center text-slate-400">Sign in to continue.</p>
+<body>
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
 
-            {% if form.errors %}
-            <div role="alert" class="alert alert-error mt-3">
-                Invalid username or password.
+    <div data-screen-label="Login" class="relative z-[1] min-h-screen flex items-center justify-center p-[28px]">
+        {# background (layered gradient) + box-shadow are complex one-offs, kept inline. #}
+        <div class="login-card w-full max-w-[1000px] grid grid-cols-[1.08fr_.92fr] border border-line rounded-[22px] overflow-hidden backdrop-blur-[10px]" style="background:linear-gradient(180deg,rgba(20,23,34,.72),rgba(10,11,16,.72));box-shadow:0 50px 130px -50px rgba(0,0,0,.9)">
+
+            {# radial-gradient background is a complex one-off, kept inline. #}
+            <div class="login-hero relative py-[52px] px-12 flex flex-col justify-between border-r border-line min-h-[588px]" style="background:radial-gradient(520px 320px at 18% 8%,rgba(124,92,255,.18),transparent 62%)">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex" style="animation:floaty 6s ease-in-out infinite">{% include "partials/brand_mark.html" with size=40 gid="hero" %}</span>
+                    <div>
+                        <div class="font-cinzel font-bold text-[19px] tracking-[.14em] leading-none">MTG DECK ANALYZER</div>
+                        <div class="text-[10px] tracking-[.28em] text-txt3 uppercase mt-1">Deck Intelligence</div>
+                    </div>
+                </div>
+
+                <div class="my-10">
+                    <h1 class="font-cinzel font-semibold text-[40px] leading-[1.1] m-0 mb-4 tracking-[.01em]">See through<br>your deck.</h1>
+                    <p class="font-light text-[15.5px] text-txt2 leading-[1.6] max-w-[352px] m-0 mb-7">AI-driven analysis for Magic: The Gathering. Detect the archetype, surface synergies, and read the numbers behind every list.</p>
+                    <div class="flex flex-col gap-[13px]">
+                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-violet2 text-[20px]">auto_awesome</span>AI archetype detection</div>
+                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-teal text-[20px]">hub</span>Synergy &amp; matchup insight</div>
+                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-gold text-[20px]">payments</span>Live prices &amp; mana curve</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-[7px] flex-wrap items-center">
+                    <span class="text-[11px] tracking-[.14em] text-txt3 py-[5px] px-2.5 border border-line2 rounded-full">EN</span>
+                    <span class="text-[11px] tracking-[.14em] text-txt3 py-[5px] px-2.5 border border-line2 rounded-full">IT</span>
+                    <span class="text-[11px] tracking-[.14em] text-txt3 py-[5px] px-2.5 border border-line2 rounded-full">ES</span>
+                    <span class="text-[11px] tracking-[.14em] text-txt3 py-[5px] px-2.5 border border-line2 rounded-full">FR</span>
+                    <span class="text-[11px] tracking-[.14em] text-txt3 py-[5px] px-2.5 border border-line2 rounded-full">DE</span>
+                    <span class="text-[11px] text-txt3 py-[5px] px-0.5">analysis languages</span>
+                </div>
             </div>
-            {% endif %}
 
-            <form method="post" action="{% url 'login' %}" class="mt-4 flex flex-col gap-4">
-                {% csrf_token %}
-                <label class="form-control">
-                    <span class="form-label">Username</span>
-                    <input
-                        type="text"
-                        name="{{ form.username.html_name }}"
-                        id="{{ form.username.id_for_label }}"
-                        class="form-input w-full"
-                        autocomplete="username"
-                        autofocus
-                        required
-                    />
-                </label>
+            <div class="py-[52px] px-[46px] flex flex-col justify-center gap-[19px]">
+                <div>
+                    <div class="font-cinzel font-semibold text-[23px] tracking-[.05em]">Sign in</div>
+                    <div class="text-[13.5px] text-txt2 font-light mt-[5px]">Welcome back, planeswalker.</div>
+                </div>
 
-                <label class="form-control">
-                    <span class="form-label">Password</span>
-                    <input
-                        type="password"
-                        name="{{ form.password.html_name }}"
-                        id="{{ form.password.id_for_label }}"
-                        class="form-input w-full"
-                        autocomplete="current-password"
-                        required
-                    />
-                </label>
+                {% if form.errors %}
+                <div class="alert alert-error"><span class="ms text-[16px]">error</span>Invalid username or password.</div>
+                {% endif %}
 
-                <input type="hidden" name="next" value="{{ next }}" />
-
-                <button type="submit" class="btn-primary">
-                    <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-                    Sign in
-                </button>
-            </form>
+                <form method="post" action="{% url 'login' %}" class="flex flex-col gap-[19px]">
+                    {% csrf_token %}
+                    <label class="block">
+                        <span class="field-label mb-[7px]">Username</span>
+                        <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                            class="field" autocomplete="username" autofocus required />
+                    </label>
+                    <label class="block">
+                        <span class="field-label mb-[7px]">Password</span>
+                        <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                            class="field" autocomplete="current-password" required />
+                    </label>
+                    <input type="hidden" name="next" value="{{ next }}" />
+                    <button type="submit" class="btn btn-grad btn-block">
+                        Enter the vault<span class="ms text-[20px]">east</span>
+                    </button>
+                </form>
+            </div>
         </div>
-    </main>
+    </div>
 </body>
 </html>
