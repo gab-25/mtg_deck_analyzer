@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ deck.name }} — MTG Deck Analyzer{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+    <nav class="mb-6 text-sm text-slate-400">
+        <a href="{% url 'index' %}" class="hover:underline">Decks</a>
+        <span class="px-1">/</span>
+        <a href="{% url 'deck_detail' deck.id %}" class="hover:underline">{{ deck.name }}</a>
+        <span class="px-1">/</span>
+        <span class="text-slate-300">Edit</span>
+    </nav>
+
+    <header class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight">Edit deck</h1>
+        <p class="mt-2 max-w-2xl text-slate-400">
+            Update the deck details. If you change the decklist or language, the
+            analysis is re-run automatically.
+        </p>
+    </header>
+
+    <div class="panel">
+        <form
+            method="post"
+            action="{% url 'update_deck' deck.id %}"
+            class="flex flex-col gap-5"
+        >
+            {% csrf_token %} {% if error %}
+            <div role="alert" class="alert alert-error">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <label class="form-control">
+                <span class="form-label">Deck name</span>
+                <input
+                    type="text"
+                    name="name"
+                    value="{{ form_name }}"
+                    placeholder="My Simic Ramp"
+                    class="form-input w-full"
+                    required
+                />
+            </label>
+
+            <label class="form-control">
+                <span class="form-label">Decklist</span>
+                <span class="text-xs text-slate-500">
+                    One card per line, e.g.
+                    <code class="rounded bg-slate-700 px-1 py-0.5"
+                        >1 Llanowar Elves</code
+                    >.
+                </span>
+                <textarea
+                    name="decklist"
+                    rows="14"
+                    class="form-input mt-1 w-full resize-none font-mono text-sm"
+                    placeholder="1 Aid from the Cowl&#10;1 Apex Devastator&#10;15 Forest"
+                    required
+                >{{ form_decklist }}</textarea>
+            </label>
+
+            <div class="flex flex-col gap-3 border-t border-slate-700 pt-5">
+                <div class="flex flex-wrap items-end gap-4">
+                    <label class="form-control w-1/3">
+                        <span class="form-label">Language</span>
+                        <select name="lang" class="form-input w-full">
+                            {% for code, label in languages.items %}
+                            <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <div class="ml-auto flex gap-3">
+                        <a href="{% url 'deck_detail' deck.id %}" class="btn-outline">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                            Save changes
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500">
+                    Changing the decklist or language can take a minute or two to
+                    re-analyze (Scryfall rate limits).
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

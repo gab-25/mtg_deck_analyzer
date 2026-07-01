@@ -22,9 +22,16 @@
         <div role="alert" class="alert alert-error mt-4 text-left">{{ deck.error }}</div>
         {% endif %}
         <div class="mt-6 flex justify-center gap-3">
-            <a href="{% url 'new_deck' %}" class="btn-primary">
-                <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-                Try again
+            <form method="post" action="{% url 'reanalyze_deck' deck.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary">
+                    <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                    Try again
+                </button>
+            </form>
+            <a href="{% url 'edit_deck' deck.id %}" class="btn-outline">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                Edit
             </a>
             <form
                 method="post"

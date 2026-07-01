@@ -25,6 +25,7 @@ from .domain.constants import (
 from .domain.decklist import parse_decklist_text
 from .domain.storage import cards_for_pdf, cards_for_storage, image_urls
 from .domain.text_utils import slugify
+from .logging_context import deck_log_context
 from .models import Deck
 from .pipeline import analyze_decklist
 from .rendering.pdf import generate_pdf
@@ -99,33 +100,44 @@ def _create_context(**extra) -> dict:
 
 
 def _run_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | None):
-    """Runs the heavy analysis for ``deck_id`` and persists the outcome."""
-    try:
-        Deck.objects.filter(pk=deck_id).update(status=Deck.Status.PROCESSING)
-        result = analyze_decklist(
-            decklist,
-            lang=lang,
-            api_key=api_key,
-            cache=DbCardCache(),
-            progress=lambda msg: logger.info("[deck %s] %s", deck_id, msg),
-        )
-        stats = result["stats"]
-        Deck.objects.filter(pk=deck_id).update(
-            analysis_md=result["deck_analysis"],
-            deck_type=stats["deck_type"],
-            total_cards=stats["total_cards"],
-            total_value_eur=stats["total_value_eur"],
-            avg_cmc=stats["avg_cmc"],
-            category_counts=stats["category_counts"],
-            cards=cards_for_storage(result["processed_cards"]),
-            status=Deck.Status.READY,
-            error=None,
-        )
-    except Exception as exc:  # noqa: BLE001 - record any failure for the user.
-        logger.exception("Deck analysis failed for deck %s", deck_id)
-        Deck.objects.filter(pk=deck_id).update(
-            status=Deck.Status.FAILED, error=str(exc)
-        )
+    """Runs the heavy analysis for ``deck_id`` and persists the outcome.
+
+    Binds the deck id to the logging context so every record emitted during the
+    run — including those from the pipeline/Scryfall/Gemini modules — is stamped
+    with ``[deck <id>]``.
+    """
+    with deck_log_context(deck_id):
+        try:
+            Deck.objects.filter(pk=deck_id).update(status=Deck.Status.PROCESSING)
+            result = analyze_decklist(
+                decklist,
+                lang=lang,
+                api_key=api_key,
+                cache=DbCardCache(),
+                progress=lambda msg: logger.info("%s", msg),
+            )
+            stats = result["stats"]
+            Deck.objects.filter(pk=deck_id).update(
+                analysis_md=result["deck_analysis"],
+                deck_type=stats["deck_type"],
+                total_cards=stats["total_cards"],
+                total_value_eur=stats["total_value_eur"],
+                avg_cmc=stats["avg_cmc"],
+                category_counts=stats["category_counts"],
+                cards=cards_for_storage(result["processed_cards"]),
+                status=Deck.Status.READY,
+                error=None,
+            )
+            logger.info(
+                "Deck analysis completed (%s cards, type %s)",
+                stats["total_cards"],
+                stats["deck_type"],
+            )
+        except Exception as exc:  # noqa: BLE001 - record any failure for the user.
+            logger.exception("Deck analysis failed")
+            Deck.objects.filter(pk=deck_id).update(
+                status=Deck.Status.FAILED, error=str(exc)
+            )
 
 
 def _run_analysis_threaded(deck_id, decklist, lang, api_key):
@@ -239,6 +251,77 @@ def deck_detail(request, deck_id: uuid.UUID):
             "analysis_html": analysis_html,
         },
     )
+
+
+@login_required
+@require_http_methods(["GET"])
+def edit_deck(request, deck_id: uuid.UUID):
+    deck = get_object_or_404(Deck, pk=deck_id)
+    return render(
+        request,
+        "edit.html",
+        _create_context(
+            deck=deck,
+            form_name=deck.name,
+            form_decklist=deck.raw_decklist,
+            default_lang=deck.lang,
+        ),
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_deck(request, deck_id: uuid.UUID):
+    deck = get_object_or_404(Deck, pk=deck_id)
+    name = (request.POST.get("name") or "").strip() or "Untitled Deck"
+    decklist = request.POST.get("decklist", "")
+    lang = normalize_lang(request.POST.get("lang", "en"))
+
+    if not parse_decklist_text(decklist):
+        return render(
+            request,
+            "edit.html",
+            _create_context(
+                deck=deck,
+                error="No cards could be parsed from the decklist.",
+                form_name=name,
+                form_decklist=decklist,
+                default_lang=lang,
+            ),
+            status=422,
+        )
+
+    # Only the decklist and language feed the analysis; re-run it just when one of
+    # those actually changed, so a plain rename doesn't trigger minutes of work.
+    needs_reanalysis = decklist != deck.raw_decklist or lang != deck.lang
+
+    deck.name = name
+    deck.raw_decklist = decklist
+    deck.lang = lang
+    if needs_reanalysis:
+        deck.status = Deck.Status.PENDING
+        deck.error = None
+    deck.save()
+
+    if needs_reanalysis:
+        _start_analysis(deck.id, decklist, lang, _resolved_api_key())
+        return redirect("index")
+    return redirect("deck_detail", deck_id=deck.id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def reanalyze_deck(request, deck_id: uuid.UUID):
+    """Re-runs the analysis for an existing deck from its stored decklist."""
+    deck = get_object_or_404(Deck, pk=deck_id)
+    deck.status = Deck.Status.PENDING
+    deck.error = None
+    deck.save(update_fields=["status", "error"])
+    _start_analysis(deck.id, deck.raw_decklist, deck.lang, _resolved_api_key())
+
+    # Back to the list, where the deck shows its live "Analyzing…" status and the
+    # list polls itself until the re-analysis is done.
+    return redirect("index")
 
 
 @login_required

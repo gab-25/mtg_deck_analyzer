@@ -170,9 +170,14 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "deck_id": {
+            "()": "mtg_deck_analyzer.logging_context.DeckIdFilter",
+        },
+    },
     "formatters": {
         "simple": {
-            "format": "{asctime} {levelname} {name}: {message}",
+            "format": "{asctime} {levelname} {name}: {deck_id}{message}",
             "style": "{",
         },
     },
@@ -180,6 +185,7 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
+            "filters": ["deck_id"],
         },
     },
     "loggers": {
