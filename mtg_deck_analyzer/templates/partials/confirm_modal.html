@@ -1,0 +1,52 @@
+{% comment %}
+Reusable confirmation modal (pure CSS, no inline JS). Replaces the browser's
+native `confirm()` for actions that need the user to agree before they run.
+
+A visually-hidden checkbox drives it: the trigger <label> checks it to open the
+overlay (shown via `peer-checked:flex`), the backdrop and Cancel labels uncheck
+it to close, and Confirm is the real submit button that POSTs to `action`.
+
+The whole thing is wrapped in a single root element on purpose: `peer-checked`
+compiles to the general-sibling selector `.peer:checked ~ *`, so without a wrapper
+two modals sharing a parent would open each other. The wrapper scopes `~` to just
+this modal.
+
+Params:
+  id            unique id for the checkbox/labels (must be unique per page)
+  action        URL the confirm button POSTs to
+  message       confirmation prompt shown in the modal
+  trigger_label text for the button that opens the modal (optional, icon-only if omitted)
+  trigger_icon  Font Awesome icon class for the trigger button (optional)
+  trigger_class CSS class for the trigger button (default: btn-outline)
+  trigger_title tooltip/aria-label for the trigger, useful for icon-only buttons (optional)
+  confirm_label text for the confirm button (default: Confirm)
+  confirm_icon  Font Awesome icon class for the confirm button (optional)
+  confirm_class CSS class for the confirm button (default: btn-primary)
+{% endcomment %}
+<div class="inline-flex">
+    <input type="checkbox" id="{{ id }}" class="peer sr-only" />
+    <label
+        for="{{ id }}"
+        class="{{ trigger_class|default:'btn-outline' }} cursor-pointer"
+        {% if trigger_title %}title="{{ trigger_title }}" aria-label="{{ trigger_title }}"{% endif %}
+    >
+        {% if trigger_icon %}<i class="{{ trigger_icon }}" aria-hidden="true"></i>{% endif %}
+        {% if trigger_label %}{{ trigger_label }}{% endif %}
+    </label>
+    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4 peer-checked:flex">
+        <label for="{{ id }}" class="absolute inset-0 cursor-pointer" aria-hidden="true"></label>
+        <div class="panel relative w-full max-w-sm text-center">
+            <p class="text-slate-200">{{ message }}</p>
+            <div class="mt-6 flex justify-center gap-3">
+                <label for="{{ id }}" class="btn-outline cursor-pointer">Cancel</label>
+                <form method="post" action="{{ action }}">
+                    {% csrf_token %}
+                    <button type="submit" class="{{ confirm_class|default:'btn-primary' }}">
+                        {% if confirm_icon %}<i class="{{ confirm_icon }}" aria-hidden="true"></i>{% endif %}
+                        {{ confirm_label|default:'Confirm' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -35,16 +35,6 @@ nothing is processing the re-rendered region drops the trigger and polling stops
                 </div>
             </a>
             {% endif %}
-            <form
-                method="post"
-                action="{% url 'delete_deck' deck.id %}"
-                onsubmit="return confirm('Delete this deck?');"
-            >
-                {% csrf_token %}
-                <button type="submit" class="btn-icon-danger" title="Delete">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                </button>
-            </form>
         </li>
         {% endfor %}
     </ul>

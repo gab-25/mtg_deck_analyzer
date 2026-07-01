@@ -33,17 +33,8 @@
                 <i class="fa-solid fa-pen" aria-hidden="true"></i>
                 Edit
             </a>
-            <form
-                method="post"
-                action="{% url 'delete_deck' deck.id %}"
-                onsubmit="return confirm('Delete this deck?');"
-            >
-                {% csrf_token %}
-                <button type="submit" class="btn-outline">
-                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                    Delete
-                </button>
-            </form>
+            {% url 'delete_deck' deck.id as delete_url %}
+            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck?" trigger_label="Delete" trigger_icon="fa-solid fa-trash" confirm_label="Delete" confirm_icon="fa-solid fa-trash" confirm_class="btn-danger" %}
         </div>
     </div>
 </div>
