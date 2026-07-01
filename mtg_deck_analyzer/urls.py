@@ -20,4 +20,5 @@ urlpatterns = [
     path("decks/<uuid:deck_id>/delete", views.delete_deck, name="delete_deck"),
     path("decks/<uuid:deck_id>/pdf", views.deck_pdf, name="deck_pdf"),
     path("media/<str:name>", views.media, name="media"),
+    path("card-image", views.card_image_modal, name="card_image_modal"),
 ]

@@ -81,10 +81,12 @@
                 <button
                     type="button"
                     class="cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-                    onclick="showCardImage(this.querySelector('img').src)"
+                    hx-get="{% url 'card_image_modal' %}?name={{ img.name|urlencode }}"
+                    hx-target="#card-image-modal-container"
+                    hx-swap="innerHTML"
                     aria-label="Enlarge card image"
                 >
-                    <img src="{{ img }}" alt="card image" class="h-auto w-24 self-start rounded transition-transform hover:scale-105" loading="lazy" />
+                    <img src="{{ img.url }}" alt="card image" class="h-auto w-24 self-start rounded transition-transform hover:scale-105" loading="lazy" />
                 </button>
                 {% endfor %}
             </div>
@@ -133,19 +135,6 @@
 </section>
 {% endfor %}
 
-<dialog
-    id="card-image-modal"
-    class="max-h-[90vh] max-w-[90vw] bg-transparent backdrop:bg-black/70"
-    onclick="this.close()"
->
-    <img id="card-image-modal-img" src="" alt="card image" class="h-auto max-h-[90vh] w-auto max-w-[90vw] rounded-lg shadow-2xl" />
-</dialog>
-
-<script>
-    function showCardImage(src) {
-        const modal = document.getElementById("card-image-modal");
-        document.getElementById("card-image-modal-img").src = src;
-        modal.showModal();
-    }
-</script>
+{# HTMX target: the card-image zoom modal is fetched and swapped in here on click. #}
+<div id="card-image-modal-container"></div>
 {% endblock %}

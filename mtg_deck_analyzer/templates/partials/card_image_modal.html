@@ -1,0 +1,20 @@
+{% comment %}
+Zoom-modal fragment served over HTMX and swapped into #card-image-modal-container
+on the deck view. Clicking the backdrop (or pressing Esc) closes the dialog; the
+trailing script opens it as a native modal — HTMX executes scripts in swapped-in
+content, so the dialog appears as soon as the fragment lands.
+{% endcomment %}
+<dialog
+    id="card-image-modal"
+    class="max-h-[90vh] max-w-[90vw] bg-transparent backdrop:bg-black/70"
+    onclick="this.close()"
+>
+    <img
+        src="{{ image_url }}"
+        alt="card image"
+        class="h-auto max-h-[90vh] w-auto max-w-[90vw] rounded-lg shadow-2xl"
+    />
+</dialog>
+<script>
+    document.getElementById("card-image-modal").showModal();
+</script>

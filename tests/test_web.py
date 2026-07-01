@@ -262,6 +262,58 @@ def test_media_route_serves_cached_image_from_db(client):
 
 
 @pytest.mark.django_db
+def test_card_image_modal_returns_dialog_fragment(client):
+    from mtg_deck_analyzer.models import ScryfallImage
+
+    # Unknown image -> 404, so the modal never opens on a stale/bad name.
+    assert client.get("/card-image", {"name": "img_missing.jpg"}).status_code == 404
+
+    ScryfallImage.objects.create(name="img_seed.jpg", data=b"\x01\x02\x03")
+    r = client.get("/card-image", {"name": "img_seed.jpg"})
+    assert r.status_code == 200
+    body = r.content.decode()
+    # A fragment carrying the full-size image and the dialog that opens it.
+    assert "<!DOCTYPE html>" not in body
+    assert 'src="/media/img_seed.jpg"' in body
+    assert "showModal()" in body
+
+
+@pytest.mark.django_db
+def test_deck_detail_card_images_link_to_modal(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="With Image",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        deck_type="Custom",
+        total_cards=1,
+        total_value_eur=0.0,
+        avg_cmc=0.0,
+        category_counts={"Land": 1},
+        cards=[
+            {
+                "quantity": 1,
+                "data": {
+                    "name": "Forest",
+                    "type_line": "Basic Land — Forest",
+                    "cmc": 0.0,
+                    "price_eur": 0.0,
+                    "image_paths": ["img_forest.jpg"],
+                    "faces": [{"name": "Forest", "mana_cost": "", "type_line": "", "rules_text": ""}],
+                },
+            }
+        ],
+    )
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    # The thumbnail is an HTMX button that fetches the zoom modal.
+    assert 'hx-get="/card-image?name=img_forest.jpg"' in body
+    assert 'hx-target="#card-image-modal-container"' in body
+    assert 'src="/media/img_forest.jpg"' in body
+
+
+@pytest.mark.django_db
 def test_machine_translation_badge_shown(client):
     from mtg_deck_analyzer.models import Deck
 
