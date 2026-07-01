@@ -78,7 +78,16 @@
         <div class="surface flex overflow-hidden">
             <div class="flex shrink-0 gap-1 p-2">
                 {% for img in card.images %}
-                <img src="{{ img }}" alt="card image" class="h-auto w-24 self-start rounded" loading="lazy" />
+                <button
+                    type="button"
+                    class="cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+                    hx-get="{% url 'card_image_modal' %}?name={{ img.name|urlencode }}"
+                    hx-target="#card-image-modal-container"
+                    hx-swap="innerHTML"
+                    aria-label="Enlarge card image"
+                >
+                    <img src="{{ img.url }}" alt="card image" class="h-auto w-24 self-start rounded transition-transform hover:scale-105" loading="lazy" />
+                </button>
                 {% endfor %}
             </div>
             <div class="flex flex-col gap-2 p-3">
@@ -125,4 +134,7 @@
     </div>
 </section>
 {% endfor %}
+
+{# HTMX target: the card-image zoom modal is fetched and swapped in here on click. #}
+<div id="card-image-modal-container"></div>
 {% endblock %}

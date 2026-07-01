@@ -75,7 +75,12 @@ def _build_categories(stored_cards: list) -> list:
                     "quantity": qty,
                     "price": price,
                     "total_price": price * qty,
-                    "images": image_urls(data),
+                    "images": [
+                        {"url": url, "name": name}
+                        for url, name in zip(
+                            image_urls(data), data.get("image_paths", [])
+                        )
+                    ],
                     "faces": data.get("faces", []),
                     "text_source": data.get("text_source"),
                 }
@@ -363,3 +368,21 @@ def media(request, name: str):
     if data is None:
         return HttpResponse("Image not found", status=404)
     return HttpResponse(data, content_type="image/jpeg")
+
+
+@login_required
+@require_http_methods(["GET"])
+def card_image_modal(request):
+    """Returns the zoom-modal fragment for one cached card image (HTMX).
+
+    The thumbnail buttons in the deck view ``hx-get`` this endpoint with the
+    image basename; the fragment is a full-screen CSS overlay carrying the
+    full-size image. Called without a ``name`` it returns an empty body, which
+    the overlay uses to close itself (clicking it clears the container).
+    """
+    name = request.GET.get("name", "")
+    if not name:
+        return HttpResponse("")  # Close: clear the modal container.
+    if DbCardCache().get_image(name) is None:
+        return HttpResponse("Image not found", status=404)
+    return render(request, "partials/card_image_modal.html", {"image_url": f"/media/{name}"})
