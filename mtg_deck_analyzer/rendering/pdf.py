@@ -6,6 +6,7 @@ import html
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import (
     Image as RLImage,
 )
@@ -587,6 +588,79 @@ def generate_pdf(
         onFirstPage=_add_page_decorations,
         onLaterPages=_add_page_decorations,
     )
+
+
+# Standard Magic card size (1:1 print scale) and the A4 grid it lays out on.
+_PROXY_CARD_W = 63 * mm
+_PROXY_CARD_H = 88 * mm
+_PROXY_COLS = 3
+_PROXY_ROWS = 3
+
+
+def _proxy_image_flowable(stream):
+    """One 1:1 proxy cell: the card image at 63×88mm, or a same-size placeholder."""
+    if stream is None:
+        return create_no_image_placeholder(_PROXY_CARD_W, _PROXY_CARD_H)
+    try:
+        return RLImage(stream, width=_PROXY_CARD_W, height=_PROXY_CARD_H)
+    except Exception:
+        return create_no_image_placeholder(_PROXY_CARD_W, _PROXY_CARD_H)
+
+
+def generate_proxy_pdf(deck_name: str, images: list, output_path: str):
+    """Generates a print-and-cut proxy PDF with every card image at 1:1 scale.
+
+    ``images`` is a flat list of image streams (or ``None`` for a missing image),
+    one entry per physical card copy, so the PDF holds exactly as many images as
+    the deck has cards. Cards are packed 3×3 per A4 page at the real 63×88mm size,
+    with thin grid lines as cut guides.
+    """
+    # Center the fixed-size grid on the page; margins are whatever's left over.
+    # A vertical slack is shaved off so the bottom row of the grid isn't pushed
+    # onto a fresh page: ReportLab's frame needs a few mm of headroom beyond the
+    # exact row heights, so an exactly-centered grid would only fit two rows.
+    h_margin = max((A4[0] - _PROXY_COLS * _PROXY_CARD_W) / 2, 0)
+    v_margin = max((A4[1] - _PROXY_ROWS * _PROXY_CARD_H) / 2 - 5 * mm, 0)
+    doc = SimpleDocTemplate(
+        output_path,
+        pagesize=A4,
+        leftMargin=h_margin,
+        rightMargin=h_margin,
+        topMargin=v_margin,
+        bottomMargin=v_margin,
+    )
+
+    cells = [_proxy_image_flowable(s) for s in images]
+    rows = []
+    for i in range(0, len(cells), _PROXY_COLS):
+        row = cells[i : i + _PROXY_COLS]
+        while len(row) < _PROXY_COLS:
+            row.append("")  # filler so every row has the full column count
+        rows.append(row)
+
+    story = []
+    if rows:
+        table = Table(
+            rows,
+            colWidths=[_PROXY_CARD_W] * _PROXY_COLS,
+            rowHeights=[_PROXY_CARD_H] * len(rows),
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                    ("GRID", (0, 0), (-1, -1), 0.25, HexColor("#b0b0b0")),
+                ]
+            )
+        )
+        story.append(table)
+
+    doc.build(story)
 
 
 def _add_page_decorations(canvas, doc):

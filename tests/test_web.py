@@ -246,6 +246,83 @@ def test_pdf_download(client):
 
 
 @pytest.mark.django_db
+def test_proxy_pdf_unavailable_until_ready(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="In Progress",
+        raw_decklist="1 Forest",
+        status=Deck.Status.PENDING,
+    )
+    r = client.get(f"/decks/{deck.id}/proxy")
+    assert r.status_code == 302
+    assert r["Location"].endswith(f"/decks/{deck.id}")
+
+
+@pytest.mark.django_db
+def test_proxy_pdf_download(client):
+    import io
+
+    from PIL import Image
+
+    from mtg_deck_analyzer.models import Deck, ScryfallImage
+
+    # A real opaque JPEG so ReportLab can actually rasterize it into the PDF.
+    buf = io.BytesIO()
+    Image.new("RGB", (63, 88), (10, 120, 60)).save(buf, format="JPEG")
+    ScryfallImage.objects.create(name="img_forest.jpg", data=buf.getvalue())
+
+    deck = Deck.objects.create(
+        name="Mono Green",
+        raw_decklist="3 Forest",
+        status=Deck.Status.READY,
+        deck_type="Custom",
+        total_cards=3,
+        total_value_eur=0.0,
+        avg_cmc=0.0,
+        category_counts={"Land": 3},
+        cards=[
+            {
+                "quantity": 3,
+                "data": {
+                    "name": "Forest",
+                    "type_line": "Basic Land — Forest",
+                    "cmc": 0.0,
+                    "price_eur": 0.0,
+                    "image_paths": ["img_forest.jpg"],
+                    "faces": [{"name": "Forest", "mana_cost": "", "type_line": "", "rules_text": ""}],
+                },
+            }
+        ],
+    )
+
+    pdf = client.get(f"/decks/{deck.id}/proxy")
+    assert pdf.status_code == 200
+    assert pdf["content-type"] == "application/pdf"
+    assert b"".join(pdf.streaming_content).startswith(b"%PDF")
+
+
+@pytest.mark.django_db
+def test_deck_detail_has_export_proxy_button(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Proxy Me",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        deck_type="Custom",
+        total_cards=1,
+        total_value_eur=0.0,
+        avg_cmc=0.0,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'href="/decks/{deck.id}/proxy"' in body
+    assert "Export proxy" in body
+
+
+@pytest.mark.django_db
 def test_media_route_serves_cached_image_from_db(client):
     from mtg_deck_analyzer.models import ScryfallImage
 
@@ -317,6 +394,54 @@ def test_deck_detail_card_images_link_to_modal(client):
     assert 'hx-get="/card-image?name=img_forest.jpg"' in body
     assert 'hx-target="#card-image-modal-container"' in body
     assert 'src="/media/img_forest.jpg"' in body
+
+
+@pytest.mark.django_db
+def test_deck_detail_copy_plain_text_button(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Copy Me",
+        raw_decklist="4 Llanowar Elves\n2 Forest",
+        status=Deck.Status.READY,
+        deck_type="Custom",
+        total_cards=6,
+        total_value_eur=0.0,
+        avg_cmc=0.5,
+        category_counts={"Creature": 4, "Land": 2},
+        cards=[
+            {
+                "quantity": 4,
+                "data": {
+                    "name": "Llanowar Elves",
+                    "type_line": "Creature — Elf Druid",
+                    "cmc": 1.0,
+                    "price_eur": 0.0,
+                    "image_paths": [],
+                    "faces": [{"name": "Llanowar Elves", "mana_cost": "{G}", "type_line": "", "rules_text": ""}],
+                },
+            },
+            {
+                "quantity": 2,
+                "data": {
+                    "name": "Forest",
+                    "type_line": "Basic Land — Forest",
+                    "cmc": 0.0,
+                    "price_eur": 0.0,
+                    "image_paths": [],
+                    "faces": [{"name": "Forest", "mana_cost": "", "type_line": "", "rules_text": ""}],
+                },
+            },
+        ],
+    )
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    # The button and its Moxfield-format payload (one "qty name" per line) are present.
+    assert 'id="copy-decklist"' in body
+    assert "Copy plain text" in body
+    assert '<script id="decklist-plain"' in body
+    assert "4 Llanowar Elves" in body
+    assert "2 Forest" in body
 
 
 @pytest.mark.django_db
