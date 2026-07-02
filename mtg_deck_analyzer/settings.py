@@ -17,6 +17,19 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-key-change-me")
 DEBUG = os.environ.get("DEBUG", "1").lower() in {"1", "true", "yes"}
 ALLOWED_HOSTS = ["*"]
 
+# When deployed behind a reverse proxy (e.g. Traefik) TLS is terminated at the
+# ingress and the app receives plain HTTP, so Django would otherwise treat the
+# request as insecure. Trust the forwarded scheme header to detect HTTPS.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Origins Django accepts for CSRF-protected POSTs (must include the scheme).
+# Comma-separated list, e.g. "https://mtgda.example.com".
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
