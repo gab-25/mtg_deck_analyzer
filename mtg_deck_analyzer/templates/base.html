@@ -1,4 +1,4 @@
-{% load static tailwind_tags django_htmx %}
+{% load static django_htmx %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     {# Loads htmx (bundled by django-htmx) and, in DEBUG, its error-logging extension. #}
     {% htmx_script %}
-    {% tailwind_css %}
-    {# Fonts + "vault" design system. Loaded after Tailwind so it wins the cascade. #}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
+    {# Fonts loaded after the stylesheet. #}
     {% include "partials/design_head.html" %}
 </head>
 <body>

@@ -24,17 +24,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "tailwind",
     "theme",
     "django_htmx",
     "mtg_deck_analyzer",
 ]
-
-TAILWIND_APP_NAME = "theme"
-
-# Use the standalone Tailwind CLI binary (via pytailwindcss) so neither the dev
-# environment nor the Docker image needs a Node.js toolchain.
-TAILWIND_USE_STANDALONE_BINARY = True
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
