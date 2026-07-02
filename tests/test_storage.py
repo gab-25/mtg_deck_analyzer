@@ -6,6 +6,7 @@ from mtg_deck_analyzer.domain.storage import (
     cards_for_pdf,
     cards_for_storage,
     image_urls,
+    proxy_images,
 )
 
 # Smallest valid 1x1 transparent PNG.
@@ -43,6 +44,29 @@ def test_cards_for_pdf_resolves_only_present_images():
     assert len(streams) == 1  # the missing one is dropped
     assert isinstance(streams[0], io.BytesIO)
     assert streams[0].getvalue() == _PNG
+
+
+def test_proxy_images_repeats_each_card_by_quantity():
+    cache = _FakeCache({"img_a.jpg": _PNG})
+    stored = [
+        {"quantity": 3, "data": {"name": "Forest", "image_paths": ["img_a.jpg"]}},
+        {"quantity": 1, "data": {"name": "Island", "image_paths": ["img_a.jpg"]}},
+    ]
+    images = proxy_images(stored, cache)
+    # One image per physical card copy: total images == total card count.
+    assert len(images) == 4
+    # Each copy is its own stream (ReportLab consumes them independently).
+    assert all(isinstance(s, io.BytesIO) for s in images)
+    assert len({id(s) for s in images}) == 4
+    assert all(s.getvalue() == _PNG for s in images)
+
+
+def test_proxy_images_missing_image_yields_placeholder_slots():
+    cache = _FakeCache({})
+    stored = [{"quantity": 2, "data": {"name": "Forest", "image_paths": []}}]
+    images = proxy_images(stored, cache)
+    # Still one slot per copy so the total matches the deck; slots are None.
+    assert images == [None, None]
 
 
 def test_image_urls_uses_media_prefix():

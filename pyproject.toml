@@ -27,6 +27,7 @@ package = false
 [dependency-groups]
 dev = [
     "cookiecutter>=2.7.1",
+    "honcho>=2.0.0",
     "pytest>=9.1.1",
     "pytest-django>=4.8.0",
 ]

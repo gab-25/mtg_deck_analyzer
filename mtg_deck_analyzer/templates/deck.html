@@ -27,8 +27,14 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </a>
             {% url 'reanalyze_deck' deck.id as reanalyze_url %}
             {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the AI analysis for this deck? The deck goes back to “Analyzing” while it runs." trigger_label="Re-analyze" trigger_icon="autorenew" %}
+            <button type="button" id="copy-decklist" class="btn btn-line btn-sm">
+                <span class="ms text-[18px]">content_copy</span><span data-copy-label>Copy plain text</span>
+            </button>
             <a href="{% url 'deck_pdf' deck.id %}" class="btn btn-line btn-sm">
                 <span class="ms text-[18px]">picture_as_pdf</span>Export PDF
+            </a>
+            <a href="{% url 'deck_proxy_pdf' deck.id %}" class="btn btn-line btn-sm">
+                <span class="ms text-[18px]">grid_view</span>Export proxy
             </a>
             {% url 'delete_deck' deck.id as delete_url %}
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
@@ -153,4 +159,33 @@ max-width stays inline — a utility would lose to the unlayered component rule.
 
 {# HTMX target: the card-image zoom modal is fetched and swapped in here on click. #}
 <div id="card-image-modal-container"></div>
+
+{# Decklist as Moxfield-style plain text, safely JSON-encoded for the copy button. #}
+{{ moxfield_text|json_script:"decklist-plain" }}
+<script>
+    (function () {
+        const btn = document.getElementById("copy-decklist");
+        if (!btn) return;
+        const text = JSON.parse(document.getElementById("decklist-plain").textContent);
+        const label = btn.querySelector("[data-copy-label]");
+        btn.addEventListener("click", async function () {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (err) {
+                // Fallback for insecure contexts where the Clipboard API is unavailable.
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.style.position = "fixed";
+                ta.style.opacity = "0";
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+            }
+            const original = label.textContent;
+            label.textContent = "Copied!";
+            setTimeout(function () { label.textContent = original; }, 1600);
+        });
+    })();
+</script>
 {% endblock %}

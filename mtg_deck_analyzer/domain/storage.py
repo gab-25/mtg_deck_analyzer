@@ -44,6 +44,26 @@ def cards_for_pdf(stored_cards: list, cache) -> list:
     return cards
 
 
+def proxy_images(stored_cards: list, cache) -> list:
+    """Flat list of one front-face image stream per physical card copy.
+
+    Each card contributes ``quantity`` copies of its front image so the number of
+    proxy images equals the deck's total card count. A fresh ``BytesIO`` is made
+    for every copy (ReportLab consumes the stream while building, so copies must
+    not share one). Cards with no cached image yield ``quantity`` ``None`` slots,
+    which the renderer turns into placeholders.
+    """
+    images = []
+    for item in stored_cards:
+        data = item.get("data", {})
+        qty = item.get("quantity", 1)
+        names = data.get("image_paths", [])
+        raw = cache.get_image(names[0]) if names else None
+        for _ in range(qty):
+            images.append(io.BytesIO(raw) if raw else None)
+    return images
+
+
 def image_urls(card_data: dict, media_prefix: str = "/media") -> list:
     """Maps a stored card's image basenames to servable URLs."""
     return [f"{media_prefix}/{name}" for name in card_data.get("image_paths", [])]

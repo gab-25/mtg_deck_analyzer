@@ -24,12 +24,17 @@ from .domain.constants import (
     normalize_lang,
 )
 from .domain.decklist import parse_decklist_text
-from .domain.storage import cards_for_pdf, cards_for_storage, image_urls
+from .domain.storage import (
+    cards_for_pdf,
+    cards_for_storage,
+    image_urls,
+    proxy_images,
+)
 from .domain.text_utils import slugify
 from .logging_context import deck_log_context
 from .models import Deck
 from .pipeline import analyze_decklist
-from .rendering.pdf import generate_pdf
+from .rendering.pdf import generate_pdf, generate_proxy_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +184,13 @@ def _detail_card_groups(stored_cards: list) -> list:
             }
         )
     return groups
+
+
+def _moxfield_text(stored_cards: list) -> str:
+    """Renders the decklist as Moxfield-style plain text: one ``qty name`` per line."""
+    return "\n".join(
+        f"{item['quantity']} {item['data'].get('name', '')}" for item in stored_cards
+    )
 
 
 def _resolved_api_key() -> str | None:
@@ -368,6 +380,7 @@ def deck_detail(request, deck_id: uuid.UUID):
             "analysis_html": analysis_html,
             "pips": _deck_pips(stored_cards),
             "card_groups": _detail_card_groups(stored_cards),
+            "moxfield_text": _moxfield_text(stored_cards),
             "mana_curve": _mana_curve(stored_cards),
             "type_bars": _type_bars(deck.category_counts or {}),
             "value_stats": _value_stats(stored_cards, deck.total_value_eur),
@@ -469,6 +482,31 @@ def deck_pdf(request, deck_id: uuid.UUID):
     generate_pdf(deck.name, deck.analysis_md, processed, tmp_path)
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"
+    return FileResponse(
+        open(tmp_path, "rb"),
+        content_type="application/pdf",
+        as_attachment=True,
+        filename=filename,
+    )
+
+
+@login_required
+@require_http_methods(["GET"])
+def deck_proxy_pdf(request, deck_id: uuid.UUID):
+    """Generates a 1:1 proxy PDF: every card image repeated by its quantity."""
+    deck = get_object_or_404(Deck, pk=deck_id)
+
+    # The proxies need the fetched images; they only exist once analysis is done.
+    if deck.status != Deck.Status.READY:
+        return redirect("deck_detail", deck_id=deck.id)
+
+    images = proxy_images(deck.cards or [], DbCardCache())
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    generate_proxy_pdf(deck.name, images, tmp_path)
+
+    filename = f"{slugify(deck.name) or 'deck'}-proxies.pdf"
     return FileResponse(
         open(tmp_path, "rb"),
         content_type="application/pdf",
