@@ -5,9 +5,8 @@ Cinzel, Space Mono, Material Symbols). Included by base.html and the standalone
 login page.
 
 The "vault" design system itself (violet / teal / gold on near-black) lives in
-the Tailwind source at theme/static_src/src/styles.css and ships in the compiled
-{% templatetag openblock %} tailwind_css {% templatetag closeblock %} bundle —
-it is no longer inlined here.
+the stylesheet at theme/static/css/styles.css, linked from base.html and the
+login page — it is no longer inlined here.
 {% endcomment %}
 
 {# Favicons: the "vault eye/lens" brand mark. SVG for modern browsers, .ico as fallback. #}

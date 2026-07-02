@@ -34,10 +34,8 @@ COPY mtg_deck_analyzer ./mtg_deck_analyzer
 COPY theme ./theme
 COPY manage.py docker-entrypoint.sh ./
 
-# Compile the Tailwind stylesheet (standalone CLI binary fetched here at build
-# time — no Node.js needed), then collect all static files for WhiteNoise.
-RUN python manage.py tailwind build \
-    && python manage.py collectstatic --noinput \
+# Collect all static files for WhiteNoise to serve.
+RUN python manage.py collectstatic --noinput \
     && chmod +x docker-entrypoint.sh \
     && chown -R appuser:appuser /app
 

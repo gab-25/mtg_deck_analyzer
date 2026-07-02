@@ -1,4 +1,4 @@
-{% load static tailwind_tags %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign in &bull; MTG Deck Analyzer</title>
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
-    {% tailwind_css %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
     {% include "partials/design_head.html" %}
     <style>
       @media (max-width:820px){ .login-card{grid-template-columns:1fr!important} .login-hero{display:none!important} }
