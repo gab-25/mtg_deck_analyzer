@@ -9,6 +9,8 @@ import copy
 import io
 import os
 
+from .cards import is_basic_land
+
 
 def cards_for_storage(processed_cards: list) -> list:
     """Returns a copy of ``processed_cards`` with image keys reduced to basenames.
@@ -52,10 +54,15 @@ def proxy_images(stored_cards: list, cache) -> list:
     for every copy (ReportLab consumes the stream while building, so copies must
     not share one). Cards with no cached image yield ``quantity`` ``None`` slots,
     which the renderer turns into placeholders.
+
+    Basic lands are skipped: they're trivially available in paper, so there's no
+    point printing proxies for them.
     """
     images = []
     for item in stored_cards:
         data = item.get("data", {})
+        if is_basic_land(data):
+            continue
         qty = item.get("quantity", 1)
         names = data.get("image_paths", [])
         raw = cache.get_image(names[0]) if names else None

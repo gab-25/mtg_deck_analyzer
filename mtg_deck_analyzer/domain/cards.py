@@ -39,6 +39,22 @@ def classify_card(card_data: dict) -> str:
         return "Other"
 
 
+def is_basic_land(card_data: dict) -> bool:
+    """Reports whether a card is a basic land (``Basic Land — ...``).
+
+    Uses the English ``type_line`` (falling back to the first face) so it works
+    regardless of the requested language, matching :func:`classify_card`.
+    """
+    type_line = card_data.get("type_line", "")
+    if not type_line:
+        faces = card_data.get("faces", [])
+        if faces:
+            type_line = faces[0].get("type_line", "")
+
+    tl = type_line.lower()
+    return "basic" in tl and "land" in tl
+
+
 def infer_deck_type(processed_cards: list) -> str:
     """Infers the deck format from its size and singleton composition.
 
