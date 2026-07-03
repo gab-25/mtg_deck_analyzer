@@ -69,6 +69,31 @@ def test_proxy_images_missing_image_yields_placeholder_slots():
     assert images == [None, None]
 
 
+def test_proxy_images_skips_basic_lands():
+    cache = _FakeCache({"forest.jpg": _PNG, "bolt.jpg": _PNG})
+    stored = [
+        {
+            "quantity": 10,
+            "data": {
+                "name": "Forest",
+                "type_line": "Basic Land — Forest",
+                "image_paths": ["forest.jpg"],
+            },
+        },
+        {
+            "quantity": 4,
+            "data": {
+                "name": "Lightning Bolt",
+                "type_line": "Instant",
+                "image_paths": ["bolt.jpg"],
+            },
+        },
+    ]
+    images = proxy_images(stored, cache)
+    # Basic lands are excluded; only the 4 non-basic copies remain.
+    assert len(images) == 4
+
+
 def test_image_urls_uses_media_prefix():
     data = {"image_paths": ["img_a_en.jpg", "img_b_en.jpg"]}
     assert image_urls(data) == ["/media/img_a_en.jpg", "/media/img_b_en.jpg"]
