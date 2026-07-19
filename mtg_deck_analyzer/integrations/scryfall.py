@@ -221,6 +221,30 @@ def _translate_card_data(card_data: dict, lang: str, api_key: str = None) -> Non
             card_data["printed_text"] = t_card.get("printed_text")
 
 
+def _resolve_english_name(card_name: str, lang: str) -> str | None:
+    """Resolves a card name written in a foreign language to its English name.
+
+    Scryfall's ``cards/named?exact=`` endpoint only matches English names, so a
+    decklist written in another language (e.g. Italian "Fulmine" for "Lightning
+    Bolt") fails to resolve. Scryfall's search does index localized *printed*
+    names when scoped to a language, so an exact printed-name search returns the
+    matching card, whose ``name`` field is the canonical English name.
+
+    Returns the English name, or ``None`` if no card matched.
+    """
+    encoded_query = urllib.parse.quote(f'!"{card_name}" lang:{lang}')
+    search_url = f"https://api.scryfall.com/cards/search?q={encoded_query}&unique=cards"
+    resp = _scryfall_get(search_url)
+    if resp is not None and resp.status_code == 200:
+        try:
+            data = resp.json().get("data", [])
+            if data:
+                return data[0].get("name")
+        except Exception:
+            pass
+    return None
+
+
 def _derive_text_source(card_data: dict, lang: str) -> str:
     """Infers text provenance for a cached card lacking a stored ``_text_source``."""
     if lang == "en":
@@ -267,6 +291,18 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
     if resp is None:
         # Network/rate-limit gave up: do not cache, so it is retried next run.
         return None
+
+    # If the exact English lookup fails, the name may be written in the requested
+    # foreign language. Resolve it to the canonical English name and retry.
+    if resp.status_code == 404 and lang != "en":
+        english_name = _resolve_english_name(card_name, lang)
+        if english_name:
+            encoded_name = urllib.parse.quote(english_name)
+            exact_url = f"https://api.scryfall.com/cards/named?exact={encoded_name}"
+            retry_resp = _scryfall_get(exact_url)
+            if retry_resp is not None:
+                resp = retry_resp
+
     if resp.status_code != 200:
         if resp.status_code == 404:
             # Cache the negative result (the card genuinely does not exist).
