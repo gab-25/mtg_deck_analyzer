@@ -3,7 +3,7 @@
 import pytest
 
 
-def _fake_analyze(decklist, lang="en", api_key=None, skip_analysis=False, **kwargs):
+def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
     """Deterministic stand-in for the heavy analysis pipeline."""
     if not decklist.strip():
         raise ValueError("No cards could be parsed from the decklist.")
@@ -31,7 +31,6 @@ def _fake_analyze(decklist, lang="en", api_key=None, skip_analysis=False, **kwar
         "deck_analysis": None
         if skip_analysis
         else "## Overview\n\n- A **Forest** deck.",
-        "name_map": {},
         "stats": {
             "deck_type": "Custom",
             "total_cards": 2,
@@ -102,7 +101,7 @@ def test_create_view_and_delete_deck(client):
 
     r = client.post(
         "/decks",
-        data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
+        data={"name": "Mono Green", "decklist": "2 Forest"},
     )
     # Post/Redirect/Get back to the deck list.
     assert r.status_code == 302
@@ -133,7 +132,7 @@ def test_create_view_and_delete_deck(client):
 def test_create_with_empty_decklist_returns_error(client):
     r = client.post(
         "/decks",
-        data={"name": "x", "decklist": "   ", "lang": "en"},
+        data={"name": "x", "decklist": "   "},
     )
     assert r.status_code == 422
     assert "No cards could be parsed" in r.content.decode()
@@ -236,7 +235,7 @@ def test_pdf_download(client):
 
     client.post(
         "/decks",
-        data={"name": "Mono Green", "decklist": "2 Forest", "lang": "en"},
+        data={"name": "Mono Green", "decklist": "2 Forest"},
     )
     deck_id = Deck.objects.get(name="Mono Green").id
     pdf = client.get(f"/decks/{deck_id}/pdf")
@@ -473,45 +472,3 @@ def test_destructive_actions_use_confirm_modal(client):
     assert f'action="/decks/{deck.id}/reanalyze"' in detail
     assert 'id="confirm-delete"' in detail
     assert f'action="/decks/{deck.id}/delete"' in detail
-
-
-@pytest.mark.django_db
-def test_machine_translation_badge_shown(client):
-    from mtg_deck_analyzer.models import Deck
-
-    deck = Deck.objects.create(
-        name="Tradotto",
-        lang="it",
-        raw_decklist="1 Forest",
-        analysis_md=None,
-        deck_type="Custom",
-        total_cards=1,
-        total_value_eur=0.0,
-        avg_cmc=0.0,
-        category_counts={"Land": 1},
-        cards=[
-            {
-                "quantity": 1,
-                "data": {
-                    "name": "Foresta",
-                    "type_line": "Basic Land — Forest",
-                    "cmc": 0.0,
-                    "price_eur": 0.0,
-                    "image_paths": [],
-                    "text_source": "machine",
-                    "faces": [
-                        {
-                            "name": "Foresta",
-                            "mana_cost": "",
-                            "type_line": "Terra",
-                            "rules_text": "({T}: Aggiungi {G}.)",
-                        }
-                    ],
-                },
-            }
-        ],
-    )
-
-    r = client.get(f"/decks/{deck.id}")
-    assert r.status_code == 200
-    assert "auto-translated" in r.content.decode()

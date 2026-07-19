@@ -8,9 +8,7 @@ import os
 
 from .caching.file_cache import FileCardCache
 from .domain.cards import compute_statistics, infer_deck_type
-from .domain.constants import normalize_lang
 from .domain.decklist import parse_decklist_text
-from .domain.text_utils import localize_card_names
 from .integrations.gemini import (
     analyze_deck_list,
     log_analysis_unavailable,
@@ -31,7 +29,6 @@ def default_cache_dir() -> str:
 
 def analyze_decklist(
     decklist_text: str,
-    lang: str = "en",
     api_key: str = None,
     *,
     cache=None,
@@ -49,7 +46,6 @@ def analyze_decklist(
     and the aggregate statistics. Raises ``ValueError`` if no cards could be
     parsed or fetched.
     """
-    lang = normalize_lang(lang)
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if cache is None:
         cache = FileCardCache(default_cache_dir())
@@ -62,21 +58,15 @@ def analyze_decklist(
     notify(f"Parsed {len(deck_cards)} unique entries.")
 
     processed_cards = []
-    # Maps the English name (as used in the analysis prompt) to the localized
-    # name, so card mentions in the analysis can be translated afterwards.
-    name_map = {}
 
     for idx, item in enumerate(deck_cards):
         name = item["name"]
         qty = item["quantity"]
         notify(f"[{idx + 1}/{len(deck_cards)}] Fetching '{name}' (x{qty})...")
 
-        card_info = fetch_card_data(name, lang, cache, api_key)
+        card_info = fetch_card_data(name, cache)
         if card_info:
             processed_cards.append({"quantity": qty, "data": card_info})
-            localized_name = card_info.get("name")
-            if localized_name:
-                name_map[name] = localized_name
 
     if not processed_cards:
         raise ValueError("Could not retrieve card details for any card.")
@@ -90,11 +80,7 @@ def analyze_decklist(
     deck_type = infer_deck_type(processed_cards)
     if not skip_analysis:
         if api_key:
-            deck_analysis = analyze_deck_list(
-                deck_text_repr, api_key=api_key, lang_code=lang
-            )
-            if deck_analysis and lang != "en":
-                deck_analysis = localize_card_names(deck_analysis, name_map)
+            deck_analysis = analyze_deck_list(deck_text_repr, api_key=api_key)
             recognized = recognize_deck_type(deck_text_repr, api_key=api_key)
             if recognized:
                 deck_type = recognized
@@ -108,7 +94,6 @@ def analyze_decklist(
     return {
         "processed_cards": processed_cards,
         "deck_analysis": deck_analysis,
-        "name_map": name_map,
         "stats": {
             "deck_type": deck_type,
             "total_cards": total_cards,

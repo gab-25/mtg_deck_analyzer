@@ -27,38 +27,6 @@ def escape_for_paragraph(text: str) -> str:
     return html.escape(text).replace("\n", "<br/>")
 
 
-def localize_card_names(text: str, name_map: dict) -> str:
-    """Replaces English card names in the analysis text with localized names.
-
-    ``name_map`` maps each English card name (exactly as fed to the analysis
-    model) to its localized printed name. The substitution runs in a single pass
-    using a combined, case-insensitive pattern; longer names are tried first so a
-    card whose name is a prefix of another (e.g. "Tatyova" inside "Tatyova,
-    Benthic Druid") is never partially replaced. Word boundaries keep names from
-    matching inside larger words. Bold/italic markers around a name are
-    preserved, since only the name text itself is rewritten.
-    """
-    if not text or not name_map:
-        return text
-
-    # Skip entries with no real translation (e.g. names identical in both langs).
-    pairs = [
-        (eng, loc)
-        for eng, loc in name_map.items()
-        if eng and loc and eng.lower() != loc.lower()
-    ]
-    if not pairs:
-        return text
-
-    # Longest first so the alternation prefers the most specific card name.
-    pairs.sort(key=lambda kv: len(kv[0]), reverse=True)
-    lookup = {eng.lower(): loc for eng, loc in pairs}
-    alternation = "|".join(re.escape(eng) for eng, _ in pairs)
-    pattern = re.compile(r"(?<!\w)(" + alternation + r")(?!\w)", re.IGNORECASE)
-
-    return pattern.sub(lambda m: lookup[m.group(1).lower()], text)
-
-
 def convert_markdown_inline(text: str) -> str:
     """Converts inline Markdown styles into HTML tags for ReportLab Paragraphs."""
     # Escape HTML tags first to avoid XML parsing errors.

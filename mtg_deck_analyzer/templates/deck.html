@@ -16,7 +16,6 @@ max-width stays inline — a utility would lose to the unlayered component rule.
         <div>
             <div class="flex items-center gap-[9px] mb-2.5">
                 {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
-                <span class="ml-0.5 text-[12.5px] text-txt3">{{ lang_display }}</span>
             </div>
             <h1 class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
             <span class="chip">{{ deck.deck_type }}</span>
@@ -94,7 +93,6 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-semibold text-[14.5px]">{{ c.name }}</span>
                                 <span class="py-0.5 px-[7px] text-[11px] border border-line2 rounded-full" style="color:{{ c.type_hex }}">{{ c.type }}</span>
-                                {% if c.text_source == 'machine' %}<span class="py-0.5 px-1.5 text-[10px] text-gold border border-[rgba(232,182,76,.3)] rounded-full" title="Rules text machine-translated by Gemini">auto-translated</span>{% endif %}
                             </div>
                             {% if c.oracle %}<div class="mt-1 max-w-[560px] text-[12.5px] text-txt3 font-light leading-[1.45] whitespace-pre-line">{{ c.oracle }}</div>{% endif %}
                         </div>

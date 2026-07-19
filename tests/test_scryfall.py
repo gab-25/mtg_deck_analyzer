@@ -1,11 +1,8 @@
 """Tests for Scryfall data-processing helpers (no network access)."""
 
 from mtg_deck_analyzer.integrations.scryfall import (
-    _derive_text_source,
     _extract_price_eur,
-    find_best_translated_card,
     get_face_details,
-    is_text_untranslated,
     process_cached_card,
 )
 
@@ -43,25 +40,22 @@ class TestExtractPriceEur:
 
 
 class TestGetFaceDetails:
-    def test_prefers_printed_fields(self):
+    def test_reads_english_fields(self):
         face = {
-            "printed_name": "Lampo",
             "name": "Lightning Bolt",
-            "printed_type_line": "Istantaneo",
             "type_line": "Instant",
-            "printed_text": "Infligge 3 danni",
             "oracle_text": "Deal 3 damage",
             "mana_cost": "{R}",
         }
         details = get_face_details(face)
         assert details == {
-            "name": "Lampo",
+            "name": "Lightning Bolt",
             "mana_cost": "{R}",
-            "type_line": "Istantaneo",
-            "rules_text": "Infligge 3 danni",
+            "type_line": "Instant",
+            "rules_text": "Deal 3 damage",
         }
 
-    def test_falls_back_to_english_fields(self):
+    def test_missing_fields_default_empty(self):
         face = {
             "name": "Lightning Bolt",
             "type_line": "Instant",
@@ -88,80 +82,11 @@ class TestGetFaceDetails:
         }
 
 
-class TestIsTextUntranslated:
-    def test_single_face_translated(self):
-        card = {"printed_text": "Infligge 3 danni", "oracle_text": "Deal 3 damage"}
-        assert is_text_untranslated(card) is False
-
-    def test_single_face_missing_printed(self):
-        card = {"oracle_text": "Deal 3 damage"}
-        assert is_text_untranslated(card) is True
-
-    def test_single_face_identical_text(self):
-        card = {"printed_text": "Deal 3 damage", "oracle_text": "Deal 3 damage"}
-        assert is_text_untranslated(card) is True
-
-    def test_single_face_no_oracle_text(self):
-        # No oracle text at all -> nothing to translate.
-        assert is_text_untranslated({"printed_text": ""}) is False
-
-    def test_multi_face_one_untranslated(self):
-        card = {
-            "card_faces": [
-                {"printed_text": "Tradotto", "oracle_text": "Translated"},
-                {"oracle_text": "Untranslated"},
-            ]
-        }
-        assert is_text_untranslated(card) is True
-
-    def test_multi_face_all_translated(self):
-        card = {
-            "card_faces": [
-                {"printed_text": "Uno", "oracle_text": "One"},
-                {"printed_text": "Due", "oracle_text": "Two"},
-            ]
-        }
-        assert is_text_untranslated(card) is False
-
-
-class TestFindBestTranslatedCard:
-    def test_empty_returns_none(self):
-        assert find_best_translated_card([], "it") is None
-
-    def test_returns_first_translated(self):
-        prints = [
-            {"printed_text": "Deal 3 damage", "oracle_text": "Deal 3 damage"},  # untranslated
-            {"printed_text": "Infligge 3 danni", "oracle_text": "Deal 3 damage"},  # translated
-        ]
-        result = find_best_translated_card(prints, "it")
-        assert result is prints[1]
-
-    def test_falls_back_to_first_when_none_translated(self):
-        prints = [
-            {"printed_text": "Deal 3 damage", "oracle_text": "Deal 3 damage"},
-            {"oracle_text": "Deal 3 damage"},
-        ]
-        result = find_best_translated_card(prints, "it")
-        assert result is prints[0]
-
-
-class TestTextSource:
-    def test_process_cached_card_passes_text_source(self):
-        card = {"id": "x", "name": "Foresta", "_text_source": "machine"}
-        out = process_cached_card(card, _NoImageCache())
-        assert out["text_source"] == "machine"
-
-    def test_process_cached_card_missing_source_is_none(self):
+class TestProcessCachedCard:
+    def test_uses_english_name(self):
         out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
-        assert out["text_source"] is None
+        assert out["name"] == "Forest"
 
-    def test_derive_english_is_official(self):
-        assert _derive_text_source({"oracle_text": "Deal 3 damage"}, "en") == "official"
-
-    def test_derive_untranslated_non_english_is_english(self):
-        card = {"oracle_text": "Deal 3 damage"}  # no printed_text -> untranslated
-        assert _derive_text_source(card, "it") == "english"
-
-    def test_derive_translated_non_english_is_official(self):
-        card = {"printed_text": "Infligge 3 danni", "oracle_text": "Deal 3 damage"}
-        assert _derive_text_source(card, "it") == "official"
+    def test_missing_name_falls_back(self):
+        out = process_cached_card({"id": "x"}, _NoImageCache())
+        assert out["name"] == "Unknown Card"

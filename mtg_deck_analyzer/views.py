@@ -17,12 +17,7 @@ from django.views.decorators.http import require_http_methods
 
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
-from .domain.constants import (
-    CATEGORY_ORDER,
-    DEFAULT_LANG,
-    LANG_DISPLAY_NAMES,
-    normalize_lang,
-)
+from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
 from .domain.storage import (
     cards_for_pdf,
@@ -172,7 +167,6 @@ def _detail_card_groups(stored_cards: list) -> list:
                     "quantity": item["quantity"],
                     "image": urls[0] if urls else "",
                     "image_name": paths[0] if paths else "",
-                    "text_source": data.get("text_source"),
                 }
             )
         groups.append(
@@ -197,20 +191,12 @@ def _resolved_api_key() -> str | None:
     return os.environ.get("GEMINI_API_KEY")
 
 
-def _default_lang() -> str:
-    return normalize_lang(os.environ.get("DEFAULT_LANG", DEFAULT_LANG))
-
-
 def _create_context(**extra) -> dict:
     """Builds the context the deck-creation form renders with."""
-    return {
-        "languages": LANG_DISPLAY_NAMES,
-        "default_lang": _default_lang(),
-        **extra,
-    }
+    return {**extra}
 
 
-def _run_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | None):
+def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
     """Runs the heavy analysis for ``deck_id`` and persists the outcome.
 
     Binds the deck id to the logging context so every record emitted during the
@@ -222,7 +208,6 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | N
             Deck.objects.filter(pk=deck_id).update(status=Deck.Status.PROCESSING)
             result = analyze_decklist(
                 decklist,
-                lang=lang,
                 api_key=api_key,
                 cache=DbCardCache(),
                 progress=lambda msg: logger.info("%s", msg),
@@ -251,28 +236,28 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | N
             )
 
 
-def _run_analysis_threaded(deck_id, decklist, lang, api_key):
+def _run_analysis_threaded(deck_id, decklist, api_key):
     """Thread entry point: runs the analysis, then releases the DB connection.
 
     The background thread gets its own connection from Django's thread-local
     pool; close it on the way out so it isn't left dangling.
     """
     try:
-        _run_analysis(deck_id, decklist, lang, api_key)
+        _run_analysis(deck_id, decklist, api_key)
     finally:
         connection.close()
 
 
-def _start_analysis(deck_id: uuid.UUID, decklist: str, lang: str, api_key: str | None):
+def _start_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
     """Kicks off the analysis, in a background thread unless disabled (tests)."""
     if getattr(settings, "ASYNC_DECK_ANALYSIS", True):
         threading.Thread(
             target=_run_analysis_threaded,
-            args=(deck_id, decklist, lang, api_key),
+            args=(deck_id, decklist, api_key),
             daemon=True,
         ).start()
     else:
-        _run_analysis(deck_id, decklist, lang, api_key)
+        _run_analysis(deck_id, decklist, api_key)
 
 
 @login_required
@@ -323,7 +308,6 @@ def new_deck(request):
 def create_deck(request):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
-    lang = normalize_lang(request.POST.get("lang", "en"))
 
     # Cheap, synchronous validation so obvious mistakes are reported inline; the
     # multi-minute Scryfall + Gemini work happens in the background afterwards.
@@ -341,11 +325,10 @@ def create_deck(request):
 
     deck = Deck.objects.create(
         name=name,
-        lang=lang,
         raw_decklist=decklist,
         status=Deck.Status.PENDING,
     )
-    _start_analysis(deck.id, decklist, lang, _resolved_api_key())
+    _start_analysis(deck.id, decklist, _resolved_api_key())
 
     # Post/Redirect/Get: back to the deck list, where the new deck shows an
     # "Analyzing…" status and the list polls itself until it's ready.
@@ -376,7 +359,6 @@ def deck_detail(request, deck_id: uuid.UUID):
         "deck.html",
         {
             "deck": deck,
-            "lang_display": LANG_DISPLAY_NAMES.get(deck.lang, deck.lang),
             "analysis_html": analysis_html,
             "pips": _deck_pips(stored_cards),
             "card_groups": _detail_card_groups(stored_cards),
@@ -399,7 +381,6 @@ def edit_deck(request, deck_id: uuid.UUID):
             deck=deck,
             form_name=deck.name,
             form_decklist=deck.raw_decklist,
-            default_lang=deck.lang,
         ),
     )
 
@@ -410,7 +391,6 @@ def update_deck(request, deck_id: uuid.UUID):
     deck = get_object_or_404(Deck, pk=deck_id)
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
-    lang = normalize_lang(request.POST.get("lang", "en"))
 
     if not parse_decklist_text(decklist):
         return render(
@@ -421,25 +401,23 @@ def update_deck(request, deck_id: uuid.UUID):
                 error="No cards could be parsed from the decklist.",
                 form_name=name,
                 form_decklist=decklist,
-                default_lang=lang,
             ),
             status=422,
         )
 
-    # Only the decklist and language feed the analysis; re-run it just when one of
-    # those actually changed, so a plain rename doesn't trigger minutes of work.
-    needs_reanalysis = decklist != deck.raw_decklist or lang != deck.lang
+    # Only the decklist feeds the analysis; re-run it just when it actually
+    # changed, so a plain rename doesn't trigger minutes of work.
+    needs_reanalysis = decklist != deck.raw_decklist
 
     deck.name = name
     deck.raw_decklist = decklist
-    deck.lang = lang
     if needs_reanalysis:
         deck.status = Deck.Status.PENDING
         deck.error = None
     deck.save()
 
     if needs_reanalysis:
-        _start_analysis(deck.id, decklist, lang, _resolved_api_key())
+        _start_analysis(deck.id, decklist, _resolved_api_key())
         return redirect("index")
     return redirect("deck_detail", deck_id=deck.id)
 
@@ -452,7 +430,7 @@ def reanalyze_deck(request, deck_id: uuid.UUID):
     deck.status = Deck.Status.PENDING
     deck.error = None
     deck.save(update_fields=["status", "error"])
-    _start_analysis(deck.id, deck.raw_decklist, deck.lang, _resolved_api_key())
+    _start_analysis(deck.id, deck.raw_decklist, _resolved_api_key())
 
     # Back to the list, where the deck shows its live "Analyzing…" status and the
     # list polls itself until the re-analysis is done.
