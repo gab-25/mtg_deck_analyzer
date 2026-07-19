@@ -62,3 +62,36 @@ def test_fetch_card_data_returns_none_for_cached_not_found():
     cache = DbCardCache()
     cache.set_card("card_en_nope", {"error": "not_found"})
     assert fetch_card_data("Nope", cache) is None
+
+
+@pytest.mark.django_db
+def test_purge_non_english_cache_keeps_only_english():
+    """The data migration drops localized cache rows and keeps the English ones."""
+    import importlib
+
+    from django.apps import apps
+
+    from mtg_deck_analyzer.models import ScryfallCard, ScryfallImage
+
+    migration = importlib.import_module(
+        "mtg_deck_analyzer.migrations.0005_purge_non_english_cache"
+    )
+
+    cache = DbCardCache()
+    # Card JSON: one English, two localized.
+    cache.set_card("card_en_forest", {"name": "Forest"})
+    cache.set_card("card_it_forest", {"name": "Foresta"})
+    cache.set_card("card_de_forest", {"name": "Wald"})
+    # Images: English single + face, localized single + face.
+    cache.set_image("img_abc_en.jpg", b"\x01")
+    cache.set_image("img_abc_en_face0.jpg", b"\x02")
+    cache.set_image("img_abc_it.jpg", b"\x03")
+    cache.set_image("img_abc_it_face0.jpg", b"\x04")
+
+    migration.purge_non_english_cache(apps, None)
+
+    assert set(ScryfallCard.objects.values_list("key", flat=True)) == {"card_en_forest"}
+    assert set(ScryfallImage.objects.values_list("name", flat=True)) == {
+        "img_abc_en.jpg",
+        "img_abc_en_face0.jpg",
+    }
