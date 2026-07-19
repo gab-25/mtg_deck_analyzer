@@ -1,6 +1,6 @@
 [project]
 name = "mtg-deck-analyzer"
-version = "0.2.0"
+version = "0.2.1"
 description = "Django web app that analyzes MTG decklists (Scryfall + Gemini) and renders reports with a PDF download"
 readme = "README.md"
 requires-python = ">=3.14"
