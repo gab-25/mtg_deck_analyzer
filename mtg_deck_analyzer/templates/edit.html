@@ -42,19 +42,7 @@
                     </div>
                     <div class="font-cinzel font-semibold text-[20px] text-txt">{{ deck.deck_type }}</div>
                     <div class="text-[12.5px] text-txt3 font-light mt-1.5 leading-[1.5]">
-                        Changing the card list or language re-runs the analysis and may refine this type.
-                    </div>
-                </div>
-
-                <div class="panel-card p-[18px]">
-                    <label class="field-label mb-[9px]">Analysis language</label>
-                    <div class="select-wrap">
-                        <select name="lang" class="field">
-                            {% for code, label in languages.items %}
-                            <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        <span class="ms">expand_more</span>
+                        Changing the card list re-runs the analysis and may refine this type.
                     </div>
                 </div>
 
@@ -62,7 +50,7 @@
                     <span class="ms text-[20px]">save</span>Save changes
                 </button>
                 <div class="text-[12px] text-txt3 font-light text-center leading-[1.5]">
-                    Changing the card list or language can take a minute or two to re-analyze.
+                    Changing the card list can take a minute or two to re-analyze.
                 </div>
             </div>
         </div>

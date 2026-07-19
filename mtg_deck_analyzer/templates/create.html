@@ -46,18 +46,6 @@
                     </div>
                 </div>
 
-                <div class="panel-card p-[18px]">
-                    <label class="field-label mb-[9px]">Analysis language</label>
-                    <div class="select-wrap">
-                        <select name="lang" class="field">
-                            {% for code, label in languages.items %}
-                            <option value="{{ code }}" {% if code == default_lang %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        <span class="ms">expand_more</span>
-                    </div>
-                </div>
-
                 <button type="submit" class="btn btn-grad btn-block">
                     <span class="ms text-[20px]">auto_awesome</span>Analyze deck
                 </button>

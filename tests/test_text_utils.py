@@ -7,7 +7,6 @@ from mtg_deck_analyzer.domain.text_utils import (
     convert_markdown_inline,
     escape_for_paragraph,
     get_card_slug,
-    localize_card_names,
     markdown_to_flowables,
     slugify,
 )
@@ -127,33 +126,3 @@ class TestMarkdownToFlowables:
         assert paragraphs[0].text == "Title"
         assert paragraphs[1].style.name == "Normal"
         assert "Body text here." in paragraphs[1].text
-
-
-class TestLocalizeCardNames:
-    def test_replaces_card_name(self):
-        out = localize_card_names("Play **Forest** now.", {"Forest": "Foresta"})
-        assert out == "Play **Foresta** now."
-
-    def test_longer_name_wins_over_prefix(self):
-        name_map = {
-            "Tatyova": "WRONG",
-            "Tatyova, Benthic Druid": "Tatyova, Druido Bentonico",
-        }
-        out = localize_card_names("**Tatyova, Benthic Druid** leads.", name_map)
-        assert out == "**Tatyova, Druido Bentonico** leads."
-
-    def test_respects_word_boundaries(self):
-        out = localize_card_names("Forestwalk is not a Forest.", {"Forest": "Foresta"})
-        assert out == "Forestwalk is not a Foresta."
-
-    def test_case_insensitive(self):
-        out = localize_card_names("a sol ring", {"Sol Ring": "Anello Solare"})
-        assert out == "a Anello Solare"
-
-    def test_skips_identical_names(self):
-        out = localize_card_names("Sol Ring rules", {"Sol Ring": "Sol Ring"})
-        assert out == "Sol Ring rules"
-
-    def test_empty_inputs(self):
-        assert localize_card_names("", {"Forest": "Foresta"}) == ""
-        assert localize_card_names("text", {}) == "text"

@@ -50,36 +50,15 @@ def test_fetch_card_data_uses_cache_without_network():
         },
     )
 
-    card = fetch_card_data("Forest", "en", cache)
+    card = fetch_card_data("Forest", cache)
     assert card["name"] == "Forest"
     assert card["price_eur"] == 0.05
     assert card["image_paths"] == []  # no image_uris in the cached payload
     assert card["faces"][0]["rules_text"] == "({T}: Add {G}.)"
-    assert card["text_source"] == "official"  # English is always official
-
-
-@pytest.mark.django_db
-def test_fetch_card_data_marks_english_fallback(monkeypatch):
-    """A non-English request with only untranslated text and no key -> 'english'."""
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    cache = DbCardCache()
-    cache.set_card(
-        "card_it_forest",
-        {
-            "id": "abc",
-            "lang": "en",
-            "name": "Forest",
-            "type_line": "Basic Land — Forest",
-            "oracle_text": "({T}: Add {G}.)",  # no printed_text -> untranslated
-            "cmc": 0.0,
-        },
-    )
-    card = fetch_card_data("Forest", "it", cache)
-    assert card["text_source"] == "english"
 
 
 @pytest.mark.django_db
 def test_fetch_card_data_returns_none_for_cached_not_found():
     cache = DbCardCache()
     cache.set_card("card_en_nope", {"error": "not_found"})
-    assert fetch_card_data("Nope", "en", cache) is None
+    assert fetch_card_data("Nope", cache) is None

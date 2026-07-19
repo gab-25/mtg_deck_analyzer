@@ -13,7 +13,7 @@ See [Web Service](#web-service) to get it running.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
-- **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a Gemini machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
+- **Card content**: Fetches card names and descriptions in English from Scryfall (names, type lines, and oracle rules text).
 - **Gemini Analysis**: Analyzes the deck's archetype and gameplay strategy (early, mid, and late game, synergies, and combos) using the `gemini-2.5-flash` model. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
 - **Complex Card Support**: Correctly handles double-faced cards (showing both faces side by side in the PDF), split cards, adventures, and rooms.
 - **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
@@ -42,14 +42,14 @@ mtg_deck_analyzer/
 ├── templates/         # Django templates
 ├── pipeline.py        # Analysis pipeline (parse → fetch → analyze → stats)
 ├── domain/            # Pure domain logic (no I/O, no Django)
-│   ├── constants.py   #   Shared constants (Scryfall headers, language maps, categories)
+│   ├── constants.py   #   Shared constants (Scryfall headers, deck types, categories)
 │   ├── decklist.py    #   Decklist text parsing
 │   ├── cards.py       #   Card classification and aggregate statistics
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
 ├── integrations/      # External service clients
 │   ├── scryfall.py    #   Card data/image fetching from Scryfall
-│   └── gemini.py      #   Card translation and strategic analysis (Google Gemini)
+│   └── gemini.py      #   Strategic deck analysis (Google Gemini)
 ├── caching/           # Scryfall cache backends
 │   ├── file_cache.py  #   Filesystem-backed cache (default, standalone/tests)
 │   └── db_cache.py    #   Database-backed cache backend
@@ -80,17 +80,16 @@ The tool uses `uv` as a fast and efficient Python package manager.
 The app is configured entirely through environment variables (loaded from a
 `.env` file during local development — see [Run locally](#run-locally-without-docker)):
 
-- `GEMINI_API_KEY` — enables the strategic analysis and card translation. Without a key the app still works, simply skipping the strategy section.
-- `DEFAULT_LANG` — default target language code for card names and analysis (defaults to `en`). The language can also be chosen per-deck in the web form.
+- `GEMINI_API_KEY` — enables the strategic analysis. Without a key the app still works, simply skipping the strategy section.
 
 ---
 
 ## Web Service
 
 The app is a **Django** web service with a **Postgres** database and
-**HTMX + DaisyUI** pages. You paste a decklist, pick a language, and get a web
-page with the deck fact sheet, the Gemini strategy analysis, and the full card
-list — plus a one-click **PDF download** of the report.
+**HTMX + DaisyUI** pages. You paste a decklist and get a web page with the deck
+fact sheet, the Gemini strategy analysis, and the full card list — plus a
+one-click **PDF download** of the report.
 
 ### Run with Docker Compose (recommended)
 
@@ -121,15 +120,14 @@ The relevant variables are:
 
 - `DATABASE_URL` — a Postgres or SQLite URL (default `postgresql://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite:///./mtg.db` for a quick, dependency-free run. A `+driver` suffix on the scheme (e.g. `postgresql+psycopg://…`) is accepted and ignored.
 - `GEMINI_API_KEY` — optional; enables the strategic analysis.
-- `DEFAULT_LANG` — optional; default target language code (defaults to `en`).
 - `HOST` / `PORT` — server bind address (defaults `0.0.0.0:8000`).
 - `RELOAD` — set to `1` for auto-reload during development.
 - `SECRET_KEY` / `DEBUG` — Django secret key and debug flag (sensible defaults for local development).
 
 Database migrations are applied automatically on startup.
 
-The Gemini API key and the default language are resolved from the
-environment variables described in [Configuration](#configuration) above.
+The Gemini API key is resolved from the environment variables described in
+[Configuration](#configuration) above.
 Without a key the app still works, simply skipping the strategy section.
 
 ---

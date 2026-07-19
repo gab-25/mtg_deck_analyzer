@@ -19,7 +19,6 @@ class Deck(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     name = models.CharField(max_length=255)
-    lang = models.CharField(max_length=8, default="en")
     raw_decklist = models.TextField()
 
     # Lifecycle of the background analysis. Defaults to READY so decks created
@@ -52,7 +51,7 @@ class Deck(models.Model):
 
 
 class ScryfallCard(models.Model):
-    """Cached Scryfall card JSON, keyed by ``card_<lang>_<slug>`` (the Scryfall cache)."""
+    """Cached Scryfall card JSON, keyed by ``card_en_<slug>`` (the Scryfall cache)."""
 
     key = models.CharField(max_length=255, primary_key=True)
     data = models.JSONField()
@@ -63,7 +62,7 @@ class ScryfallCard(models.Model):
 
 
 class ScryfallImage(models.Model):
-    """Cached card image bytes, keyed by basename (``img_<id>_<lang>.jpg``)."""
+    """Cached card image bytes, keyed by basename (``img_<id>_en.jpg``)."""
 
     name = models.CharField(max_length=255, primary_key=True)
     data = models.BinaryField()

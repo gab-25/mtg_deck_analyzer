@@ -6,9 +6,8 @@ from .constants import CATEGORY_ORDER
 def classify_card(card_data: dict) -> str:
     """Classifies a card based on its type line.
 
-    Always uses the English `type_line` (the Scryfall oracle type), never the
-    localized `printed_type_line` stored in `faces`, so classification keeps
-    working regardless of the requested language.
+    Uses the top-level English ``type_line`` (the Scryfall oracle type), falling
+    back to the first face when only per-face details are present.
     """
     type_line = card_data.get("type_line", "")
     if not type_line:
@@ -42,8 +41,8 @@ def classify_card(card_data: dict) -> str:
 def is_basic_land(card_data: dict) -> bool:
     """Reports whether a card is a basic land (``Basic Land — ...``).
 
-    Uses the English ``type_line`` (falling back to the first face) so it works
-    regardless of the requested language, matching :func:`classify_card`.
+    Uses the English ``type_line`` (falling back to the first face), matching
+    :func:`classify_card`.
     """
     type_line = card_data.get("type_line", "")
     if not type_line:

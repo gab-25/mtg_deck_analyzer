@@ -1,29 +1,13 @@
-"""Tests for the unified language registry."""
+"""Tests for shared domain constants."""
 
-from mtg_deck_analyzer.domain.constants import (
-    LANG_DISPLAY_NAMES,
-    LANG_MAP,
-    LANGUAGES,
-    normalize_lang,
-)
+from mtg_deck_analyzer.domain.constants import CATEGORY_ORDER, DECK_TYPES
 
 
-def test_derived_maps_match_registry_keys():
-    assert set(LANG_MAP) == set(LANGUAGES)
-    assert set(LANG_DISPLAY_NAMES) == set(LANGUAGES)
+def test_deck_types_are_defined():
+    assert "Custom" in DECK_TYPES
+    assert "Commander / EDH" in DECK_TYPES
 
 
-def test_derived_maps_use_registry_values():
-    assert LANG_MAP["it"] == "Italian"
-    assert LANG_DISPLAY_NAMES["it"] == "Italiano"
-
-
-def test_normalize_lang_lowercases_known_code():
-    assert normalize_lang("IT") == "it"
-    assert normalize_lang("en") == "en"
-
-
-def test_normalize_lang_falls_back_to_default():
-    assert normalize_lang("xx") == "en"
-    assert normalize_lang("") == "en"
-    assert normalize_lang(None) == "en"
+def test_category_order_covers_main_types():
+    for category in ("Creature", "Land", "Instant", "Sorcery", "Other"):
+        assert category in CATEGORY_ORDER

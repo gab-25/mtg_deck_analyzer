@@ -9,7 +9,7 @@ class FileCardCache:
 
     This is the default backend, kept so the analysis engine works standalone
     (and in tests) without a database. Cards are keyed by a string like
-    ``card_en_lightning_bolt`` and images by their basename (``img_<id>_<lang>.jpg``).
+    ``card_en_lightning_bolt`` and images by their basename (``img_<id>_en.jpg``).
     """
 
     def __init__(self, cache_dir: str):

@@ -1,6 +1,5 @@
 """Fetching card data and images from Scryfall (with local cache)."""
 
-import os
 import time
 import urllib.parse
 
@@ -8,7 +7,6 @@ import requests
 
 from ..domain.constants import SCRYFALL_HEADERS
 from ..domain.text_utils import get_card_slug
-from .gemini import translate_card_via_gemini
 
 # Polite delay between Scryfall requests (their guidelines ask for 50-100ms).
 _REQUEST_DELAY = 0.1
@@ -52,11 +50,11 @@ def download_image(url: str) -> bytes | None:
 
 
 def get_face_details(face_or_card: dict) -> dict:
-    """Extracts localized text details from a card or a face object."""
-    name = face_or_card.get("printed_name") or face_or_card.get("name") or ""
+    """Extracts text details from a card or a face object."""
+    name = face_or_card.get("name") or ""
     mana_cost = face_or_card.get("mana_cost") or ""
-    type_line = face_or_card.get("printed_type_line") or face_or_card.get("type_line") or ""
-    rules_text = face_or_card.get("printed_text") or face_or_card.get("oracle_text") or ""
+    type_line = face_or_card.get("type_line") or ""
+    rules_text = face_or_card.get("oracle_text") or ""
 
     return {
         "name": name.strip(),
@@ -149,117 +147,33 @@ def process_cached_card(card: dict, cache) -> dict:
 
     return {
         "id": card_id,
-        "name": card.get("printed_name") or card.get("name") or "Unknown Card",
+        "name": card.get("name") or "Unknown Card",
         "image_paths": image_names,
         "faces": faces_details,
         "price_eur": _extract_price_eur(card),
         "type_line": card.get("type_line", ""),
         "cmc": card.get("cmc", 0.0),
-        # Provenance of the localized text: "official" (Scryfall printed text),
-        # "machine" (Gemini-translated) or "english" (no localization available).
-        "text_source": card.get("_text_source"),
     }
 
 
-def is_text_untranslated(card_data: dict) -> bool:
-    """Checks whether the rules text is empty or identical to the English oracle text."""
-    if "card_faces" in card_data and len(card_data["card_faces"]) > 0:
-        for face in card_data["card_faces"]:
-            printed = (face.get("printed_text") or "").strip()
-            oracle = (face.get("oracle_text") or "").strip()
-            if oracle and (not printed or printed == oracle):
-                return True
-        return False
-    else:
-        printed = (card_data.get("printed_text") or "").strip()
-        oracle = (card_data.get("oracle_text") or "").strip()
-        if oracle and (not printed or printed == oracle):
-            return True
-        return False
-
-
-def find_best_translated_card(prints: list, lang: str) -> dict:
-    """Finds the print with translated text, otherwise returns the first one."""
-    if not prints:
-        return None
-    for card in prints:
-        if not is_text_untranslated(card):
-            return card
-    return prints[0]
-
-
-def _translate_card_data(card_data: dict, lang: str, api_key: str = None) -> None:
-    """Translates card data in-place via Gemini when needed."""
-    print(" (translating via Gemini)... ", end="", flush=True)
-    if "card_faces" in card_data and len(card_data["card_faces"]) > 0:
-        for face in card_data["card_faces"]:
-            t_face = translate_card_via_gemini(
-                face.get("name", ""),
-                face.get("oracle_text", ""),
-                face.get("type_line", ""),
-                lang,
-                api_key,
-            )
-            if t_face:
-                face["printed_name"] = t_face.get("printed_name")
-                face["printed_type_line"] = t_face.get("printed_type_line")
-                face["printed_text"] = t_face.get("printed_text")
-        card_data["printed_name"] = " // ".join(
-            [f.get("printed_name") or f.get("name") for f in card_data["card_faces"]]
-        )
-    else:
-        t_card = translate_card_via_gemini(
-            card_data.get("name", ""),
-            card_data.get("oracle_text", ""),
-            card_data.get("type_line", ""),
-            lang,
-            api_key,
-        )
-        if t_card:
-            card_data["printed_name"] = t_card.get("printed_name")
-            card_data["printed_type_line"] = t_card.get("printed_type_line")
-            card_data["printed_text"] = t_card.get("printed_text")
-
-
-def _derive_text_source(card_data: dict, lang: str) -> str:
-    """Infers text provenance for a cached card lacking a stored ``_text_source``."""
-    if lang == "en":
-        return "official"
-    if is_text_untranslated(card_data):
-        return "english"
-    return "official"
-
-
-def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> dict:
-    """Fetches card data from cache or Scryfall, with set, language, and Gemini fallbacks.
+def fetch_card_data(card_name: str, cache) -> dict:
+    """Fetches English card data from cache or Scryfall.
 
     ``cache`` is a cache backend (see ``caching.file_cache.FileCardCache`` or
     ``caching.db_cache.DbCardCache``) exposing ``get_card``/``set_card``/
     ``has_image``/``get_image``/``set_image``.
     """
     slug = get_card_slug(card_name)
-    cache_key = f"card_{lang}_{slug}"
+    cache_key = f"card_en_{slug}"
 
     # 1. Check the cache.
     cached = cache.get_card(cache_key)
     if cached is not None:
         if cached.get("error") == "not_found":
             return None
-        # If the cached entry is still untranslated (e.g. it was cached
-        # without a Gemini key) and a key is now available, translate it
-        # and refresh the cache so the language is honored.
-        if lang != "en" and is_text_untranslated(cached):
-            if api_key or os.environ.get("GEMINI_API_KEY"):
-                _translate_card_data(cached, lang, api_key)
-                cached["_text_source"] = "machine"
-                cache.set_card(cache_key, cached)
-        # Backfill provenance for entries cached before this field existed.
-        if "_text_source" not in cached:
-            cached["_text_source"] = _derive_text_source(cached, lang)
         return process_cached_card(cached, cache)
 
-    # 2. Fetch from the Scryfall API.
-    # 2a. Look up the exact English match first.
+    # 2. Fetch the exact English match from the Scryfall API.
     encoded_name = urllib.parse.quote(card_name)
     exact_url = f"https://api.scryfall.com/cards/named?exact={encoded_name}"
 
@@ -273,69 +187,9 @@ def fetch_card_data(card_name: str, lang: str, cache, api_key: str = None) -> di
             cache.set_card(cache_key, {"error": "not_found"})
         return None
     try:
-        eng_card = resp.json()
+        card = resp.json()
     except Exception:
         return None
 
-    # If English is requested, we are done.
-    if lang == "en":
-        eng_card["_text_source"] = "official"
-        cache.set_card(cache_key, eng_card)
-        return process_cached_card(eng_card, cache)
-
-    # 2b. Attempt a localized lookup for the exact print.
-    card_data = eng_card
-    need_search_fallback = True
-
-    set_code = eng_card.get("set")
-    col_num = eng_card.get("collector_number")
-    lang_url = f"https://api.scryfall.com/cards/{set_code}/{col_num}/{lang}"
-
-    lang_resp = _scryfall_get(lang_url)
-    if lang_resp is not None and lang_resp.status_code == 200:
-        try:
-            candidate = lang_resp.json()
-            # Verify it has localized text.
-            if not is_text_untranslated(candidate):
-                card_data = candidate
-                need_search_fallback = False
-        except Exception:
-            pass
-
-    if need_search_fallback:
-        # 2c. Fallback: search this name in this language across other sets (unique=prints).
-        encoded_query = urllib.parse.quote(f'!"{eng_card.get("name")}" lang:{lang}')
-        search_url = f"https://api.scryfall.com/cards/search?q={encoded_query}&unique=prints"
-        search_resp = _scryfall_get(search_url)
-        if search_resp is not None and search_resp.status_code == 200:
-            try:
-                search_json = search_resp.json()
-                if "data" in search_json and len(search_json["data"]) > 0:
-                    card_data = find_best_translated_card(search_json["data"], lang)
-            except Exception:
-                pass  # Fall back to the English card.
-
-    # Copy prices and CMC from the English version (localized prints often lack them).
-    if "prices" not in card_data or not any(card_data.get("prices", {}).values()):
-        card_data["prices"] = eng_card.get("prices", {})
-
-    # If the text is still untranslated and we are not in English, try Gemini.
-    translated_via_gemini = False
-    if lang != "en" and is_text_untranslated(card_data):
-        has_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if has_key:
-            _translate_card_data(card_data, lang, api_key)
-            translated_via_gemini = True
-
-    # Record text provenance (this branch only runs for non-English requests).
-    if translated_via_gemini:
-        card_data["_text_source"] = "machine"
-    elif is_text_untranslated(card_data):
-        card_data["_text_source"] = "english"
-    else:
-        card_data["_text_source"] = "official"
-
-    # Cache the JSON details.
-    cache.set_card(cache_key, card_data)
-
-    return process_cached_card(card_data, cache)
+    cache.set_card(cache_key, card)
+    return process_cached_card(card, cache)
