@@ -20,7 +20,7 @@ from reportlab.platypus import (
 )
 
 from ..domain.cards import classify_card, compute_statistics
-from ..domain.constants import CATEGORY_ORDER, DECK_FORMAT
+from ..domain.constants import CATEGORY_ORDER
 from ..domain.text_utils import markdown_to_flowables
 
 _CATEGORY_LABELS = {
@@ -116,7 +116,7 @@ def create_stats_table(
         names = html.escape(", ".join(commanders))
         commander_html = f'<b>{stats_labels["commander"]}:</b> {names}<br/>'
     left_html = f"""
-    <b>{stats_labels["format"]}:</b> {DECK_FORMAT}<br/>
+    <b>{stats_labels["format"]}:</b> Commander<br/>
     {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
     <b>{stats_labels["value"]}:</b> {val_str}<br/>
@@ -532,8 +532,7 @@ def generate_pdf(
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
     subtitle_text = (
-        f"Magic: The Gathering {DECK_FORMAT} Deck List "
-        f"&bull; Generated on: {today_str}"
+        f"Magic: The Gathering Commander Deck List &bull; Generated on: {today_str}"
     )
     story_flowables.append(Paragraph(subtitle_text, styles["subtitle"]))
 

@@ -19,7 +19,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </div>
             <h1 class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
             <div class="flex items-center gap-2 flex-wrap">
-                <span class="chip">{{ deck_format }}</span>
+                <span class="chip">Commander</span>
                 {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}
             </div>
         </div>
@@ -115,7 +115,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             {% if commander_cards %}
             <div class="panel-card p-[18px]">
                 <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">
-                    Commander{{ commander_cards|pluralize }}
+                    Commander
                 </div>
                 <div class="flex flex-col gap-3">
                     {% for c in commander_cards %}

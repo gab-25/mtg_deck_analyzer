@@ -17,7 +17,7 @@ from django.views.decorators.http import require_http_methods
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
 from .domain.commander import check_decklist, commanders, deck_color_identity
-from .domain.constants import CATEGORY_ORDER, DECK_FORMAT
+from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
 from .domain.storage import (
     cards_for_pdf,
@@ -217,7 +217,7 @@ def _resolved_api_key() -> str | None:
 
 def _create_context(**extra) -> dict:
     """Builds the context the deck-creation form renders with."""
-    return {"deck_format": DECK_FORMAT, **extra}
+    return {**extra}
 
 
 def _decklist_errors(decklist: str) -> list:
@@ -330,7 +330,6 @@ def index(request):
         "stat_total": stat_total,
         "stat_analyzed": stat_analyzed,
         "stat_value": stat_value,
-        "deck_format": DECK_FORMAT,
     }
     # HTMX poll: return just the list region so it can swap itself in place.
     template = "partials/deck_list.html" if request.htmx else "index.html"
@@ -400,7 +399,6 @@ def deck_detail(request, deck_id: uuid.UUID):
         "deck.html",
         {
             "deck": deck,
-            "deck_format": DECK_FORMAT,
             "analysis_html": analysis_html,
             "pips": _deck_pips(deck),
             "commander_cards": _commander_cards(stored_cards),

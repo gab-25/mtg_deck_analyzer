@@ -8,15 +8,12 @@ SCRYFALL_HEADERS = {
 # Gemini model used for deck analysis.
 GEMINI_MODEL = "gemini-2.5-flash"
 
-# The one format this app supports. Every deck is analyzed, validated and
-# rendered as a Commander (EDH) deck.
-DECK_FORMAT = "Commander"
-
 # Commander deck-construction rules (Comprehensive Rules 903).
-# A deck is exactly 100 cards, commander(s) included.
+# A deck is exactly 100 cards, commander included.
 COMMANDER_DECK_SIZE = 100
-# One commander, or two when they have partner / a background.
-MAX_COMMANDERS = 2
+# A single commander. The official rules also allow two with partner or a
+# background; this app deliberately does not.
+MAX_COMMANDERS = 1
 
 # Cards whose rules text lifts the singleton restriction (Relentless Rats,
 # Shadowborn Apostle, Persistent Petitioners, Dragon's Approach, ...).

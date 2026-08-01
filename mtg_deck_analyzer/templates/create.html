@@ -7,7 +7,7 @@
     <a href="{% url 'index' %}" class="link-back mb-[18px]">
         <span class="ms text-[18px]">arrow_back</span>Cancel
     </a>
-    <div class="kicker">New {{ deck_format }} analysis</div>
+    <div class="kicker">New Commander analysis</div>
     <h1 class="font-cinzel font-semibold text-[32px] mt-[7px] mb-6 tracking-[.02em]">Analyze a deck</h1>
 
     <form method="post" action="{% url 'create_deck' %}">
@@ -44,18 +44,18 @@
                     </div>
                     <div class="text-[12.5px] text-txt3 font-light leading-[1.55]">
                         On save, the deck is created as <span class="text-gold">pending</span> and the server
-                        reads it as a {{ deck_format }} deck: archetype, multiplayer game plan and synergies
+                        reads it as a Commander deck: archetype, multiplayer game plan and synergies
                         are written asynchronously.
                     </div>
                 </div>
 
                 <div class="panel-card p-[18px]">
                     <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-txt2 mb-3">
-                        <span class="ms text-[18px]">gavel</span>{{ deck_format|upper }} RULES
+                        <span class="ms text-[18px]">gavel</span>COMMANDER RULES
                     </div>
                     <ul class="text-[12.5px] text-txt3 font-light leading-[1.6]" style="margin:0;padding-left:18px;list-style:disc">
                         <li>Exactly 100 cards, commander included.</li>
-                        <li>One commander (two with partners or a background).</li>
+                        <li>Exactly one commander.</li>
                         <li>Singleton: one copy of each card, basic lands aside.</li>
                         <li>Every card within the commander's color identity.</li>
                     </ul>

@@ -101,12 +101,13 @@ class TestCheckDecklist:
         entries = [_entry(1, ATRAXA)] + _legal_entries()[1:]
         assert any("No commander declared" in issue for issue in check_decklist(entries))
 
-    def test_reports_more_than_two_commanders(self):
+    def test_reports_more_than_one_commander(self):
+        # Partners and backgrounds are not accepted: one commander, full stop.
         entries = _legal_entries()
-        for i in range(3):
-            entries[i + 1] = _entry(1, f"Partner {i}", is_commander=True)
+        entries[1] = _entry(1, "Partner", is_commander=True)
         issues = check_decklist(entries)
-        assert any("commanders declared" in issue for issue in issues)
+        assert len(issues) == 1
+        assert "2 commanders declared" in issues[0]
 
     def test_reports_duplicates(self):
         entries = _legal_entries()

@@ -114,7 +114,7 @@ def _size_issue(total: int) -> list:
 
 
 def _commander_count_issues(count: int) -> list:
-    """The "one commander, two with partners" rule, shared by both passes."""
+    """The "exactly one commander" rule, shared by both passes."""
     if count == 0:
         return [
             "No commander declared: list it under a “Commander” header or tag "
@@ -122,8 +122,8 @@ def _commander_count_issues(count: int) -> list:
         ]
     if count > MAX_COMMANDERS:
         return [
-            f"{count} commanders declared: at most {MAX_COMMANDERS} are allowed "
-            "(partners or a background)."
+            f"{count} commanders declared: a deck has exactly "
+            f"{MAX_COMMANDERS} commander."
         ]
     return []
 

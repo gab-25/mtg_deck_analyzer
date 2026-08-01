@@ -11,9 +11,9 @@ See [Web Service](#web-service) to get it running.
 ## Features
 
 - **Commander-aware**: The commander is a first-class citizen — declared in the decklist, highlighted on the deck page (art, type line, badge on its card row), printed on the PDF fact sheet, and used to anchor the AI analysis. The deck's color pips come from the commander's **color identity**, not from the mana costs it happens to play.
-- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, one commander (two with partners or a background), singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), and every card sits inside its color identity — are enforced during the analysis, which fails with the same kind of explanation.
+- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), and every card sits inside its color identity — are enforced during the analysis, which fails with the same kind of explanation.
 - **Fact Sheet & Statistics**: Adds a summary info box at the top of the PDF containing:
-  - The format (always Commander) and the deck's commander(s).
+  - The format (always Commander) and the deck's commander.
   - Total number of cards in the deck.
   - Estimated total monetary value based on **Cardmarket** prices (in Euros).
   - Average Mana Value (CMC) computed excluding lands.
@@ -170,7 +170,7 @@ A deck is only stored once it satisfies all of these:
 | Rule | When it's checked |
 | --- | --- |
 | Exactly 100 cards, commander included | on submit — the form rejects the deck |
-| A commander is declared, at most two (partners / background) | on submit |
+| Exactly one commander is declared (partners and backgrounds are not accepted) | on submit |
 | Singleton: one copy per card, except basic lands and "any number" cards such as Relentless Rats | on submit |
 | The commander is a legendary creature, or says it can be your commander | during the analysis |
 | Every card sits inside the commander's color identity | during the analysis |

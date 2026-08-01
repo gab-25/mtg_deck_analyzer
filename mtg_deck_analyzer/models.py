@@ -33,8 +33,9 @@ class Deck(models.Model):
     # Strategic analysis (GitHub-flavored Markdown), or NULL when unavailable.
     analysis_md = models.TextField(null=True, blank=True)
 
-    # Commander identity: the commander name(s) and the WUBRG letters of the
-    # deck's color identity (e.g. ``["W", "U"]``).
+    # Commander identity: the commander's name (a one-element list, kept as a
+    # list for the templates) and the WUBRG letters of the deck's color
+    # identity (e.g. ``["W", "U"]``).
     commanders = models.JSONField(default=list)
     color_identity = models.JSONField(default=list)
 

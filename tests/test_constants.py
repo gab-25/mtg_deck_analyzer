@@ -4,15 +4,14 @@ from mtg_deck_analyzer.domain.constants import (
     BASIC_LAND_NAMES,
     CATEGORY_ORDER,
     COMMANDER_DECK_SIZE,
-    DECK_FORMAT,
     MAX_COMMANDERS,
 )
 
 
-def test_commander_is_the_only_format():
-    assert DECK_FORMAT == "Commander"
+def test_commander_deck_construction_constants():
     assert COMMANDER_DECK_SIZE == 100
-    assert MAX_COMMANDERS == 2
+    # A single commander: partners and backgrounds are deliberately not allowed.
+    assert MAX_COMMANDERS == 1
 
 
 def test_basic_land_names_cover_the_five_basics_and_their_snow_variants():
