@@ -37,7 +37,8 @@ Each deck is annotated by the view with `.pips` (a list of {letter, hex}).
                     {% include "partials/status_badge.html" with deck=deck %}
                 </div>
                 <div class="flex items-center gap-2 flex-wrap mb-4">
-                    <span class="chip">{{ deck.deck_type }}</span>
+                    <span class="chip">{{ deck_format }}</span>
+                    {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}
                 </div>
                 <div class="flex items-center justify-between pt-[13px] border-t border-line2">
                     <div class="flex items-center gap-1.5 text-[13px] text-txt2">

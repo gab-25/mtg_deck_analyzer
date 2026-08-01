@@ -1,11 +1,25 @@
 """Tests for shared domain constants."""
 
-from mtg_deck_analyzer.domain.constants import CATEGORY_ORDER, DECK_TYPES
+from mtg_deck_analyzer.domain.constants import (
+    BASIC_LAND_NAMES,
+    CATEGORY_ORDER,
+    COMMANDER_DECK_SIZE,
+    DECK_FORMAT,
+    MAX_COMMANDERS,
+)
 
 
-def test_deck_types_are_defined():
-    assert "Custom" in DECK_TYPES
-    assert "Commander / EDH" in DECK_TYPES
+def test_commander_is_the_only_format():
+    assert DECK_FORMAT == "Commander"
+    assert COMMANDER_DECK_SIZE == 100
+    assert MAX_COMMANDERS == 2
+
+
+def test_basic_land_names_cover_the_five_basics_and_their_snow_variants():
+    for base in ("plains", "island", "swamp", "mountain", "forest"):
+        assert base in BASIC_LAND_NAMES
+        assert f"snow-covered {base}" in BASIC_LAND_NAMES
+    assert "wastes" in BASIC_LAND_NAMES
 
 
 def test_category_order_covers_main_types():

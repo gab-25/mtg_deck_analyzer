@@ -18,7 +18,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                 {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
             </div>
             <h1 class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
-            <span class="chip">{{ deck.deck_type }}</span>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="chip">{{ deck_format }}</span>
+                {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}
+            </div>
         </div>
         <div class="no-print flex gap-[9px] flex-wrap items-center">
             <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line btn-sm">
@@ -93,6 +96,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-semibold text-[14.5px]">{{ c.name }}</span>
                                 <span class="py-0.5 px-[7px] text-[11px] border border-line2 rounded-full" style="color:{{ c.type_hex }}">{{ c.type }}</span>
+                                {% if c.is_commander %}<span class="chip">Commander</span>{% endif %}
                             </div>
                             {% if c.oracle %}<div class="mt-1 max-w-[560px] text-[12.5px] text-txt3 font-light leading-[1.45] whitespace-pre-line">{{ c.oracle }}</div>{% endif %}
                         </div>
@@ -108,6 +112,36 @@ max-width stays inline — a utility would lose to the unlayered component rule.
         </div>
 
         <div class="detail-sidebar flex flex-col gap-4 sticky top-[78px]">
+            {% if commander_cards %}
+            <div class="panel-card p-[18px]">
+                <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">
+                    Commander{{ commander_cards|pluralize }}
+                </div>
+                <div class="flex flex-col gap-3">
+                    {% for c in commander_cards %}
+                    <div class="flex items-center gap-3">
+                        {% if c.image %}
+                        <button
+                            type="button"
+                            class="card-thumb flex-none"
+                            hx-get="{% url 'card_image_modal' %}?name={{ c.image_name|urlencode }}"
+                            hx-target="#card-image-modal-container"
+                            hx-swap="innerHTML"
+                            title="View card"
+                        >
+                            <img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />
+                        </button>
+                        {% endif %}
+                        <div class="min-w-0">
+                            <div class="font-cinzel font-semibold text-[15px] leading-[1.25]">{{ c.name }}</div>
+                            <div class="mt-1 text-[12px] text-txt3 font-light">{{ c.type_line }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             {% if value_stats.total > 0 %}
             <div class="panel-card p-[18px]">
                 <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Value</div>

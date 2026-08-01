@@ -1,0 +1,16 @@
+{% comment %}
+The rejection notice for a decklist that cannot be accepted: everything wrong
+with it at once (Commander legality, unparsable lines) so it can be fixed in one
+pass. Inline styles override .alert's own flex rules, which are unlayered and
+would beat the equivalent utilities.
+{% endcomment %}
+{% if errors %}
+<div class="alert alert-error" style="align-items:flex-start;flex-direction:column;gap:7px">
+    <div class="font-semibold" style="display:flex;align-items:center;gap:8px">
+        <span class="ms text-[16px]">error</span>This decklist can’t be analyzed
+    </div>
+    <ul class="font-light" style="margin:0;padding-left:26px;list-style:disc">
+        {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}

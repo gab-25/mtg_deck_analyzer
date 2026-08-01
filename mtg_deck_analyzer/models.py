@@ -7,7 +7,7 @@ from django.utils import timezone
 
 
 class Deck(models.Model):
-    """A submitted deck together with its fetched cards and analysis."""
+    """A submitted Commander deck together with its fetched cards and analysis."""
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -33,15 +33,20 @@ class Deck(models.Model):
     # Strategic analysis (GitHub-flavored Markdown), or NULL when unavailable.
     analysis_md = models.TextField(null=True, blank=True)
 
+    # Commander identity: the commander name(s) and the WUBRG letters of the
+    # deck's color identity (e.g. ``["W", "U"]``).
+    commanders = models.JSONField(default=list)
+    color_identity = models.JSONField(default=list)
+
     # Aggregate statistics.
-    deck_type = models.CharField(max_length=64, default="Custom")
     total_cards = models.IntegerField(default=0)
     total_value_eur = models.FloatField(default=0.0)
     avg_cmc = models.FloatField(default=0.0)
     category_counts = models.JSONField(default=dict)
 
-    # Processed card list: ``[{"quantity": int, "data": {...}}]`` where each
-    # card's ``image_paths`` are stored as cache-relative basenames.
+    # Processed card list: ``[{"quantity": int, "is_commander": bool,
+    # "data": {...}}]`` where each card's ``image_paths`` are stored as
+    # cache-relative basenames.
     cards = models.JSONField(default=list)
 
     created_at = models.DateTimeField(default=timezone.now)

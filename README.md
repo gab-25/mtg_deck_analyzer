@@ -1,12 +1,19 @@
 # MTG Deck Analyzer
 
-A **Django** web app for Magic: The Gathering. Paste a decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with **Google Gemini** (via the official `google-genai` SDK), and renders an interactive report (**HTMX + Tailwind CSS**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
+A **Django** web app for Magic: The Gathering **Commander (EDH)** decks. Paste a Commander decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with **Google Gemini** (via the official `google-genai` SDK), and renders an interactive report (**HTMX + Tailwind CSS**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
+
+Commander is the only format the app handles: there is no format selection and no
+format detection. Every deck is parsed, validated, analyzed and rendered as a
+100-card singleton Commander deck.
 
 See [Web Service](#web-service) to get it running.
 
 ## Features
 
+- **Commander-aware**: The commander is a first-class citizen — declared in the decklist, highlighted on the deck page (art, type line, badge on its card row), printed on the PDF fact sheet, and used to anchor the AI analysis. The deck's color pips come from the commander's **color identity**, not from the mana costs it happens to play.
+- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, one commander (two with partners or a background), singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), and every card sits inside its color identity — are enforced during the analysis, which fails with the same kind of explanation.
 - **Fact Sheet & Statistics**: Adds a summary info box at the top of the PDF containing:
+  - The format (always Commander) and the deck's commander(s).
   - Total number of cards in the deck.
   - Estimated total monetary value based on **Cardmarket** prices (in Euros).
   - Average Mana Value (CMC) computed excluding lands.
@@ -14,11 +21,11 @@ See [Web Service](#web-service) to get it running.
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
 - **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a Gemini machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
-- **Gemini Analysis**: Analyzes the deck's archetype and gameplay strategy (early, mid, and late game, synergies, and combos) using the `gemini-2.5-flash` model. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
+- **Gemini Analysis**: Analyzes the deck as a Commander deck — commander and archetype, multiplayer game plan (early, mid, and late game), synergies and combos, strengths and weaknesses — using the `gemini-2.5-flash` model. The commander's name is passed into the prompt, and the model is told it is judging a 100-card singleton deck in a multiplayer pod. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
 - **Complex Card Support**: Correctly handles double-faced cards (showing both faces side by side in the PDF), split cards, adventures, and rooms.
 - **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
 - **Aesthetic PDF Layout**: Generates a clean, modern, and elegant A4 PDF with dynamic headers and footers including page numbers, and aligned tables.
-- **Interactive Web UI**: Submit decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (fact sheet, Gemini analysis, grouped card list) with a PDF download — built with HTMX and Tailwind CSS (see [Web Service](#web-service)).
+- **Interactive Web UI**: Submit Commander decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (commander panel, fact sheet, Gemini analysis, grouped card list) with a PDF download — built with HTMX and Tailwind CSS (see [Web Service](#web-service)).
 
 ---
 
@@ -40,10 +47,11 @@ mtg_deck_analyzer/
 ├── models.py          # ORM models (Deck, ScryfallCard, ScryfallImage)
 ├── migrations/        # Database migrations
 ├── templates/         # Django templates
-├── pipeline.py        # Analysis pipeline (parse → fetch → analyze → stats)
+├── pipeline.py        # Analysis pipeline (parse → fetch → validate → analyze → stats)
 ├── domain/            # Pure domain logic (no I/O, no Django)
-│   ├── constants.py   #   Shared constants (Scryfall headers, deck types, categories)
-│   ├── decklist.py    #   Decklist text parsing
+│   ├── constants.py   #   Shared constants (Scryfall headers, Commander rules, categories)
+│   ├── decklist.py    #   Decklist text parsing (sections, commander detection)
+│   ├── commander.py   #   Commander format rules (color identity, legality)
 │   ├── cards.py       #   Card classification and aggregate statistics
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
@@ -134,18 +142,43 @@ Without a key the app still works, simply skipping the strategy section.
 
 ## Decklist Format
 
-Paste one line per card into the form, formatted with the quantity followed by the card name (exactly as exported from Arena or MTGO). For example:
+Paste one line per card into the form, formatted with the quantity followed by the
+card name (exactly as exported from Moxfield, Archidekt, Arena or MTGO). Declare the
+commander under a `Commander` header, or tag its line with `*CMDR*`:
 
 ```text
+Commander
+1 Tatyova, Benthic Druid
+
+Deck
 1 Aid from the Cowl
 1 Apex Devastator
-15 Forest
 1 Meat Locker/Drowned Diner
 1 Repudiate/Replicate
-1 Tatyova, Benthic Druid
+39 Forest
 ```
 
-Empty lines and comments starting with `//` or `#` are automatically ignored by the parser.
+The parser also accepts the `1x Sol Ring` quantity spelling, ignores empty lines and
+comments starting with `//` or `#`, and skips section headers (`Deck`, `Mainboard`,
+`Sideboard`, …). Commander has no sideboard, so cards under those headers are *not*
+dropped: they count towards the deck and will show up as a size violation.
+
+### Commander rules the app enforces
+
+A deck is only stored once it satisfies all of these:
+
+| Rule | When it's checked |
+| --- | --- |
+| Exactly 100 cards, commander included | on submit — the form rejects the deck |
+| A commander is declared, at most two (partners / background) | on submit |
+| Singleton: one copy per card, except basic lands and "any number" cards such as Relentless Rats | on submit |
+| The commander is a legendary creature, or says it can be your commander | during the analysis |
+| Every card sits inside the commander's color identity | during the analysis |
+
+The first three need nothing but the pasted text, so they are reported instantly and
+all at once in the form. The last two need the real cards from Scryfall, so they run
+in the background analysis: the deck is marked as failed with the same explanation
+instead of being stored as ready.
 
 ---
 

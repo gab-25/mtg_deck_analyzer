@@ -153,6 +153,8 @@ def process_cached_card(card: dict, cache) -> dict:
         "price_eur": _extract_price_eur(card),
         "type_line": card.get("type_line", ""),
         "cmc": card.get("cmc", 0.0),
+        # Color identity drives the Commander color-identity rule and the deck pips.
+        "color_identity": card.get("color_identity", []),
     }
 
 

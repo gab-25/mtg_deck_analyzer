@@ -116,7 +116,13 @@ class TestBuildStyles:
 
 class TestCreateStatsTable:
     def test_returns_table(self):
-        table = create_stats_table(60, 123.45, 2.5, {"Creature": 20}, "Constructed")
+        table = create_stats_table(100, 123.45, 2.5, {"Creature": 20})
+        assert isinstance(table, Table)
+
+    def test_returns_table_with_commanders(self):
+        table = create_stats_table(
+            100, 123.45, 2.5, {"Creature": 20}, ["Atraxa, Praetors' Voice"]
+        )
         assert isinstance(table, Table)
 
 
@@ -128,7 +134,13 @@ class TestGeneratePdfEndToEnd:
             _item(2, "Instant", price=1.0, cmc=1.0),
         ]
         out = tmp_path / "deck.pdf"
-        generate_pdf("My Test Deck", "## Strategy\n\nBe aggressive.", cards, str(out))
+        generate_pdf(
+            "My Test Deck",
+            "## Strategy\n\nBe aggressive.",
+            cards,
+            str(out),
+            commanders=["Atraxa, Praetors' Voice"],
+        )
 
         assert out.exists()
         data = out.read_bytes()
