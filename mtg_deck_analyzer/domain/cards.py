@@ -1,4 +1,4 @@
-"""Card classification by type and deck-type inference."""
+"""Card classification by type and aggregate deck statistics."""
 
 from .constants import CATEGORY_ORDER
 
@@ -52,30 +52,6 @@ def is_basic_land(card_data: dict) -> bool:
 
     tl = type_line.lower()
     return "basic" in tl and "land" in tl
-
-
-def infer_deck_type(processed_cards: list) -> str:
-    """Infers the deck format from its size and singleton composition.
-
-    Returns one of: "Commander / EDH", "Constructed", "Limited", "Custom".
-    """
-    total = sum(item["quantity"] for item in processed_cards)
-
-    # Singleton check: every non-land card appears exactly once
-    # (lands, especially basics, may legitimately repeat).
-    singleton = all(
-        item["quantity"] == 1
-        for item in processed_cards
-        if classify_card(item["data"]) != "Land"
-    )
-
-    if singleton and 95 <= total <= 105:
-        return "Commander / EDH"
-    if total >= 60:
-        return "Constructed"
-    if 40 <= total < 60:
-        return "Limited"
-    return "Custom"
 
 
 def compute_statistics(processed_cards: list):

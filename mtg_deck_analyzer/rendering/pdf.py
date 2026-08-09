@@ -19,7 +19,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from ..domain.cards import classify_card, compute_statistics, infer_deck_type
+from ..domain.cards import classify_card, compute_statistics
 from ..domain.constants import CATEGORY_ORDER
 from ..domain.text_utils import markdown_to_flowables
 
@@ -37,7 +37,8 @@ _CATEGORY_LABELS = {
 
 _STATS_LABELS = {
     "title": "Deck Fact Sheet",
-    "type": "Deck Type",
+    "format": "Format",
+    "commander": "Commander",
     "cards": "Total Cards",
     "value": "Estimated Value (Cardmarket)",
     "cmc": "Average CMC (non-Lands)",
@@ -82,7 +83,7 @@ def create_stats_table(
     total_price: float,
     avg_cmc: float,
     category_counts: dict,
-    deck_type: str = None,
+    commanders: list = None,
 ):
     """Creates a styled statistics table for the top of the PDF."""
     stats_labels = _STATS_LABELS
@@ -107,13 +108,16 @@ def create_stats_table(
         textColor=charcoal_color,
     )
 
-    # Left column: general info.
+    # Left column: general info. The format is a constant — every deck this app
+    # handles is a Commander deck.
     val_str = f"€{total_price:.2f}" if total_price > 0.0 else "--"
-    type_html = ""
-    if deck_type:
-        type_html = f'<b>{stats_labels["type"]}:</b> {html.escape(deck_type)}<br/>'
+    commander_html = ""
+    if commanders:
+        names = html.escape(", ".join(commanders))
+        commander_html = f'<b>{stats_labels["commander"]}:</b> {names}<br/>'
     left_html = f"""
-    {type_html}
+    <b>{stats_labels["format"]}:</b> Commander<br/>
+    {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
     <b>{stats_labels["value"]}:</b> {val_str}<br/>
     <b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}
@@ -506,6 +510,7 @@ def generate_pdf(
     deck_analysis: str,
     processed_cards: list,
     output_path: str,
+    commanders: list = None,
 ):
     """Generates the formatted PDF using the ReportLab Platypus layout."""
     doc = SimpleDocTemplate(
@@ -526,16 +531,17 @@ def generate_pdf(
 
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    subtitle_text = f"Magic: The Gathering Deck List &bull; Generated on: {today_str}"
+    subtitle_text = (
+        f"Magic: The Gathering Commander Deck List &bull; Generated on: {today_str}"
+    )
     story_flowables.append(Paragraph(subtitle_text, styles["subtitle"]))
 
     # 1.1 Statistics and summary table.
     total_cards, total_price, avg_cmc, category_counts = compute_statistics(
         processed_cards
     )
-    deck_type = infer_deck_type(processed_cards)
     stats_table = create_stats_table(
-        total_cards, total_price, avg_cmc, category_counts, deck_type
+        total_cards, total_price, avg_cmc, category_counts, commanders
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))

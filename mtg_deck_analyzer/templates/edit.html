@@ -14,11 +14,11 @@
         {% csrf_token %}
         <div class="editor-grid grid grid-cols-[minmax(0,1fr)_300px] gap-5 items-start">
             <div class="flex flex-col gap-5 min-w-0">
-                {% if error %}<div class="alert alert-error"><span class="ms text-[16px]">error</span>{{ error }}</div>{% endif %}
+                {% include "partials/form_errors.html" %}
                 <div>
                     <label class="field-label mb-2">Deck name</label>
                     {# font-size/weight override .field's own font (unlayered), so they stay inline. #}
-                    <input type="text" name="name" value="{{ form_name }}" placeholder="e.g. Izzet Spellslinger"
+                    <input type="text" name="name" value="{{ form_name }}" placeholder="e.g. Atraxa Superfriends"
                         class="field" style="font-size:16px;font-weight:500" required />
                 </div>
                 <div>
@@ -26,9 +26,11 @@
                         <label class="field-label">Card list</label>
                     </div>
                     <textarea name="decklist" spellcheck="false" class="field min-h-[340px]"
-                        placeholder="1 Sol Ring&#10;4 Lightning Bolt&#10;2 Counterspell&#10;…" required>{{ form_decklist }}</textarea>
+                        placeholder="Commander&#10;1 Atraxa, Praetors' Voice&#10;&#10;Deck&#10;1 Sol Ring&#10;1 Cultivate&#10;…" required>{{ form_decklist }}</textarea>
                     <div class="text-[12px] text-txt3 mt-2 font-light">
                         One card per line, Moxfield style: <span class="font-mono2 text-txt2">quantity name</span>.
+                        List the commander under a <span class="font-mono2 text-txt2">Commander</span> header
+                        (or tag its line with <span class="font-mono2 text-txt2">*CMDR*</span>).
                         Images and prices are pulled from Scryfall automatically.
                     </div>
                 </div>
@@ -38,11 +40,14 @@
                 {# The gradient overrides .panel-card's default background (unlayered), so it stays inline. #}
                 <div class="panel-card p-[18px]" style="background:linear-gradient(180deg,rgba(124,92,255,.06),var(--panel2))">
                     <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-violet2 mb-3">
-                        <span class="ms text-[18px]">auto_awesome</span>AI DETECTED TYPE
+                        <span class="ms text-[18px]">shield_person</span>COMMANDER
                     </div>
-                    <div class="font-cinzel font-semibold text-[20px] text-txt">{{ deck.deck_type }}</div>
+                    <div class="font-cinzel font-semibold text-[20px] text-txt">
+                        {% for commander in deck.commanders %}{{ commander }}{% if not forloop.last %} &amp; {% endif %}{% empty %}Not declared{% endfor %}
+                    </div>
                     <div class="text-[12.5px] text-txt3 font-light mt-1.5 leading-[1.5]">
-                        Changing the card list re-runs the analysis and may refine this type.
+                        The commander comes from the <span class="font-mono2 text-txt2">Commander</span> section
+                        of the card list; changing the list re-runs the analysis.
                     </div>
                 </div>
 

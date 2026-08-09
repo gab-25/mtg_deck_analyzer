@@ -1,4 +1,4 @@
-"""MTG Deck Analyzer - generates a PDF reference sheet from a decklist."""
+"""MTG Deck Analyzer - analyzes Commander decklists and renders them as reports."""
 
 import tomllib
 from pathlib import Path

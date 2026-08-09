@@ -1,6 +1,17 @@
 """Integration tests for the Django web service (hermetic, no network)."""
 
 import pytest
+from django.utils.html import escape
+
+COMMANDER = "Atraxa, Praetors' Voice"
+
+
+def _legal_decklist(commander=COMMANDER):
+    """A 100-card singleton Commander decklist the creation form accepts."""
+    lines = ["Commander", f"1 {commander}", "", "Deck"]
+    lines += [f"1 Spell {i}" for i in range(60)]
+    lines.append("39 Forest")
+    return "\n".join(lines)
 
 
 def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
@@ -32,7 +43,8 @@ def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
         if skip_analysis
         else "## Overview\n\n- A **Forest** deck.",
         "stats": {
-            "deck_type": "Custom",
+            "commanders": [COMMANDER],
+            "color_identity": ["W", "U", "B", "G"],
             "total_cards": 2,
             "total_value_eur": 0.10,
             "avg_cmc": 0.0,
@@ -101,7 +113,7 @@ def test_create_view_and_delete_deck(client):
 
     r = client.post(
         "/decks",
-        data={"name": "Mono Green", "decklist": "2 Forest"},
+        data={"name": "Mono Green", "decklist": _legal_decklist()},
     )
     # Post/Redirect/Get back to the deck list.
     assert r.status_code == 302
@@ -136,6 +148,40 @@ def test_create_with_empty_decklist_returns_error(client):
     )
     assert r.status_code == 422
     assert "No cards could be parsed" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_create_rejects_a_deck_that_is_not_commander_legal(client):
+    from mtg_deck_analyzer.models import Deck
+
+    # A 60-card constructed pile: wrong size, no commander, playsets.
+    decklist = "4 Lightning Bolt\n" + "\n".join(f"1 Spell {i}" for i in range(56))
+    r = client.post("/decks", data={"name": "Standard Pile", "decklist": decklist})
+
+    assert r.status_code == 422
+    body = r.content.decode()
+    # Every problem is listed at once, so the deck can be fixed in one pass.
+    assert "60 cards" in body
+    assert "No commander declared" in body
+    assert "singleton" in body
+    # Nothing illegal reaches the library.
+    assert not Deck.objects.exists()
+
+
+@pytest.mark.django_db
+def test_edit_rejects_a_deck_that_is_not_commander_legal(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(name="Legal", raw_decklist=_legal_decklist())
+    r = client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Legal", "decklist": "1 Sol Ring"},
+    )
+    assert r.status_code == 422
+    assert "1 cards" in r.content.decode()
+    # The stored decklist is untouched.
+    deck.refresh_from_db()
+    assert deck.raw_decklist == _legal_decklist()
 
 
 @pytest.mark.django_db
@@ -235,7 +281,7 @@ def test_pdf_download(client):
 
     client.post(
         "/decks",
-        data={"name": "Mono Green", "decklist": "2 Forest"},
+        data={"name": "Mono Green", "decklist": _legal_decklist()},
     )
     deck_id = Deck.objects.get(name="Mono Green").id
     pdf = client.get(f"/decks/{deck_id}/pdf")
@@ -275,7 +321,6 @@ def test_proxy_pdf_download(client):
         name="Mono Green",
         raw_decklist="3 Forest",
         status=Deck.Status.READY,
-        deck_type="Custom",
         total_cards=3,
         total_value_eur=0.0,
         avg_cmc=0.0,
@@ -309,7 +354,6 @@ def test_deck_detail_has_export_proxy_button(client):
         name="Proxy Me",
         raw_decklist="1 Forest",
         status=Deck.Status.READY,
-        deck_type="Custom",
         total_cards=1,
         total_value_eur=0.0,
         avg_cmc=0.0,
@@ -368,7 +412,6 @@ def test_deck_detail_card_images_link_to_modal(client):
         name="With Image",
         raw_decklist="1 Forest",
         status=Deck.Status.READY,
-        deck_type="Custom",
         total_cards=1,
         total_value_eur=0.0,
         avg_cmc=0.0,
@@ -396,6 +439,59 @@ def test_deck_detail_card_images_link_to_modal(client):
 
 
 @pytest.mark.django_db
+def test_deck_detail_and_list_show_the_commander(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Atraxa Superfriends",
+        raw_decklist=_legal_decklist(),
+        status=Deck.Status.READY,
+        commanders=[COMMANDER],
+        color_identity=["W", "U", "B", "G"],
+        total_cards=100,
+        total_value_eur=0.0,
+        avg_cmc=3.0,
+        category_counts={"Creature": 1},
+        cards=[
+            {
+                "quantity": 1,
+                "is_commander": True,
+                "data": {
+                    "name": COMMANDER,
+                    "type_line": "Legendary Creature — Phyrexian Angel Horror",
+                    "cmc": 4.0,
+                    "price_eur": 0.0,
+                    "color_identity": ["W", "U", "B", "G"],
+                    "image_paths": ["img_atraxa.jpg"],
+                    "faces": [
+                        {
+                            "name": COMMANDER,
+                            "mana_cost": "{G}{W}{U}{B}",
+                            "type_line": "Legendary Creature — Phyrexian Angel Horror",
+                            "rules_text": "Flying, vigilance, deathtouch, lifelink",
+                        }
+                    ],
+                },
+            }
+        ],
+    )
+
+    # The name is rendered HTML-escaped (it carries an apostrophe).
+    commander_html = escape(COMMANDER)
+
+    detail = client.get(f"/decks/{deck.id}").content.decode()
+    # The format chip is fixed, and the commander is named next to it.
+    assert '<span class="chip">Commander</span>' in detail
+    assert commander_html in detail
+    # The commander panel carries the card art.
+    assert 'src="/media/img_atraxa.jpg"' in detail
+
+    listing = client.get("/").content.decode()
+    assert '<span class="chip">Commander</span>' in listing
+    assert commander_html in listing
+
+
+@pytest.mark.django_db
 def test_deck_detail_copy_plain_text_button(client):
     from mtg_deck_analyzer.models import Deck
 
@@ -403,7 +499,6 @@ def test_deck_detail_copy_plain_text_button(client):
         name="Copy Me",
         raw_decklist="4 Llanowar Elves\n2 Forest",
         status=Deck.Status.READY,
-        deck_type="Custom",
         total_cards=6,
         total_value_eur=0.0,
         avg_cmc=0.5,
@@ -451,7 +546,6 @@ def test_destructive_actions_use_confirm_modal(client):
         name="Confirm Me",
         raw_decklist="1 Forest",
         status=Deck.Status.READY,
-        deck_type="Custom",
         total_cards=1,
         total_value_eur=0.0,
         avg_cmc=0.0,

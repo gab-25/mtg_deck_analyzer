@@ -18,7 +18,11 @@
             We couldn’t finish analyzing <span class="text-txt font-medium">{{ deck.name }}</span>.
         </p>
         {% if deck.error %}
-        <div class="alert alert-error text-left mb-[18px]">{{ deck.error }}</div>
+        {# The reason can span several lines (one per Commander rule broken): keep
+           the line breaks and top-align them. Both override .alert's own flex
+           rules, which are unlayered and would beat the equivalent utilities. #}
+        <div class="alert alert-error text-left mb-[18px]"
+            style="align-items:flex-start;white-space:pre-line">{{ deck.error }}</div>
         {% endif %}
         <div class="flex justify-center gap-2.5 flex-wrap">
             <form method="post" action="{% url 'reanalyze_deck' deck.id %}" class="m-0">

@@ -2,7 +2,6 @@
 
 import logging
 import os
-import re
 import tempfile
 import threading
 import uuid
@@ -17,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
+from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
 from .domain.storage import (
@@ -67,25 +67,16 @@ TYPE_HEX = {
     "Other": "#b7b0a8",
 }
 
-_MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
 
+def _deck_pips(deck) -> list:
+    """Color pips for a deck: the commander's color identity, in WUBRG order.
 
-def _deck_pips(stored_cards: list) -> list:
-    """Derives the deck's color identity from its cards' mana costs.
-
-    Colors aren't stored on cards, so we scan the mana symbols of every face and
-    collect the distinct WUBRG letters, returned in canonical WUBRG order. Falls
-    back to a single colorless pip for lands-only / artifact decks.
+    Uses the identity stored at analysis time, deriving it from the deck's cards
+    for decks analyzed before it was persisted. Falls back to a single colorless
+    pip for a lands-only / artifact deck.
     """
-    found = set()
-    for item in stored_cards:
-        for face in item.get("data", {}).get("faces", []):
-            for symbol in _MANA_SYMBOL_RE.findall(face.get("mana_cost", "") or ""):
-                for ch in symbol:
-                    if ch in "WUBRG":
-                        found.add(ch)
-    order = [c for c in "WUBRG" if c in found] or ["C"]
-    return [{"letter": c, "hex": COLOR_HEX[c]} for c in order]
+    letters = deck.color_identity or deck_color_identity(deck.cards or []) or ["C"]
+    return [{"letter": c, "hex": COLOR_HEX.get(c, COLOR_HEX["C"])} for c in letters]
 
 
 def _mana_curve(stored_cards: list) -> list:
@@ -167,6 +158,7 @@ def _detail_card_groups(stored_cards: list) -> list:
                     "quantity": item["quantity"],
                     "image": urls[0] if urls else "",
                     "image_name": paths[0] if paths else "",
+                    "is_commander": item.get("is_commander", False),
                 }
             )
         groups.append(
@@ -180,11 +172,43 @@ def _detail_card_groups(stored_cards: list) -> list:
     return groups
 
 
+def _commander_cards(stored_cards: list) -> list:
+    """View-models for the commander(s) featured at the top of the deck page."""
+    cards = []
+    for item in commanders(stored_cards):
+        data = item["data"]
+        urls = image_urls(data)
+        paths = data.get("image_paths", [])
+        cards.append(
+            {
+                "name": data.get("name", ""),
+                "type_line": data.get("type_line", ""),
+                "image": urls[0] if urls else "",
+                "image_name": paths[0] if paths else "",
+            }
+        )
+    return cards
+
+
 def _moxfield_text(stored_cards: list) -> str:
-    """Renders the decklist as Moxfield-style plain text: one ``qty name`` per line."""
-    return "\n".join(
-        f"{item['quantity']} {item['data'].get('name', '')}" for item in stored_cards
+    """Renders the decklist as Moxfield-style plain text: one ``qty name`` per
+    line, with the commander in its own section (the format it's parsed back in).
+    """
+    lines = []
+    cmdrs = commanders(stored_cards)
+    if cmdrs:
+        lines.append("Commander")
+        lines.extend(
+            f"{item['quantity']} {item['data'].get('name', '')}" for item in cmdrs
+        )
+        lines.append("")
+        lines.append("Deck")
+    lines.extend(
+        f"{item['quantity']} {item['data'].get('name', '')}"
+        for item in stored_cards
+        if not item.get("is_commander")
     )
+    return "\n".join(lines)
 
 
 def _resolved_api_key() -> str | None:
@@ -194,6 +218,20 @@ def _resolved_api_key() -> str | None:
 def _create_context(**extra) -> dict:
     """Builds the context the deck-creation form renders with."""
     return {**extra}
+
+
+def _decklist_errors(decklist: str) -> list:
+    """Validates a pasted decklist before any expensive work is started.
+
+    Returns the reasons the deck cannot be accepted; an empty list means it
+    passes every rule that plain text can settle. The rules that need the real
+    cards (commander eligibility, color identity) are enforced afterwards by the
+    pipeline, which fails the analysis rather than storing an illegal deck.
+    """
+    entries = parse_decklist_text(decklist)
+    if not entries:
+        return ["No cards could be parsed from the decklist."]
+    return check_decklist(entries)
 
 
 def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
@@ -215,7 +253,8 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
             stats = result["stats"]
             Deck.objects.filter(pk=deck_id).update(
                 analysis_md=result["deck_analysis"],
-                deck_type=stats["deck_type"],
+                commanders=stats["commanders"],
+                color_identity=stats["color_identity"],
                 total_cards=stats["total_cards"],
                 total_value_eur=stats["total_value_eur"],
                 avg_cmc=stats["avg_cmc"],
@@ -225,9 +264,9 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
                 error=None,
             )
             logger.info(
-                "Deck analysis completed (%s cards, type %s)",
+                "Deck analysis completed (%s cards, commander: %s)",
                 stats["total_cards"],
-                stats["deck_type"],
+                ", ".join(stats["commanders"]) or "none declared",
             )
         except Exception as exc:  # noqa: BLE001 - record any failure for the user.
             logger.exception("Deck analysis failed")
@@ -271,7 +310,7 @@ def index(request):
 
     # Annotate each deck with its color pips for the list cards.
     for deck in decks:
-        deck.pips = _deck_pips(deck.cards or [])
+        deck.pips = _deck_pips(deck)
 
     # Whether any listed deck is still being analyzed; drives the HTMX polling.
     has_processing = any(
@@ -309,14 +348,15 @@ def create_deck(request):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
 
-    # Cheap, synchronous validation so obvious mistakes are reported inline; the
+    # Cheap, synchronous validation so an illegal deck is reported inline; the
     # multi-minute Scryfall + Gemini work happens in the background afterwards.
-    if not parse_decklist_text(decklist):
+    errors = _decklist_errors(decklist)
+    if errors:
         return render(
             request,
             "create.html",
             _create_context(
-                error="No cards could be parsed from the decklist.",
+                errors=errors,
                 form_name=name,
                 form_decklist=decklist,
             ),
@@ -360,7 +400,8 @@ def deck_detail(request, deck_id: uuid.UUID):
         {
             "deck": deck,
             "analysis_html": analysis_html,
-            "pips": _deck_pips(stored_cards),
+            "pips": _deck_pips(deck),
+            "commander_cards": _commander_cards(stored_cards),
             "card_groups": _detail_card_groups(stored_cards),
             "moxfield_text": _moxfield_text(stored_cards),
             "mana_curve": _mana_curve(stored_cards),
@@ -392,13 +433,14 @@ def update_deck(request, deck_id: uuid.UUID):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
 
-    if not parse_decklist_text(decklist):
+    errors = _decklist_errors(decklist)
+    if errors:
         return render(
             request,
             "edit.html",
             _create_context(
                 deck=deck,
-                error="No cards could be parsed from the decklist.",
+                errors=errors,
                 form_name=name,
                 form_decklist=decklist,
             ),
@@ -457,7 +499,9 @@ def deck_pdf(request, deck_id: uuid.UUID):
 
     fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
-    generate_pdf(deck.name, deck.analysis_md, processed, tmp_path)
+    generate_pdf(
+        deck.name, deck.analysis_md, processed, tmp_path, commanders=deck.commanders
+    )
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"
     return FileResponse(
