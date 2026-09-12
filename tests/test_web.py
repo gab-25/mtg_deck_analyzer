@@ -304,46 +304,97 @@ def test_proxy_pdf_unavailable_until_ready(client):
     assert r["Location"].endswith(f"/decks/{deck.id}")
 
 
-@pytest.mark.django_db
-def test_proxy_pdf_download(client):
+def _seed_jpeg(name, rgb=(10, 120, 60)):
+    """Stores a real opaque JPEG in the image cache so ReportLab can rasterize it."""
     import io
 
     from PIL import Image
 
-    from mtg_deck_analyzer.models import Deck, ScryfallImage
+    from mtg_deck_analyzer.models import ScryfallImage
 
-    # A real opaque JPEG so ReportLab can actually rasterize it into the PDF.
     buf = io.BytesIO()
-    Image.new("RGB", (63, 88), (10, 120, 60)).save(buf, format="JPEG")
-    ScryfallImage.objects.create(name="img_forest.jpg", data=buf.getvalue())
+    Image.new("RGB", (63, 88), rgb).save(buf, format="JPEG")
+    ScryfallImage.objects.create(name=name, data=buf.getvalue())
+    return name
+
+
+def _proxy_card(name, paths, quantity=1, type_line="Creature — Human Wizard"):
+    return {
+        "quantity": quantity,
+        "data": {
+            "name": name,
+            "type_line": type_line,
+            "cmc": 1.0,
+            "price_eur": 0.0,
+            "image_paths": list(paths),
+            "faces": [{"name": name, "mana_cost": "", "type_line": "", "rules_text": ""}],
+        },
+    }
+
+
+def _proxy_pages(pdf_bytes):
+    """Page count of a ReportLab PDF: one /Type /Page per page, plus the /Pages node."""
+    return pdf_bytes.count(b"/Type /Page") - 1
+
+
+@pytest.mark.django_db
+def test_proxy_pdf_download(client):
+    from mtg_deck_analyzer.models import Deck
+
+    _seed_jpeg("img_bolt.jpg")
+    _seed_jpeg("img_forest.jpg")
 
     deck = Deck.objects.create(
         name="Mono Green",
-        raw_decklist="3 Forest",
+        raw_decklist="3 Lightning Bolt\n3 Forest",
         status=Deck.Status.READY,
-        total_cards=3,
+        total_cards=6,
         total_value_eur=0.0,
         avg_cmc=0.0,
-        category_counts={"Land": 3},
+        category_counts={"Instant": 3, "Land": 3},
         cards=[
-            {
-                "quantity": 3,
-                "data": {
-                    "name": "Forest",
-                    "type_line": "Basic Land — Forest",
-                    "cmc": 0.0,
-                    "price_eur": 0.0,
-                    "image_paths": ["img_forest.jpg"],
-                    "faces": [{"name": "Forest", "mana_cost": "", "type_line": "", "rules_text": ""}],
-                },
-            }
+            _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=3, type_line="Instant"),
+            _proxy_card("Forest", ["img_forest.jpg"], quantity=3, type_line="Basic Land — Forest"),
         ],
     )
 
     pdf = client.get(f"/decks/{deck.id}/proxy")
     assert pdf.status_code == 200
     assert pdf["content-type"] == "application/pdf"
-    assert b"".join(pdf.streaming_content).startswith(b"%PDF")
+    body = b"".join(pdf.streaming_content)
+    assert body.startswith(b"%PDF")
+    # The deck must reach the page as real images. Asserting only on the %PDF
+    # header passes just as happily on a sheet with nothing placed on it.
+    assert b"/Image" in body
+
+
+@pytest.mark.django_db
+def test_proxy_pdf_prints_the_back_face_of_a_double_faced_card(client):
+    from mtg_deck_analyzer.models import Deck
+
+    _seed_jpeg("img_bolt.jpg")
+    _seed_jpeg("img_delver_face0.jpg", rgb=(120, 20, 20))
+    _seed_jpeg("img_delver_face1.jpg", rgb=(20, 20, 120))
+
+    deck = Deck.objects.create(
+        name="Delver Proxies",
+        raw_decklist="8 Lightning Bolt\n1 Delver of Secrets",
+        status=Deck.Status.READY,
+        total_cards=9,
+        total_value_eur=0.0,
+        avg_cmc=1.0,
+        category_counts={"Instant": 8, "Creature": 1},
+        cards=[
+            _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=8, type_line="Instant"),
+            _proxy_card("Delver of Secrets", ["img_delver_face0.jpg", "img_delver_face1.jpg"]),
+        ],
+    )
+
+    body = b"".join(client.get(f"/decks/{deck.id}/proxy").streaming_content)
+    # 8 single-faced copies + a double-faced one = 10 slots at 9 per page, so two
+    # pages. Printing the front only would be 9 slots and a single page: this is
+    # what makes the back face's slot observable end to end.
+    assert _proxy_pages(body) == 2
 
 
 @pytest.mark.django_db
@@ -397,11 +448,40 @@ def test_card_image_modal_returns_dialog_fragment(client):
     assert 'src="/media/img_seed.jpg"' in body
     assert "<script" not in body
     assert "onclick" not in body
+    # A single-faced card has nothing to flip to.
+    assert "card-face-flip" not in body
 
     # No name -> empty body, which clears the container (closes the modal).
     close = client.get("/card-image")
     assert close.status_code == 200
     assert close.content.decode().strip() == ""
+
+
+@pytest.mark.django_db
+def test_card_image_modal_offers_a_flip_for_a_double_faced_card(client):
+    from mtg_deck_analyzer.models import ScryfallImage
+
+    ScryfallImage.objects.create(name="img_front.jpg", data=b"\x01")
+    ScryfallImage.objects.create(name="img_back.jpg", data=b"\x02")
+
+    r = client.get("/card-image", {"name": ["img_front.jpg", "img_back.jpg"]})
+    assert r.status_code == 200
+    body = r.content.decode()
+    # Both faces ship in the fragment, so flipping costs no further request.
+    assert 'src="/media/img_front.jpg"' in body
+    assert 'src="/media/img_back.jpg"' in body
+    # The flip is a label driving a hidden checkbox: CSS only, still no inline JS.
+    assert 'for="card-face-flip"' in body
+    assert "<script" not in body
+    assert "onclick" not in body
+    # Clicks bubble, so the backdrop's close trigger must be filtered to the
+    # backdrop itself — otherwise clicking Flip would close the modal instead.
+    assert 'hx-trigger="click target:#card-image-modal"' in body
+
+    # A face that isn't cached still 404s, so the modal never opens half-empty.
+    assert client.get(
+        "/card-image", {"name": ["img_front.jpg", "img_gone.jpg"]}
+    ).status_code == 404
 
 
 @pytest.mark.django_db
@@ -436,6 +516,47 @@ def test_deck_detail_card_images_link_to_modal(client):
     assert 'hx-get="/card-image?name=img_forest.jpg"' in body
     assert 'hx-target="#card-image-modal-container"' in body
     assert 'src="/media/img_forest.jpg"' in body
+
+
+@pytest.mark.django_db
+def test_deck_detail_modal_link_carries_every_face(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Delver Deck",
+        raw_decklist="1 Delver of Secrets",
+        status=Deck.Status.READY,
+        total_cards=1,
+        total_value_eur=0.0,
+        avg_cmc=1.0,
+        category_counts={"Creature": 1},
+        cards=[
+            {
+                "quantity": 1,
+                "data": {
+                    "name": "Delver of Secrets",
+                    "type_line": "Creature — Human Wizard",
+                    "cmc": 1.0,
+                    "price_eur": 0.0,
+                    "image_paths": ["img_delver_face0.jpg", "img_delver_face1.jpg"],
+                    "faces": [
+                        {"name": "Delver of Secrets", "mana_cost": "{U}", "type_line": "", "rules_text": ""},
+                        {"name": "Insectile Aberration", "mana_cost": "", "type_line": "", "rules_text": ""},
+                    ],
+                },
+            }
+        ],
+    )
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    # Both faces travel in the query string (`&` escaped, as it must be in HTML).
+    assert (
+        'hx-get="/card-image?name=img_delver_face0.jpg&amp;name=img_delver_face1.jpg"'
+        in body
+    )
+    # The row thumbnail itself still shows the front face only.
+    assert 'src="/media/img_delver_face0.jpg"' in body
+    assert 'src="/media/img_delver_face1.jpg"' not in body
 
 
 @pytest.mark.django_db

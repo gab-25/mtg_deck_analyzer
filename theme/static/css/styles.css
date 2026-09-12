@@ -1376,6 +1376,23 @@ select.field {
   object-fit: cover;
   object-position: center 18%;
 }
+/* Zoom modal: a hidden checkbox swaps which printed face is visible. CSS only —
+   the deck page carries no inline JS, and the tests enforce that. Written by hand
+   because the stylesheet is pre-built: there is no Tailwind step to generate the
+   `peer-checked` variants this needs. The `~ *` matches the checkbox's sibling
+   wrapper, whose descendants are the faces. */
+.card-face {
+  display: none;
+}
+.card-face--0 {
+  display: block;
+}
+.card-face-flip:checked ~ * .card-face--0 {
+  display: none;
+}
+.card-face-flip:checked ~ * .card-face--1 {
+  display: block;
+}
 .group-head {
   display: flex;
   align-items: center;

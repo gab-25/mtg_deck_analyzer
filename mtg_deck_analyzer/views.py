@@ -22,6 +22,7 @@ from .domain.decklist import parse_decklist_text
 from .domain.storage import (
     cards_for_pdf,
     cards_for_storage,
+    image_query,
     image_urls,
     proxy_images,
 )
@@ -145,7 +146,6 @@ def _detail_card_groups(stored_cards: list) -> list:
                 f.get("rules_text", "") for f in faces if f.get("rules_text")
             )
             urls = image_urls(data)
-            paths = data.get("image_paths", [])
             price = data.get("price_eur", 0.0)
             cards.append(
                 {
@@ -156,8 +156,9 @@ def _detail_card_groups(stored_cards: list) -> list:
                     "oracle": oracle,
                     "price": price,
                     "quantity": item["quantity"],
+                    # The row shows the front face; the modal carries them all.
                     "image": urls[0] if urls else "",
-                    "image_name": paths[0] if paths else "",
+                    "image_query": image_query(data),
                     "is_commander": item.get("is_commander", False),
                 }
             )
@@ -178,13 +179,12 @@ def _commander_cards(stored_cards: list) -> list:
     for item in commanders(stored_cards):
         data = item["data"]
         urls = image_urls(data)
-        paths = data.get("image_paths", [])
         cards.append(
             {
                 "name": data.get("name", ""),
                 "type_line": data.get("type_line", ""),
                 "image": urls[0] if urls else "",
-                "image_name": paths[0] if paths else "",
+                "image_query": image_query(data),
             }
         )
     return cards
@@ -550,16 +550,22 @@ def media(request, name: str):
 @login_required
 @require_http_methods(["GET"])
 def card_image_modal(request):
-    """Returns the zoom-modal fragment for one cached card image (HTMX).
+    """Returns the zoom-modal fragment for a cached card's faces (HTMX).
 
-    The thumbnail buttons in the deck view ``hx-get`` this endpoint with the
-    image basename; the fragment is a full-screen CSS overlay carrying the
-    full-size image. Called without a ``name`` it returns an empty body, which
-    the overlay uses to close itself (clicking it clears the container).
+    The thumbnail buttons in the deck view ``hx-get`` this endpoint with one
+    ``name`` per printed face, so a double-faced card ships both images in the
+    same fragment and the flip costs no further request. The fragment is a
+    full-screen CSS overlay. Called without a ``name`` it returns an empty body,
+    which the overlay uses to close itself (clicking it clears the container).
     """
-    name = request.GET.get("name", "")
-    if not name:
+    names = [name for name in request.GET.getlist("name") if name]
+    if not names:
         return HttpResponse("")  # Close: clear the modal container.
-    if DbCardCache().get_image(name) is None:
+    cache = DbCardCache()
+    if any(cache.get_image(name) is None for name in names):
         return HttpResponse("Image not found", status=404)
-    return render(request, "partials/card_image_modal.html", {"image_url": f"/media/{name}"})
+    return render(
+        request,
+        "partials/card_image_modal.html",
+        {"image_urls": [f"/media/{name}" for name in names]},
+    )
