@@ -1,6 +1,6 @@
 """Shared Commander deck-analysis orchestration used across the web service.
 
-This module wraps the parse -> Scryfall fetch -> Gemini analysis -> statistics
+This module wraps the parse -> Scryfall fetch -> AI analysis -> statistics
 pipeline behind a single function so the workflow lives in exactly one place.
 """
 
@@ -10,7 +10,7 @@ from .caching.file_cache import FileCardCache
 from .domain.cards import compute_statistics
 from .domain.commander import check_deck, commander_names, deck_color_identity
 from .domain.decklist import parse_decklist_text
-from .integrations.gemini import analyze_deck_list, log_analysis_unavailable
+from .integrations.openrouter import analyze_deck_list, log_analysis_unavailable
 from .integrations.scryfall import fetch_card_data
 
 
@@ -39,12 +39,12 @@ def analyze_decklist(
     package's ``.cache`` directory. ``progress`` is an optional
     ``callable(message: str)`` used to report status (defaults to no-op).
 
-    Returns a dict with the processed cards, the (optional) Gemini analysis text
+    Returns a dict with the processed cards, the (optional) AI analysis text
     and the aggregate statistics — including the deck's commander(s) and color
     identity. Raises ``ValueError`` if no cards could be parsed or fetched, or
     if the deck breaks the Commander deck-construction rules.
     """
-    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if cache is None:
         cache = FileCardCache(default_cache_dir())
     notify = progress or (lambda _msg: None)

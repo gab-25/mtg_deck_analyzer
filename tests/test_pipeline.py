@@ -3,6 +3,7 @@
 import pytest
 
 from mtg_deck_analyzer import pipeline
+from mtg_deck_analyzer.integrations import openrouter
 
 COMMANDER = "Atraxa, Praetors' Voice"
 
@@ -97,3 +98,48 @@ def test_names_the_cards_that_could_not_be_found(fetched):
 def test_empty_decklist_is_rejected(fetched):
     with pytest.raises(ValueError, match="No cards could be parsed"):
         _analyze("   \n// nothing here\n")
+
+
+def test_the_analysis_text_comes_from_openrouter(fetched, monkeypatch):
+    """The whole path pipeline -> OpenRouter -> stored analysis, HTTP mocked."""
+
+    class Response:
+        status_code = 200
+        text = ""
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": "## Commander & Archetype"}}]}
+
+    sent = {}
+
+    def fake_post(url, **kwargs):
+        sent.update(url=url, **kwargs)
+        return Response()
+
+    monkeypatch.setattr(openrouter.requests, "post", fake_post)
+
+    result = pipeline.analyze_decklist(
+        _decklist(), api_key="key-123", cache=object()
+    )
+
+    assert result["deck_analysis"] == "## Commander & Archetype"
+    assert sent["url"] == openrouter.API_URL
+    # The commander is named in the prompt the deck is analyzed with.
+    assert COMMANDER in sent["json"]["messages"][0]["content"]
+
+
+def test_without_an_api_key_the_deck_is_analyzed_without_the_strategy_section(
+    fetched, monkeypatch
+):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setattr(
+        openrouter.requests,
+        "post",
+        lambda *a, **kw: pytest.fail("no request may be sent without an API key"),
+    )
+
+    result = pipeline.analyze_decklist(_decklist(), cache=object())
+
+    assert result["deck_analysis"] is None
+    assert result["stats"]["total_cards"] == 100

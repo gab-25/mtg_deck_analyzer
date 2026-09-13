@@ -546,7 +546,7 @@ def generate_pdf(
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))
 
-    # 2. Gemini analysis section.
+    # 2. AI analysis section.
     if deck_analysis:
         story_flowables.append(Paragraph("Deck Strategy & Analysis", styles["h2"]))
 
