@@ -80,8 +80,8 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     <button
                         type="button"
                         class="card-row"
-                        {% if c.image_name %}
-                        hx-get="{% url 'card_image_modal' %}?name={{ c.image_name|urlencode }}"
+                        {% if c.image_query %}
+                        hx-get="{% url 'card_image_modal' %}?{{ c.image_query }}"
                         hx-target="#card-image-modal-container"
                         hx-swap="innerHTML"
                         {% endif %}
@@ -124,7 +124,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                         <button
                             type="button"
                             class="card-thumb flex-none"
-                            hx-get="{% url 'card_image_modal' %}?name={{ c.image_name|urlencode }}"
+                            hx-get="{% url 'card_image_modal' %}?{{ c.image_query }}"
                             hx-target="#card-image-modal-container"
                             hx-swap="innerHTML"
                             title="View card"

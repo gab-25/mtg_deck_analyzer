@@ -100,11 +100,25 @@ class TestPlaceholderAndImageCell:
         cell = _build_card_image_cell([io.BytesIO(png_bytes.read_bytes())])
         assert isinstance(cell, RLImage)
 
-    def test_two_images_yield_sub_table(self, tmp_path):
+    def test_two_images_yield_both_faces_side_by_side(self, tmp_path):
         a = _make_png(tmp_path / "a.png")
         b = _make_png(tmp_path / "b.png")
         cell = _build_card_image_cell([a, b])
+        # A plain `isinstance(cell, Table)` would also pass for the placeholder,
+        # so reach into the sub-table: one row, both faces, both real images.
         assert isinstance(cell, Table)
+        row = cell._cellvalues[0]
+        assert len(cell._cellvalues) == 1
+        assert [type(c) for c in row] == [RLImage, RLImage]
+        # Each face is drawn at the smaller two-up size, not the single-card one.
+        assert [(c.drawWidth, c.drawHeight) for c in row] == [(80, 112), (80, 112)]
+
+    def test_a_missing_second_face_still_leaves_the_first_one_drawn(self, tmp_path):
+        a = _make_png(tmp_path / "a.png")
+        cell = _build_card_image_cell([a, str(tmp_path / "missing.jpg")])
+        row = cell._cellvalues[0]
+        assert isinstance(row[0], RLImage)
+        assert isinstance(row[1], Table)  # placeholder in the back-face slot
 
 
 class TestBuildStyles:
