@@ -161,7 +161,7 @@ USE_I18N = True
 TIME_ZONE = "UTC"
 LANGUAGE_CODE = "en-us"
 
-# Run the (multi-minute) Scryfall + Gemini deck analysis in a background thread
+# Run the (multi-minute) Scryfall + OpenRouter deck analysis in a background thread
 # so the create request returns immediately. Disabled in tests, where the work
 # must run inline for deterministic assertions (see ``settings_test``).
 ASYNC_DECK_ANALYSIS = os.environ.get("ASYNC_DECK_ANALYSIS", "1").lower() in {

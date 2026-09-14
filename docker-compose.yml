@@ -22,8 +22,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://mtg:mtg@db:5432/mtg
-      # Provide your Gemini key to enable the strategic analysis:
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Provide your OpenRouter key to enable the strategic analysis:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Optional: any model id from https://openrouter.ai/models.
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
     ports:
       - "8000:8000"
 

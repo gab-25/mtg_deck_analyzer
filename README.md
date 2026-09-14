@@ -1,6 +1,6 @@
 # MTG Deck Analyzer
 
-A **Django** web app for Magic: The Gathering **Commander (EDH)** decks. Paste a Commander decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with **Google Gemini** (via the official `google-genai` SDK), and renders an interactive report (**HTMX + Tailwind CSS**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
+A **Django** web app for Magic: The Gathering **Commander (EDH)** decks. Paste a Commander decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with an LLM of your choice through **OpenRouter**, and renders an interactive report (**HTMX + Tailwind CSS**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
 
 Commander is the only format the app handles: there is no format selection and no
 format detection. Every deck is parsed, validated, analyzed and rendered as a
@@ -20,12 +20,12 @@ See [Web Service](#web-service) to get it running.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
-- **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a Gemini machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
-- **Gemini Analysis**: Analyzes the deck as a Commander deck — commander and archetype, multiplayer game plan (early, mid, and late game), synergies and combos, strengths and weaknesses — using the `gemini-2.5-flash` model. The commander's name is passed into the prompt, and the model is told it is judging a 100-card singleton deck in a multiplayer pod. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
+- **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
+- **AI Analysis**: Analyzes the deck as a Commander deck — commander and archetype, multiplayer game plan (early, mid, and late game), synergies and combos, strengths and weaknesses. The request goes through [OpenRouter](https://openrouter.ai)'s OpenAI-compatible endpoint, so the app is not tied to a single provider: the default model is `google/gemini-2.5-flash`, and any other model id (Claude, GPT, Llama, ...) can be selected with the `OPENROUTER_MODEL` environment variable, without touching the code. The commander's name is passed into the prompt, and the model is told it is judging a 100-card singleton deck in a multiplayer pod. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
 - **Complex Card Support**: Correctly handles double-faced cards, split cards, adventures, and rooms. Both faces of a double-faced card are shown side by side in the PDF, flipped with a button in the card zoom on the web page, and printed as two adjacent cards on the proxy sheet.
 - **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
 - **Aesthetic PDF Layout**: Generates a clean, modern, and elegant A4 PDF with dynamic headers and footers including page numbers, and aligned tables.
-- **Interactive Web UI**: Submit Commander decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (commander panel, fact sheet, Gemini analysis, grouped card list) with a PDF download — built with HTMX and Tailwind CSS (see [Web Service](#web-service)).
+- **Interactive Web UI**: Submit Commander decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (commander panel, fact sheet, AI analysis, grouped card list) with a PDF download — built with HTMX and Tailwind CSS (see [Web Service](#web-service)).
 
 ---
 
@@ -57,7 +57,7 @@ mtg_deck_analyzer/
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
 ├── integrations/      # External service clients
 │   ├── scryfall.py    #   Card data/image fetching from Scryfall
-│   └── gemini.py      #   Strategic deck analysis (Google Gemini)
+│   └── openrouter.py  #   Strategic deck analysis (LLM via OpenRouter)
 ├── caching/           # Scryfall cache backends
 │   ├── file_cache.py  #   Filesystem-backed cache (default, standalone/tests)
 │   └── db_cache.py    #   Database-backed cache backend
@@ -88,7 +88,8 @@ The tool uses `uv` as a fast and efficient Python package manager.
 The app is configured entirely through environment variables (loaded from a
 `.env` file during local development — see [Run locally](#run-locally-without-docker)):
 
-- `GEMINI_API_KEY` — enables the strategic analysis. Without a key the app still works, simply skipping the strategy section.
+- `OPENROUTER_API_KEY` — enables the strategic analysis. Without a key the app still works, simply skipping the strategy section.
+- `OPENROUTER_MODEL` — the model the analysis runs on, as an [OpenRouter model id](https://openrouter.ai/models) (default `google/gemini-2.5-flash`).
 
 ---
 
@@ -96,7 +97,7 @@ The app is configured entirely through environment variables (loaded from a
 
 The app is a **Django** web service with a **Postgres** database and
 **HTMX + Tailwind CSS** pages. You paste a decklist and get a web page with the deck
-fact sheet, the Gemini strategy analysis, and the full card list — plus a
+fact sheet, the AI strategy analysis, and the full card list — plus a
 one-click **PDF download** of the report.
 
 ### Run with Docker Compose (recommended)
@@ -104,8 +105,10 @@ one-click **PDF download** of the report.
 This starts Postgres and the web app together:
 
 ```bash
-# Optional: enable the Gemini strategic analysis.
-export GEMINI_API_KEY="your_api_key_here"
+# Optional: enable the strategic analysis.
+export OPENROUTER_API_KEY="your_api_key_here"
+# Optional: pick another model (default google/gemini-2.5-flash).
+export OPENROUTER_MODEL="anthropic/claude-sonnet-4"
 
 docker compose up --build
 ```
@@ -120,21 +123,22 @@ startup (real environment variables still take precedence):
 
 ```bash
 cp .env.example .env
-# edit .env: DATABASE_URL, GEMINI_API_KEY, HOST/PORT/RELOAD
+# edit .env: DATABASE_URL, OPENROUTER_API_KEY, HOST/PORT/RELOAD
 uv run mtg-deck-analyzer
 ```
 
 The relevant variables are:
 
 - `DATABASE_URL` — a Postgres or SQLite URL (default `postgresql://mtg:mtg@localhost:5432/mtg`). Point it at any Postgres instance, or use `sqlite:///./mtg.db` for a quick, dependency-free run.
-- `GEMINI_API_KEY` — optional; enables the strategic analysis.
+- `OPENROUTER_API_KEY` — optional; enables the strategic analysis.
+- `OPENROUTER_MODEL` — optional; the OpenRouter model id used for the analysis (default `google/gemini-2.5-flash`).
 - `HOST` / `PORT` — server bind address (defaults `0.0.0.0:8000`).
 - `RELOAD` — set to `1` for auto-reload during development.
 - `SECRET_KEY` / `DEBUG` — Django secret key and debug flag (sensible defaults for local development).
 
 Database migrations are applied automatically on startup.
 
-The Gemini API key is resolved from the environment variables described in
+The OpenRouter API key is resolved from the environment variables described in
 [Configuration](#configuration) above.
 Without a key the app still works, simply skipping the strategy section.
 

@@ -1,6 +1,6 @@
 """Per-analysis logging context.
 
-An analysis runs across several modules (pipeline, Scryfall, Gemini); rather than
+An analysis runs across several modules (pipeline, Scryfall, OpenRouter); rather than
 threading the deck id through every call, we stash it in a :class:`ContextVar` for
 the duration of the run and let :class:`DeckIdFilter` stamp it onto every log
 record. ``contextvars`` are isolated per thread, so concurrent background analyses

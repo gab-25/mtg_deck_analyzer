@@ -1,1 +1,1 @@
-"""Clients for external services (Scryfall, Gemini)."""
+"""Clients for external services (Scryfall, OpenRouter)."""

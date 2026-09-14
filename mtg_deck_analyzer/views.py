@@ -212,7 +212,7 @@ def _moxfield_text(stored_cards: list) -> str:
 
 
 def _resolved_api_key() -> str | None:
-    return os.environ.get("GEMINI_API_KEY")
+    return os.environ.get("OPENROUTER_API_KEY")
 
 
 def _create_context(**extra) -> dict:
@@ -238,7 +238,7 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None):
     """Runs the heavy analysis for ``deck_id`` and persists the outcome.
 
     Binds the deck id to the logging context so every record emitted during the
-    run — including those from the pipeline/Scryfall/Gemini modules — is stamped
+    run — including those from the pipeline/Scryfall/OpenRouter modules — is stamped
     with ``[deck <id>]``.
     """
     with deck_log_context(deck_id):
@@ -349,7 +349,7 @@ def create_deck(request):
     decklist = request.POST.get("decklist", "")
 
     # Cheap, synchronous validation so an illegal deck is reported inline; the
-    # multi-minute Scryfall + Gemini work happens in the background afterwards.
+    # multi-minute Scryfall + OpenRouter work happens in the background afterwards.
     errors = _decklist_errors(decklist)
     if errors:
         return render(

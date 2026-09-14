@@ -5,8 +5,10 @@ SCRYFALL_HEADERS = {
     "User-Agent": "MTGDeckAnalyzer/1.0.0 (contact@mtgdeckanalyzer.com; pair-programming)"
 }
 
-# Gemini model used for deck analysis.
-GEMINI_MODEL = "gemini-2.5-flash"
+# Default model used for deck analysis, as an OpenRouter model id (any model
+# listed on https://openrouter.ai/models works). Override it at runtime with
+# the OPENROUTER_MODEL environment variable, no code change needed.
+OPENROUTER_MODEL = "google/gemini-2.5-flash"
 
 # Commander deck-construction rules (Comprehensive Rules 903).
 # A deck is exactly 100 cards, commander included.
