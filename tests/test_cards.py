@@ -1,6 +1,6 @@
 """Tests for card classification."""
 
-from mtg_deck_analyzer.domain.cards import classify_card
+from mtg_deck_analyzer.domain.cards import classify_card, compute_statistics
 
 
 def _card(type_line):
@@ -45,3 +45,58 @@ class TestClassifyCard:
     def test_falls_back_to_face_type_line(self):
         card = {"faces": [{"type_line": "Creature — Beast"}]}
         assert classify_card(card) == "Creature"
+
+
+class TestClassifyDoubleFacedCard:
+    """A double-faced card is played as its front face, so that face decides."""
+
+    def _dfc(self, front, back):
+        return {
+            "type_line": f"{front} // {back}",
+            "faces": [{"type_line": front}, {"type_line": back}],
+        }
+
+    def test_spell_with_a_land_back_is_the_spell(self):
+        # Sink into Stupor // Soporific Springs.
+        assert classify_card(self._dfc("Instant", "Land")) == "Instant"
+
+    def test_creature_with_a_land_back_is_a_creature(self):
+        # Kazandu Mammoth // Kazandu Valley.
+        card = self._dfc("Creature — Elephant", "Land")
+        assert classify_card(card) == "Creature"
+
+    def test_land_front_stays_a_land(self):
+        card = self._dfc("Land", "Creature — Elemental")
+        assert classify_card(card) == "Land"
+
+    def test_combined_type_line_alone_is_split_on_the_slashes(self):
+        # Decks stored before the faces carried their own type line.
+        assert classify_card({"type_line": "Sorcery // Land"}) == "Sorcery"
+
+    def test_adventure_is_its_creature_half(self):
+        # Brazen Borrower // Petty Theft.
+        card = self._dfc("Creature — Faerie Rogue", "Instant — Adventure")
+        assert classify_card(card) == "Creature"
+
+
+class TestComputeStatistics:
+    def test_a_spell_with_a_land_back_counts_towards_the_average_cmc(self):
+        cards = [
+            {
+                "quantity": 1,
+                "data": {
+                    "type_line": "Instant // Land",
+                    "faces": [{"type_line": "Instant"}, {"type_line": "Land"}],
+                    "cmc": 3.0,
+                },
+            },
+            {
+                "quantity": 1,
+                "data": {"type_line": "Basic Land — Island", "cmc": 0.0},
+            },
+        ]
+        total_cards, _total_price, avg_cmc, counts = compute_statistics(cards)
+        assert total_cards == 2
+        assert counts["Instant"] == 1
+        assert counts["Land"] == 1
+        assert avg_cmc == 3.0

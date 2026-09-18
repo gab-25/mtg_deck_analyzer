@@ -12,7 +12,7 @@ different data:
 
 import re
 
-from .cards import is_basic_land
+from .cards import front_type_line, is_basic_land
 from .constants import (
     ANY_NUMBER_CARD_NAMES,
     BASIC_LAND_NAMES,
@@ -21,6 +21,7 @@ from .constants import (
     MAX_COMMANDERS,
     UNLIMITED_COPIES_TEXT,
 )
+from .text_utils import front_face_name
 
 # Canonical color order (Magic's "WUBRG" wheel).
 WUBRG = "WUBRG"
@@ -32,16 +33,6 @@ def _rules_text(card_data: dict) -> str:
     """All rules text of a card (every face), lowercased."""
     faces = card_data.get("faces", [])
     return "\n".join(face.get("rules_text", "") or "" for face in faces).lower()
-
-
-def _type_line(card_data: dict) -> str:
-    """The card's type line (falling back to the first face), lowercased."""
-    type_line = card_data.get("type_line", "")
-    if not type_line:
-        faces = card_data.get("faces", [])
-        if faces:
-            type_line = faces[0].get("type_line", "")
-    return type_line.lower()
 
 
 def card_color_identity(card_data: dict) -> list:
@@ -87,7 +78,10 @@ def deck_color_identity(processed_cards: list) -> list:
 
 def _can_be_commander(card_data: dict) -> bool:
     """Reports whether a card may be designated as a commander."""
-    type_line = _type_line(card_data)
+    # The front face is the one that goes in the command zone: a card that
+    # merely transforms into a legendary creature (Bloodline Keeper) is not a
+    # legal commander.
+    type_line = front_type_line(card_data)
     if "legendary" in type_line and "creature" in type_line:
         return True
     return CAN_BE_COMMANDER_TEXT in _rules_text(card_data)
@@ -136,6 +130,20 @@ def _singleton_issue(name: str, qty: int) -> list:
     ]
 
 
+def _tally(entries) -> dict:
+    """Totals ``(key, card, quantity)`` triples per card, in first-seen order.
+
+    Returns ``{key: (card, total_quantity)}``. One card can take up several
+    decklist lines — twice under the same name, or once per spelling of a
+    double-faced card — and the singleton rule counts copies, not lines.
+    """
+    totals = {}
+    for key, card, qty in entries:
+        known, total = totals.get(key, (card, 0))
+        totals[key] = (known, total + qty)
+    return totals
+
+
 def check_decklist(entries: list) -> list:
     """Checks the parsed decklist — names and quantities only.
 
@@ -149,11 +157,13 @@ def check_decklist(entries: list) -> list:
         sum(1 for entry in entries if entry.get("is_commander"))
     )
 
-    for entry in entries:
-        name = entry["name"]
-        key = name.lower()
-        if entry["quantity"] > 1 and key not in BASIC_LAND_NAMES | ANY_NUMBER_CARD_NAMES:
-            issues += _singleton_issue(name, entry["quantity"])
+    totals = _tally(
+        (front_face_name(entry["name"]).lower(), entry["name"], entry["quantity"])
+        for entry in entries
+    )
+    for key, (name, qty) in totals.items():
+        if qty > 1 and key not in BASIC_LAND_NAMES | ANY_NUMBER_CARD_NAMES:
+            issues += _singleton_issue(name, qty)
 
     return issues
 
@@ -179,10 +189,18 @@ def check_deck(processed_cards: list) -> list:
                 "creature nor a card that says it can be your commander."
             )
 
-    for item in processed_cards:
-        qty = item["quantity"]
-        if qty > 1 and not _allows_duplicates(item["data"]):
-            issues += _singleton_issue(item["data"].get("name", "Unknown card"), qty)
+    # The Scryfall id is the same for both spellings of a double-faced card.
+    totals = _tally(
+        (
+            item["data"].get("id") or item["data"].get("name", ""),
+            item["data"],
+            item["quantity"],
+        )
+        for item in processed_cards
+    )
+    for card, qty in totals.values():
+        if qty > 1 and not _allows_duplicates(card):
+            issues += _singleton_issue(card.get("name", "Unknown card"), qty)
 
     issues.extend(_color_identity_issues(processed_cards, cmdrs))
 

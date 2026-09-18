@@ -6,7 +6,7 @@ import urllib.parse
 import requests
 
 from ..domain.constants import SCRYFALL_HEADERS
-from ..domain.text_utils import get_card_slug
+from ..domain.text_utils import front_face_name, get_card_slug
 
 # Polite delay between Scryfall requests (their guidelines ask for 50-100ms).
 _REQUEST_DELAY = 0.1
@@ -165,7 +165,9 @@ def fetch_card_data(card_name: str, cache) -> dict:
     ``caching.db_cache.DbCardCache``) exposing ``get_card``/``set_card``/
     ``has_image``/``get_image``/``set_image``.
     """
-    slug = get_card_slug(card_name)
+    # Keyed on the front face, so "Sink into Stupor" and "Sink into Stupor //
+    # Soporific Springs" share the one entry they both resolve to.
+    slug = get_card_slug(front_face_name(card_name))
     cache_key = f"card_en_{slug}"
 
     # 1. Check the cache.

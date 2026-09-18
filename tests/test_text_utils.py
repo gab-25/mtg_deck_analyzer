@@ -6,6 +6,7 @@ from reportlab.platypus import HRFlowable, Paragraph, Spacer
 from mtg_deck_analyzer.domain.text_utils import (
     convert_markdown_inline,
     escape_for_paragraph,
+    front_face_name,
     get_card_slug,
     markdown_to_flowables,
     slugify,
@@ -27,6 +28,24 @@ class TestSlug:
 
     def test_slugify_is_alias_of_get_card_slug(self):
         assert slugify("Sol Ring") == get_card_slug("Sol Ring")
+
+
+class TestFrontFaceName:
+    def test_keeps_a_single_faced_name_as_is(self):
+        assert front_face_name("Lightning Bolt") == "Lightning Bolt"
+
+    def test_drops_the_back_face(self):
+        name = "Sink into Stupor // Soporific Springs"
+        assert front_face_name(name) == "Sink into Stupor"
+
+    def test_both_spellings_share_one_slug(self):
+        full = "Tamiyo, Inquisitive Student // Tamiyo, Seasoned Scholar"
+        front = "Tamiyo, Inquisitive Student"
+        assert get_card_slug(front_face_name(full)) == get_card_slug(front)
+
+    def test_deck_names_are_not_truncated_by_the_slug(self):
+        # The slug is shared with deck filenames, which may contain slashes.
+        assert get_card_slug("Turbo // Naus") == "turbo_naus"
 
 
 class TestEscapeForParagraph:
