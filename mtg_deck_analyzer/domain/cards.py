@@ -3,20 +3,26 @@
 from .constants import CATEGORY_ORDER
 
 
-def classify_card(card_data: dict) -> str:
-    """Classifies a card based on its type line.
+def front_type_line(card_data: dict) -> str:
+    """Returns the English type line of the card's front face, lowercased.
 
-    Uses the top-level English ``type_line`` (the Scryfall oracle type), falling
-    back to the first face when only per-face details are present.
+    A double-faced card carries a combined ``"Instant // Land"`` type line at
+    the top level, which would file every spell with a land back under Lands.
+    The front face is what the card is cast as, so it decides: the per-face
+    details when they are there, the combined line split on ``//`` otherwise
+    (decks stored before the faces carried their own type line).
     """
-    type_line = card_data.get("type_line", "")
+    faces = card_data.get("faces", [])
+    type_line = faces[0].get("type_line", "") if faces else ""
     if not type_line:
-        # Fallback for data shapes that only carry per-face details.
-        faces = card_data.get("faces", [])
-        if faces:
-            type_line = faces[0].get("type_line", "")
+        type_line = card_data.get("type_line", "")
 
-    tl = type_line.lower()
+    return type_line.split("//")[0].strip().lower()
+
+
+def classify_card(card_data: dict) -> str:
+    """Classifies a card based on the type line of its front face."""
+    tl = front_type_line(card_data)
 
     if "land" in tl:
         return "Land"
@@ -41,16 +47,9 @@ def classify_card(card_data: dict) -> str:
 def is_basic_land(card_data: dict) -> bool:
     """Reports whether a card is a basic land (``Basic Land — ...``).
 
-    Uses the English ``type_line`` (falling back to the first face), matching
-    :func:`classify_card`.
+    Reads the front face, matching :func:`classify_card`.
     """
-    type_line = card_data.get("type_line", "")
-    if not type_line:
-        faces = card_data.get("faces", [])
-        if faces:
-            type_line = faces[0].get("type_line", "")
-
-    tl = type_line.lower()
+    tl = front_type_line(card_data)
     return "basic" in tl and "land" in tl
 
 

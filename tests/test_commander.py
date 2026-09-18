@@ -22,8 +22,10 @@ def _card(
     identity=(),
     rules_text="",
     mana_cost="",
+    card_id=None,
 ):
     return {
+        "id": card_id or name,
         "name": name,
         "type_line": type_line,
         "color_identity": list(identity),
@@ -191,3 +193,62 @@ class TestCheckDeck:
         # The deck is now oversized, but the duplicates are not a problem.
         issues = check_deck(cards)
         assert all("singleton" not in issue for issue in issues)
+
+
+class TestDoubleFacedCards:
+    """Both faces of a card are one card: one line, one copy, one front face."""
+
+    def _legal_cards(self):
+        return TestCheckDeck()._legal_cards()
+
+    def test_a_card_listed_twice_breaks_the_singleton_rule(self):
+        cards = self._legal_cards()
+        # Two lines of one copy each: still two copies of the same card.
+        cards[1] = _item(1, _card("Sol Ring", identity=()))
+        cards[2] = _item(1, _card("Sol Ring", identity=()))
+        issues = check_deck(cards)
+        assert len(issues) == 1
+        assert "2×" in issues[0] and "Sol Ring" in issues[0]
+
+    def test_a_double_faced_card_listed_under_both_spellings_is_one_card(self):
+        cards = self._legal_cards()
+        full = "Sink into Stupor // Soporific Springs"
+        cards[1] = _item(1, _card("Sink into Stupor", type_line="Instant",
+                                  identity=("U",), card_id="mdfc-1"))
+        cards[2] = _item(1, _card(full, type_line="Instant // Land",
+                                  identity=("U",), card_id="mdfc-1"))
+        issues = check_deck(cards)
+        assert len(issues) == 1
+        assert "singleton" in issues[0]
+
+    def test_a_commander_must_be_legendary_on_its_front_face(self):
+        # Bloodline Keeper transforms into a legendary creature, which does not
+        # make the card a legal commander.
+        cards = self._legal_cards()
+        cards[0] = _item(
+            1,
+            _card(
+                "Bloodline Keeper // Lord of Lineage",
+                type_line="Creature — Vampire // Legendary Creature — Vampire",
+                identity=("W", "U", "B", "G"),
+            ),
+            is_commander=True,
+        )
+        issues = check_deck(cards)
+        assert any("cannot be a commander" in issue for issue in issues)
+
+    def test_the_decklist_pass_tallies_copies_across_lines(self):
+        entries = _legal_entries()
+        entries[1] = _entry(1, "Sink into Stupor")
+        entries[2] = _entry(1, "Sink into Stupor // Soporific Springs")
+        issues = check_decklist(entries)
+        assert len(issues) == 1
+        assert "singleton" in issues[0]
+
+    def test_two_lines_of_the_same_name_are_reported_once(self):
+        entries = _legal_entries()
+        entries[1] = _entry(1, "Sol Ring")
+        entries[2] = _entry(1, "Sol Ring")
+        issues = check_decklist(entries)
+        assert len(issues) == 1
+        assert "2×" in issues[0]

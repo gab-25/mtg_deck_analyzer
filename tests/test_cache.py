@@ -95,3 +95,27 @@ def test_purge_non_english_cache_keeps_only_english():
         "img_abc_en.jpg",
         "img_abc_en_face0.jpg",
     }
+
+
+@pytest.mark.django_db
+def test_fetch_card_data_shares_one_cache_entry_across_both_dfc_spellings():
+    """"A // B" and its front face alone are the same card, so one entry serves both."""
+    from mtg_deck_analyzer.models import ScryfallCard
+
+    cache = DbCardCache()
+    cache.set_card(
+        "card_en_sink_into_stupor",
+        {
+            "id": "mdfc",
+            "lang": "en",
+            "name": "Sink into Stupor // Soporific Springs",
+            "type_line": "Instant // Land",
+            "cmc": 3.0,
+        },
+    )
+
+    # No network: a miss would try to reach Scryfall and fail the test run.
+    card = fetch_card_data("Sink into Stupor // Soporific Springs", cache)
+    assert card is not None
+    assert card["name"] == "Sink into Stupor // Soporific Springs"
+    assert ScryfallCard.objects.count() == 1
