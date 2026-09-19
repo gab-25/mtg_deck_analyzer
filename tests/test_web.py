@@ -959,6 +959,84 @@ def test_a_failed_deck_shows_every_control_to_its_owner(client, django_user_mode
     assert f'href="/decks/{deck.id}/edit"' in body
     assert f'action="/decks/{deck.id}/delete"' in body
     assert f'action="/decks/{deck.id}/reanalyze"' in body
+
+
+# --- Version history ----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_creating_a_deck_records_its_first_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    versions = list(deck.versions.all())
+    assert len(versions) == 1
+    assert versions[0].raw_decklist == _legal_decklist()
+
+
+@pytest.mark.django_db
+def test_every_decklist_change_appends_a_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    second = _legal_decklist().replace("1 Spell 0", "1 Rhystic Study")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Mine", "decklist": second, "note": "Added the tax"},
+    )
+
+    versions = list(deck.versions.all())
+    # Oldest first: the trail is append-only, nothing is rewritten.
+    assert len(versions) == 2
+    assert versions[0].raw_decklist == _legal_decklist()
+    assert versions[1].raw_decklist == second
+    assert versions[1].note == "Added the tax"
+
+
+@pytest.mark.django_db
+def test_a_plain_rename_does_not_append_a_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Renamed", "decklist": _legal_decklist()},
+    )
+
+    # The card list is what a version records; a title change is not one.
+    assert deck.versions.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_rejected_update_records_nothing(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    r = client.post(
+        f"/decks/{deck.id}/update", data={"name": "Mine", "decklist": "1 Sol Ring"}
+    )
+    assert r.status_code == 422
+    # Only a successful update is part of the history.
+    assert deck.versions.count() == 1
+
+
+@pytest.mark.django_db
+def test_deleting_a_deck_takes_its_versions_with_it(client):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    client.post(f"/decks/{deck.id}/delete")
+
+    assert not DeckVersion.objects.filter(deck_id=deck.id).exists()
 @pytest.mark.django_db
 def test_a_new_deck_defaults_to_the_commander_format():
     from mtg_deck_analyzer.models import Deck

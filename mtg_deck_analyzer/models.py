@@ -86,6 +86,29 @@ class Deck(models.Model):
         db_table = "decks"
 
 
+class DeckVersion(models.Model):
+    """One submitted decklist in a deck's history.
+
+    Append-only: ``Deck.raw_decklist`` holds the current state, and these rows
+    are the trail that says how it got there. Nothing here is ever rewritten,
+    which is what makes "what did I cut when I added the second wheel?" a
+    question the app can answer.
+    """
+
+    deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name="versions")
+    raw_decklist = models.TextField()
+
+    # Optional one-line note the submitter attaches to a revision.
+    note = models.CharField(max_length=255, blank=True, default="")
+
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "deck_versions"
+        # Oldest first: a version is read against the one before it.
+        ordering = ["created_at", "id"]
+
+
 class ScryfallCard(models.Model):
     """Cached Scryfall card JSON, keyed by ``card_en_<slug>`` (the Scryfall cache)."""
 

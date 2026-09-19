@@ -31,7 +31,7 @@ from .domain.storage import (
 )
 from .domain.text_utils import slugify
 from .logging_context import deck_log_context
-from .models import Deck
+from .models import Deck, DeckVersion
 from .pipeline import analyze_decklist
 from .rendering.pdf import generate_pdf, generate_proxy_pdf
 
@@ -409,6 +409,8 @@ def create_deck(request):
         visibility=_visibility(request.POST),
         format=fmt,
     )
+    # The list as submitted opens the deck's history.
+    DeckVersion.objects.create(deck=deck, raw_decklist=decklist)
     _start_analysis(deck.id, decklist, _resolved_api_key(), fmt)
 
     # Post/Redirect/Get: back to the deck list, where the new deck shows an
@@ -498,7 +500,8 @@ def update_deck(request, deck):
     # The decklist and the format both feed the analysis — the format picks the
     # ban list the deck is validated against — so either one changing has to
     # re-run it. A plain rename still triggers nothing.
-    needs_reanalysis = decklist != deck.raw_decklist or fmt != deck.format
+    decklist_changed = decklist != deck.raw_decklist
+    needs_reanalysis = decklist_changed or fmt != deck.format
 
     deck.name = name
     deck.raw_decklist = decklist
@@ -508,6 +511,16 @@ def update_deck(request, deck):
         deck.status = Deck.Status.PENDING
         deck.error = None
     deck.save()
+
+    # Only a real change to the card list is worth a version: a rename, or a
+    # format switch that leaves the same 100 cards, would add a row whose
+    # changelog is empty.
+    if decklist_changed:
+        DeckVersion.objects.create(
+            deck=deck,
+            raw_decklist=decklist,
+            note=(request.POST.get("note") or "").strip()[:255],
+        )
 
     if needs_reanalysis:
         _start_analysis(deck.id, decklist, _resolved_api_key(), fmt)
