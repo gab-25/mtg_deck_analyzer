@@ -272,6 +272,35 @@ class TestBanList:
         cards[1] = _item(1, _card("Sol Ring", legalities={}))
         assert check_deck(cards) == []
 
+    def test_duel_commander_reads_its_own_ban_list(self):
+        # Sol Ring is the case that proves the feature: legal in Commander,
+        # banned in Duel Commander, same card, same deck.
+        sol_ring = _card(
+            "Sol Ring",
+            type_line="Artifact",
+            legalities={"commander": "legal", "duel": "banned"},
+        )
+        cards = self._legal_cards()
+        cards[1] = _item(1, sol_ring)
+
+        assert check_deck(cards) == []
+        assert check_deck(cards, fmt="commander") == []
+
+        issues = check_deck(cards, fmt="duel")
+        assert len(issues) == 1
+        assert "Sol Ring" in issues[0]
+
+    def test_the_message_names_the_format(self):
+        cards = self._legal_cards()
+        cards[1] = _item(
+            1, _card("Sol Ring", type_line="Artifact", legalities={"duel": "banned"})
+        )
+        assert "banned in Duel Commander." in check_deck(cards, fmt="duel")[0]
+
+    def test_a_card_without_legalities_passes_in_every_format(self):
+        for key in ("commander", "duel"):
+            assert check_deck(self._legal_cards(), fmt=key) == []
+
     def test_a_legal_card_passes(self):
         cards = self._legal_cards()
         cards[1] = _item(1, _card("Sol Ring", legalities={"commander": "legal"}))
