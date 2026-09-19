@@ -18,7 +18,6 @@
 
     <div class="relative z-[1] min-h-screen flex flex-col">
         <header class="app-nav no-print">
-            {% if user.is_authenticated %}
             <a href="{% url 'index' %}" class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
                 <span class="brand-name">MTG DECK ANALYZER</span>
@@ -28,6 +27,7 @@
                 <a href="{% url 'new_deck' %}" class="btn btn-grad">
                     <span class="ms text-[20px]">add</span>New deck
                 </a>
+                {% if user.is_authenticated %}
                 <div class="flex items-center gap-[11px]">
                     <div class="avatar">{{ user.get_username|slice:":2" }}</div>
                     <div class="leading-[1.15]">
@@ -40,17 +40,8 @@
                         </form>
                     </div>
                 </div>
+                {% endif %}
             </nav>
-            {% else %}
-            {# The sign-in page is the only page an anonymous visitor sees: the
-               brand mark stays as non-interactive text, since every nav control
-               (library, new deck) leads somewhere behind login. #}
-            <span class="brand">
-                {% include "partials/brand_mark.html" with size=28 %}
-                <span class="brand-name">MTG DECK ANALYZER</span>
-                <span class="brand-badge"><span class="ms text-[12px]">auto_awesome</span>AI</span>
-            </span>
-            {% endif %}
         </header>
 
         <main class="flex-1">
