@@ -27,6 +27,8 @@ See [Web Service](#web-service) to get it running.
 - **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
 - **Aesthetic PDF Layout**: Generates a clean, modern, and elegant A4 PDF with dynamic headers and footers including page numbers, and aligned tables.
 - **Interactive Web UI**: Submit Commander decklists from the browser, browse previously analyzed decks stored in Postgres, and view each report as a page (commander panel, fact sheet, AI analysis, grouped card list) with a PDF download — built with HTMX and Tailwind CSS (see [Web Service](#web-service)).
+- **Deck ownership and sharing**: A deck belongs to the user who submitted it. Your library shows your decks and nobody else's, and only you can edit, re-analyze or delete them. Each deck is **private** by default; switching it to **unlisted** makes it readable by anyone holding the link — no share token is needed, because a deck's id is a UUID and deck URLs are not enumerable. Unlisted grants reading only: it never opens the edit, delete or re-analyze actions. Decks created before ownership existed stay ownerless and keep behaving exactly as they did.
+- **Version history**: Every submitted card list is recorded as an append-only version, on creation and on each change to the list (a rename is not a version). The deck page shows the trail newest-first, each version with its changelog against the one before it — `+1 Rhystic Study` / `-1 Arcane Signet`, computed as plain set arithmetic over the parsed lists — plus an optional note explaining the revision, and any older list can be opened in full. Restoring an old version is deliberately not offered.
 
 ---
 
@@ -45,13 +47,15 @@ mtg_deck_analyzer/
 ├── wsgi.py / asgi.py  # WSGI/ASGI application entry points
 ├── views.py           # Django views (HTMX + Tailwind CSS)
 ├── apps.py            # Django app configuration
-├── models.py          # ORM models (Deck, ScryfallCard, ScryfallImage)
+├── access.py          # Deck ownership and visibility rules (one source of truth)
+├── models.py          # ORM models (Deck, DeckVersion, ScryfallCard, ScryfallImage)
 ├── migrations/        # Database migrations
 ├── templates/         # Django templates
 ├── pipeline.py        # Analysis pipeline (parse → fetch → validate → analyze → stats)
 ├── domain/            # Pure domain logic (no I/O, no Django)
 │   ├── constants.py   #   Shared constants (Scryfall headers, Commander rules, categories)
 │   ├── decklist.py    #   Decklist text parsing (sections, commander detection)
+│   ├── changelog.py   #   Differences between two decklists (+1 / -1 entries)
 │   ├── commander.py   #   Commander format rules (color identity, legality, ban list)
 │   ├── cards.py       #   Card classification and aggregate statistics
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
