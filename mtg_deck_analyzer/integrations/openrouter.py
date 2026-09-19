@@ -10,7 +10,7 @@ import os
 
 import requests
 
-from ..domain.constants import OPENROUTER_MODEL
+from ..domain.constants import DEFAULT_FORMAT, FORMATS, OPENROUTER_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +36,18 @@ def log_analysis_unavailable() -> None:
 
 
 def analyze_deck_list(
-    deck_list_text: str, api_key: str = None, commanders: list = None
+    deck_list_text: str,
+    api_key: str = None,
+    commanders: list = None,
+    fmt: str = DEFAULT_FORMAT,
 ) -> str | None:
     """Asks the configured model to write a tactical strategy guide for the deck.
 
     ``commanders`` are the deck's commander name(s); they anchor the analysis
-    when known. Returns the analysis text, or None if it could not be produced
+    when known. ``fmt`` is the Commander format the deck is built for: it
+    decides the game the model is asked to judge the deck in, which differs
+    sharply between a four-player pod and a 1v1 duel. Returns the analysis
+    text, or None if it could not be produced
     (in which case nothing should be added to the PDF; the reason is logged to
     the console).
     """
@@ -57,16 +63,18 @@ def analyze_deck_list(
         "from the list and say which you assumed.\n"
     )
 
+    rules = FORMATS[fmt]
+
     prompt = f"""You are an expert Magic: The Gathering Commander (EDH) strategist.
-Write a strategy guide for the Commander deck below, entirely in English, using
+Write a strategy guide for the {rules.label} deck below, entirely in English, using
 clean GitHub-flavored Markdown.
 
-CONTEXT — this is always a Commander deck:
-- 100-card singleton, multiplayer (typically a four-player pod), 40 starting life.
+CONTEXT — this is a {rules.label} deck:
+- 100-card singleton, {rules.context}, {rules.life} starting life.
 - {commander_line.strip()}
-- Judge the deck as a Commander deck: commander-centric game plan, color identity,
-  ramp and mana base, card advantage engines, interaction, and multiplayer politics
-  and threat assessment. Never discuss it as a 60-card constructed or limited deck.
+- Judge the deck as a {rules.label} deck: commander-centric game plan, color identity,
+  ramp and mana base, card advantage engines, interaction, and the threat assessment
+  this format calls for. Never discuss it as a 60-card constructed or limited deck.
 
 STRICT FORMATTING RULES — follow exactly:
 - Do NOT write any introduction, preamble, greeting, or closing remarks.
