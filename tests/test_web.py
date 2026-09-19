@@ -846,6 +846,50 @@ def test_update_can_change_the_visibility(client):
 
 
 @pytest.mark.django_db
+def test_update_without_a_visibility_field_preserves_it(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Mine", "decklist": _legal_decklist(), "visibility": "unlisted"},
+    )
+    deck = Deck.objects.get(name="Mine")
+    assert deck.visibility == Deck.Visibility.UNLISTED
+
+    # A partial submission (name + decklist only, no visibility key at all)
+    # must not silently un-share the deck.
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Mine", "decklist": deck.raw_decklist},
+    )
+    deck.refresh_from_db()
+    assert deck.visibility == Deck.Visibility.UNLISTED
+
+
+@pytest.mark.django_db
+def test_update_with_an_unrecognized_visibility_falls_back_to_private(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Mine", "decklist": _legal_decklist(), "visibility": "unlisted"},
+    )
+    deck = Deck.objects.get(name="Mine")
+
+    # The field is present but holds a value the form never offers.
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Mine",
+            "decklist": deck.raw_decklist,
+            "visibility": "public",
+        },
+    )
+    deck.refresh_from_db()
+    assert deck.visibility == Deck.Visibility.PRIVATE
+
+
+@pytest.mark.django_db
 def test_card_images_load_for_an_anonymous_reader_of_an_unlisted_deck(client, owner):
     from mtg_deck_analyzer.models import ScryfallImage
 
@@ -873,6 +917,48 @@ def test_legacy_ownerless_decks_stay_reachable_and_editable(client):
     )
     assert client.get(f"/decks/{deck.id}").status_code == 200
     assert client.get(f"/decks/{deck.id}/edit").status_code == 200
+
+
+# --- FAILED-deck controls are also owner-gated -------------------------------
+
+
+@pytest.mark.django_db
+def test_a_failed_unlisted_deck_hides_owner_controls_from_a_reader(client, owner):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Broke",
+        raw_decklist="1 Forest",
+        owner=owner,
+        visibility=Deck.Visibility.UNLISTED,
+        status=Deck.Status.FAILED,
+        error="Not a valid decklist.",
+    )
+    client.logout()
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert f'href="/decks/{deck.id}/edit"' not in body
+    assert f'action="/decks/{deck.id}/delete"' not in body
+    assert f'action="/decks/{deck.id}/reanalyze"' not in body
+
+
+@pytest.mark.django_db
+def test_a_failed_deck_shows_every_control_to_its_owner(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    tester = django_user_model.objects.get(username="tester")
+    deck = Deck.objects.create(
+        name="Broke",
+        raw_decklist="1 Forest",
+        owner=tester,
+        status=Deck.Status.FAILED,
+        error="Not a valid decklist.",
+    )
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'href="/decks/{deck.id}/edit"' in body
+    assert f'action="/decks/{deck.id}/delete"' in body
+    assert f'action="/decks/{deck.id}/reanalyze"' in body
 @pytest.mark.django_db
 def test_a_new_deck_defaults_to_the_commander_format():
     from mtg_deck_analyzer.models import Deck

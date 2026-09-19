@@ -248,12 +248,16 @@ def _decklist_errors(decklist: str) -> list:
     return check_decklist(entries)
 
 
-def _visibility(post) -> str:
+def _visibility(post, current: str | None = None) -> str:
     """Reads the visibility choice off a submitted form.
 
-    Anything unexpected falls back to private: a deck is never shared by
-    accident because a form was malformed.
+    A form that omits the field entirely leaves the deck's current visibility
+    alone — a partial submission must never silently un-share a deck. A value
+    that is present but unrecognized falls back to private, so a malformed
+    form never shares one by accident.
     """
+    if "visibility" not in post:
+        return current or Deck.Visibility.PRIVATE
     value = post.get("visibility")
     allowed = {choice for choice, _ in Deck.Visibility.choices}
     return value if value in allowed else Deck.Visibility.PRIVATE
@@ -420,7 +424,11 @@ def deck_detail(request, deck):
     if deck.status in {Deck.Status.PENDING, Deck.Status.PROCESSING}:
         return redirect("index")
     if deck.status == Deck.Status.FAILED:
-        return render(request, "deck_failed.html", {"deck": deck})
+        return render(
+            request,
+            "deck_failed.html",
+            {"deck": deck, "can_edit": can_edit(request.user, deck)},
+        )
 
     analysis_html = None
     if deck.analysis_md:
@@ -468,7 +476,7 @@ def edit_deck(request, deck):
 def update_deck(request, deck):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
-    visibility = _visibility(request.POST)
+    visibility = _visibility(request.POST, current=deck.visibility)
     fmt = _posted_format(request)
 
     errors = _decklist_errors(decklist)
