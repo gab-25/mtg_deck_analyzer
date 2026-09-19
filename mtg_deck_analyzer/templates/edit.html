@@ -59,6 +59,26 @@
                     </div>
                 </div>
 
+                <div class="panel-card p-[18px]">
+                    <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-txt2 mb-3">
+                        <span class="ms text-[18px]">visibility</span>VISIBILITY
+                    </div>
+                    <label class="flex items-start gap-2.5 text-[12.5px] mb-3 cursor-pointer">
+                        <input type="radio" name="visibility" value="private" class="mt-1" {% if form_visibility != 'unlisted' %}checked{% endif %} />
+                        <span>
+                            <span class="font-semibold text-txt">Private</span>
+                            <span class="block text-txt3 font-light leading-[1.5]">Only you can open this deck.</span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-2.5 text-[12.5px] cursor-pointer">
+                        <input type="radio" name="visibility" value="unlisted" class="mt-1" {% if form_visibility == 'unlisted' %}checked{% endif %} />
+                        <span>
+                            <span class="font-semibold text-txt">Unlisted</span>
+                            <span class="block text-txt3 font-light leading-[1.5]">Anyone holding the link can open it. It stays out of every library but yours.</span>
+                        </span>
+                    </label>
+                </div>
+
                 <button type="submit" class="btn btn-grad btn-block">
                     <span class="ms text-[20px]">save</span>Save changes
                 </button>

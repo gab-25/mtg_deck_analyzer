@@ -689,6 +689,190 @@ def test_destructive_actions_use_confirm_modal(client):
     assert f'action="/decks/{deck.id}/delete"' in detail
 
 
+# --- Ownership and visibility -------------------------------------------------
+
+
+@pytest.fixture
+def owner(django_user_model):
+    return django_user_model.objects.create_user(username="owner", password="pw")
+
+
+def _owned_deck(owner, visibility="private", name="Owned"):
+    """A ready deck belonging to ``owner``, straight into the database."""
+    from mtg_deck_analyzer.models import Deck
+
+    return Deck.objects.create(
+        name=name,
+        raw_decklist="1 Forest",
+        owner=owner,
+        visibility=visibility,
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+
+
+@pytest.mark.django_db
+def test_created_deck_belongs_to_the_submitting_user(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    assert deck.owner == django_user_model.objects.get(username="tester")
+    # Private unless the submitter says otherwise.
+    assert deck.visibility == Deck.Visibility.PRIVATE
+
+
+@pytest.mark.django_db
+def test_created_deck_honours_the_chosen_visibility(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={
+            "name": "Shared",
+            "decklist": _legal_decklist(),
+            "visibility": "unlisted",
+        },
+    )
+    assert Deck.objects.get(name="Shared").visibility == Deck.Visibility.UNLISTED
+
+
+@pytest.mark.django_db
+def test_index_lists_only_your_own_decks_and_legacy_ones(client, owner):
+    from mtg_deck_analyzer.models import Deck
+
+    _owned_deck(owner, name="Someone Elses")
+    Deck.objects.create(name="Legacy Pile", raw_decklist="1 Forest")
+    client.post("/decks", data={"name": "My Deck", "decklist": _legal_decklist()})
+
+    body = client.get("/").content.decode()
+    assert "My Deck" in body
+    # The ownerless deck predates ownership and stays visible to everyone.
+    assert "Legacy Pile" in body
+    assert "Someone Elses" not in body
+
+
+@pytest.mark.django_db
+def test_a_private_deck_is_404_for_another_user(client, owner):
+    deck = _owned_deck(owner)
+    # A 404 rather than a 403: another user's private deck does not exist for you.
+    assert client.get(f"/decks/{deck.id}").status_code == 404
+    assert client.get(f"/decks/{deck.id}/pdf").status_code == 404
+    assert client.get(f"/decks/{deck.id}/proxy").status_code == 404
+    assert client.get(f"/decks/{deck.id}/edit").status_code == 404
+    assert client.post(f"/decks/{deck.id}/delete").status_code == 404
+    assert client.post(f"/decks/{deck.id}/reanalyze").status_code == 404
+    assert client.post(
+        f"/decks/{deck.id}/update", data={"name": "Hijacked", "decklist": "1 Forest"}
+    ).status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_private_deck_sends_an_anonymous_visitor_to_the_login(client, owner):
+    deck = _owned_deck(owner)
+    client.logout()
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 302
+    assert r["Location"].startswith("/login")
+
+
+@pytest.mark.django_db
+def test_an_unlisted_deck_opens_for_anyone_holding_the_link(client, owner):
+    deck = _owned_deck(owner, visibility="unlisted", name="Open Deck")
+
+    # Another signed-in user.
+    assert client.get(f"/decks/{deck.id}").status_code == 200
+    # And an anonymous visitor.
+    client.logout()
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 200
+    assert "Open Deck" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_unlisted_deck_is_still_not_editable_by_its_readers(client, owner):
+    deck = _owned_deck(owner, visibility="unlisted")
+
+    assert client.get(f"/decks/{deck.id}/edit").status_code == 404
+    assert client.post(f"/decks/{deck.id}/delete").status_code == 404
+    # And the page it can read offers it no destructive control.
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'action="/decks/{deck.id}/delete"' not in body
+    assert f'href="/decks/{deck.id}/edit"' not in body
+
+
+@pytest.mark.django_db
+def test_the_owner_still_sees_every_control(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'href="/decks/{deck.id}/edit"' in body
+    assert f'action="/decks/{deck.id}/delete"' in body
+    assert f'action="/decks/{deck.id}/reanalyze"' in body
+
+
+@pytest.mark.django_db
+def test_an_unlisted_deck_is_labelled_as_shared_for_its_owner(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Shared", "decklist": _legal_decklist(), "visibility": "unlisted"},
+    )
+    deck = Deck.objects.get(name="Shared")
+    assert "Unlisted" in client.get(f"/decks/{deck.id}").content.decode()
+
+
+@pytest.mark.django_db
+def test_update_can_change_the_visibility(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Mine",
+            "decklist": deck.raw_decklist,
+            "visibility": "unlisted",
+        },
+    )
+    deck.refresh_from_db()
+    assert deck.visibility == Deck.Visibility.UNLISTED
+
+
+@pytest.mark.django_db
+def test_card_images_load_for_an_anonymous_reader_of_an_unlisted_deck(client, owner):
+    from mtg_deck_analyzer.models import ScryfallImage
+
+    _owned_deck(owner, visibility="unlisted")
+    ScryfallImage.objects.create(name="img_seed.jpg", data=b"\x01")
+    client.logout()
+
+    # The card art cache is shared, public Scryfall data — without it an
+    # unlisted page would render nothing but broken images.
+    assert client.get("/media/img_seed.jpg").status_code == 200
+    assert client.get("/card-image", {"name": "img_seed.jpg"}).status_code == 200
+
+
+@pytest.mark.django_db
+def test_legacy_ownerless_decks_stay_reachable_and_editable(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Legacy",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    assert client.get(f"/decks/{deck.id}").status_code == 200
+    assert client.get(f"/decks/{deck.id}/edit").status_code == 200
 @pytest.mark.django_db
 def test_a_new_deck_defaults_to_the_commander_format():
     from mtg_deck_analyzer.models import Deck

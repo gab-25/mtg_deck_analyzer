@@ -8,9 +8,11 @@
 max-width stays inline — a utility would lose to the unlayered component rule.
 {% endcomment %}
 <div class="page-narrow" data-screen-label="Deck detail" style="max-width:1180px">
+    {% if user.is_authenticated %}
     <a href="{% url 'index' %}" class="link-back no-print mb-[18px]">
         <span class="ms text-[18px]">arrow_back</span>All decks
     </a>
+    {% endif %}
 
     <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
         <div>
@@ -21,14 +23,17 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="chip">{{ deck.get_format_display }}</span>
                 {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}
+                {% if deck.visibility == 'unlisted' %}<span class="chip"><span class="ms text-[14px]">link</span>Unlisted</span>{% endif %}
             </div>
         </div>
         <div class="no-print flex gap-[9px] flex-wrap items-center">
+            {% if can_edit %}
             <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line btn-sm">
                 <span class="ms text-[18px]">edit</span>Edit
             </a>
             {% url 'reanalyze_deck' deck.id as reanalyze_url %}
             {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the AI analysis for this deck? The deck goes back to “Analyzing” while it runs." trigger_label="Re-analyze" trigger_icon="autorenew" %}
+            {% endif %}
             <button type="button" id="copy-decklist" class="btn btn-line btn-sm">
                 <span class="ms text-[18px]">content_copy</span><span data-copy-label>Copy plain text</span>
             </button>
@@ -38,8 +43,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             <a href="{% url 'deck_proxy_pdf' deck.id %}" class="btn btn-line btn-sm">
                 <span class="ms text-[18px]">grid_view</span>Export proxy
             </a>
+            {% if can_edit %}
             {% url 'delete_deck' deck.id as delete_url %}
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
+            {% endif %}
         </div>
     </div>
 
