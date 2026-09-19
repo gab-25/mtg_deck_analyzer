@@ -521,7 +521,12 @@ def deck_pdf(request, deck_id: uuid.UUID):
     fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
     generate_pdf(
-        deck.name, deck.analysis_md, processed, tmp_path, commanders=deck.commanders
+        deck.name,
+        deck.analysis_md,
+        processed,
+        tmp_path,
+        commanders=deck.commanders,
+        fmt=deck.format,
     )
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"

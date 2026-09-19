@@ -20,7 +20,7 @@ from reportlab.platypus import (
 )
 
 from ..domain.cards import classify_card, compute_statistics
-from ..domain.constants import CATEGORY_ORDER
+from ..domain.constants import CATEGORY_ORDER, DEFAULT_FORMAT, FORMATS
 from ..domain.text_utils import markdown_to_flowables
 
 _CATEGORY_LABELS = {
@@ -84,6 +84,7 @@ def create_stats_table(
     avg_cmc: float,
     category_counts: dict,
     commanders: list = None,
+    fmt: str = DEFAULT_FORMAT,
 ):
     """Creates a styled statistics table for the top of the PDF."""
     stats_labels = _STATS_LABELS
@@ -108,15 +109,15 @@ def create_stats_table(
         textColor=charcoal_color,
     )
 
-    # Left column: general info. The format is a constant — every deck this app
-    # handles is a Commander deck.
+    # Left column: general info, starting with the Commander format the deck
+    # was built and validated for.
     val_str = f"€{total_price:.2f}" if total_price > 0.0 else "--"
     commander_html = ""
     if commanders:
         names = html.escape(", ".join(commanders))
         commander_html = f'<b>{stats_labels["commander"]}:</b> {names}<br/>'
     left_html = f"""
-    <b>{stats_labels["format"]}:</b> Commander<br/>
+    <b>{stats_labels["format"]}:</b> {FORMATS[fmt].label}<br/>
     {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
     <b>{stats_labels["value"]}:</b> {val_str}<br/>
@@ -511,6 +512,7 @@ def generate_pdf(
     processed_cards: list,
     output_path: str,
     commanders: list = None,
+    fmt: str = DEFAULT_FORMAT,
 ):
     """Generates the formatted PDF using the ReportLab Platypus layout."""
     doc = SimpleDocTemplate(
@@ -541,7 +543,7 @@ def generate_pdf(
         processed_cards
     )
     stats_table = create_stats_table(
-        total_cards, total_price, avg_cmc, category_counts, commanders
+        total_cards, total_price, avg_cmc, category_counts, commanders, fmt
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))

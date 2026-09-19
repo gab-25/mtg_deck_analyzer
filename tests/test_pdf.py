@@ -128,6 +128,21 @@ class TestBuildStyles:
             assert key in styles
 
 
+def _stats_text(table) -> str:
+    """All paragraph text inside a stats table, flattened."""
+
+    def walk(tbl, out):
+        for row in tbl._cellvalues:
+            for cell in row:
+                if hasattr(cell, "_cellvalues"):
+                    walk(cell, out)
+                elif hasattr(cell, "text"):
+                    out.append(cell.text)
+        return out
+
+    return " ".join(walk(table, []))
+
+
 class TestCreateStatsTable:
     def test_returns_table(self):
         table = create_stats_table(100, 123.45, 2.5, {"Creature": 20})
@@ -138,6 +153,14 @@ class TestCreateStatsTable:
             100, 123.45, 2.5, {"Creature": 20}, ["Atraxa, Praetors' Voice"]
         )
         assert isinstance(table, Table)
+
+    def test_prints_commander_by_default(self):
+        table = create_stats_table(100, 123.45, 2.5, {"Creature": 20})
+        assert "<b>Format:</b> Commander" in _stats_text(table)
+
+    def test_prints_the_decks_format(self):
+        table = create_stats_table(100, 123.45, 2.5, {"Creature": 20}, fmt="duel")
+        assert "<b>Format:</b> Duel Commander" in _stats_text(table)
 
 
 class TestGeneratePdfEndToEnd:
