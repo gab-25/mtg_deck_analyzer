@@ -804,3 +804,38 @@ def test_reanalyzing_keeps_the_stored_format(client, monkeypatch):
     client.post(f"/decks/{deck.id}/reanalyze")
 
     assert started and started[0][3] == "duel"
+
+
+@pytest.mark.django_db
+def test_the_create_form_offers_both_formats(client):
+    body = client.get("/decks/new").content.decode()
+    assert 'name="format"' in body
+    assert "Duel Commander" in body
+
+
+@pytest.mark.django_db
+def test_the_edit_form_preselects_the_decks_format(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Duel Deck", "decklist": _legal_decklist(), "format": "duel"},
+    )
+    deck = Deck.objects.get(name="Duel Deck")
+
+    body = client.get(f"/decks/{deck.id}/edit").content.decode()
+    assert '<option value="duel" selected>' in body
+
+
+@pytest.mark.django_db
+def test_the_deck_page_shows_the_format_badge(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Duel Deck", "decklist": _legal_decklist(), "format": "duel"},
+    )
+    deck = Deck.objects.get(name="Duel Deck")
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert "Duel Commander" in body
