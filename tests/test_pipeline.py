@@ -143,3 +143,27 @@ def test_without_an_api_key_the_deck_is_analyzed_without_the_strategy_section(
 
     assert result["deck_analysis"] is None
     assert result["stats"]["total_cards"] == 100
+
+
+def test_the_format_picks_the_ban_list(monkeypatch):
+    """Sol Ring: legal in Commander, banned in Duel. Same deck, two verdicts."""
+
+    def fetch(name, cache):
+        card = _fake_card(name)
+        if name == "Spell 0":
+            card["name"] = "Sol Ring"
+            card["legalities"] = {"commander": "legal", "duel": "banned"}
+        return card
+
+    monkeypatch.setattr(pipeline, "fetch_card_data", fetch)
+
+    # The default format accepts the deck outright.
+    pipeline.analyze_decklist(_decklist(), cache=object(), skip_analysis=True)
+
+    with pytest.raises(ValueError) as excinfo:
+        pipeline.analyze_decklist(
+            _decklist(), cache=object(), skip_analysis=True, fmt="duel"
+        )
+    message = str(excinfo.value)
+    assert "Duel Commander" in message
+    assert "Sol Ring" in message

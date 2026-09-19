@@ -11,7 +11,8 @@ See [Web Service](#web-service) to get it running.
 ## Features
 
 - **Commander-aware**: The commander is a first-class citizen — declared in the decklist, highlighted on the deck page (art, type line, badge on its card row), printed on the PDF fact sheet, and used to anchor the AI analysis. The deck's color pips come from the commander's **color identity**, not from the mana costs it happens to play.
-- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), and every card sits inside its color identity — are enforced during the analysis, which fails with the same kind of explanation.
+- **Commander legality checks**: A decklist that is not a legal deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), every card sits inside its color identity, and no card is on the ban list of the deck's format — are enforced during the analysis, which fails with the same kind of explanation.
+- **Commander and Duel Commander**: A deck declares its format on creation. The two share their construction rules but not their ban lists — 186 cards legal in Commander are banned in Duel, Sol Ring included — so the deck is checked against the one it claims, and the AI analysis judges it as a pod deck or a 1v1 deck accordingly.
 - **Fact Sheet & Statistics**: Adds a summary info box at the top of the PDF containing:
   - The format (always Commander) and the deck's commander.
   - Total number of cards in the deck.
@@ -51,7 +52,7 @@ mtg_deck_analyzer/
 ├── domain/            # Pure domain logic (no I/O, no Django)
 │   ├── constants.py   #   Shared constants (Scryfall headers, Commander rules, categories)
 │   ├── decklist.py    #   Decklist text parsing (sections, commander detection)
-│   ├── commander.py   #   Commander format rules (color identity, legality)
+│   ├── commander.py   #   Commander format rules (color identity, legality, ban list)
 │   ├── cards.py       #   Card classification and aggregate statistics
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
@@ -178,11 +179,31 @@ A deck is only stored once it satisfies all of these:
 | Singleton: one copy per card, except basic lands and "any number" cards such as Relentless Rats | on submit |
 | The commander is a legendary creature, or says it can be your commander | during the analysis |
 | Every card sits inside the commander's color identity | during the analysis |
+| No card is banned in the deck's format, or was never legal in it | during the analysis |
 
 The first three need nothing but the pasted text, so they are reported instantly and
-all at once in the form. The last two need the real cards from Scryfall, so they run
+all at once in the form. The last three need the real cards from Scryfall, so they run
 in the background analysis: the deck is marked as failed with the same explanation
 instead of being stored as ready.
+
+### Formats
+
+A deck declares which Commander format it is built for, and is validated against that
+format's ban list only:
+
+| Format | Ban list | Game |
+| --- | --- | --- |
+| **Commander** | the regular EDH list | multiplayer, four-player pod, 40 life |
+| **Duel Commander** | the 1v1 list, far stricter | 1v1, 20 life |
+
+Deck construction is identical in both — 100 cards, singleton, one commander — so only
+the ban list and the strategic advice change. The difference is not cosmetic: **186
+cards are legal in Commander and banned in Duel Commander**, Sol Ring, Dark Ritual and
+Ancient Tomb among them. The format also reaches the AI analysis, which judges a Duel
+deck as a 1v1 deck instead of a pod deck.
+
+Changing a stored deck's format re-runs the analysis, since it has to be re-validated
+against the other ban list.
 
 ---
 

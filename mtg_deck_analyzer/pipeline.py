@@ -9,6 +9,7 @@ import os
 from .caching.file_cache import FileCardCache
 from .domain.cards import compute_statistics
 from .domain.commander import check_deck, commander_names, deck_color_identity
+from .domain.constants import DEFAULT_FORMAT, FORMATS
 from .domain.decklist import parse_decklist_text
 from .integrations.openrouter import analyze_deck_list, log_analysis_unavailable
 from .integrations.scryfall import fetch_card_data
@@ -31,6 +32,7 @@ def analyze_decklist(
     cache=None,
     skip_analysis: bool = False,
     progress=None,
+    fmt: str = DEFAULT_FORMAT,
 ) -> dict:
     """Runs the full Commander analysis pipeline on raw decklist text.
 
@@ -41,8 +43,10 @@ def analyze_decklist(
 
     Returns a dict with the processed cards, the (optional) AI analysis text
     and the aggregate statistics — including the deck's commander(s) and color
-    identity. Raises ``ValueError`` if no cards could be parsed or fetched, or
-    if the deck breaks the Commander deck-construction rules.
+    identity. ``fmt`` is the Commander format to validate and analyze the deck
+    as; it picks the ban list and the game the analysis assumes. Raises
+    ``ValueError`` if no cards could be parsed or fetched, or if the deck
+    breaks the format's deck-construction rules.
     """
     api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if cache is None:
@@ -86,12 +90,12 @@ def analyze_decklist(
             + "\n".join(f"• {name}" for name in unresolved)
         )
 
-    # Only a legal Commander deck is worth analyzing (and storing): report every
-    # problem at once so the whole deck can be fixed in one pass.
-    issues = check_deck(processed_cards)
+    # Only a legal deck is worth analyzing (and storing): report every problem
+    # at once so the whole deck can be fixed in one pass.
+    issues = check_deck(processed_cards, fmt)
     if issues:
         raise ValueError(
-            "This is not a legal Commander deck:\n"
+            f"This is not a legal {FORMATS[fmt].label} deck:\n"
             + "\n".join(f"• {issue}" for issue in issues)
         )
 
@@ -102,7 +106,7 @@ def analyze_decklist(
     if not skip_analysis:
         if api_key:
             deck_analysis = analyze_deck_list(
-                deck_text_repr, api_key=api_key, commanders=commanders
+                deck_text_repr, api_key=api_key, commanders=commanders, fmt=fmt
             )
         else:
             log_analysis_unavailable()

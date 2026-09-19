@@ -7,7 +7,8 @@ different data:
   the web form can reject an illegal deck instantly.
 * :func:`check_deck` runs on the *processed cards* — the ``{"quantity",
   "is_commander", "data"}`` dicts built from Scryfall data — and covers the
-  rules that need the real card (commander eligibility, color identity).
+  rules that need the real card (commander eligibility, color identity, and
+  the ban list of the deck's format).
 """
 
 import re
@@ -18,6 +19,8 @@ from .constants import (
     BASIC_LAND_NAMES,
     CAN_BE_COMMANDER_TEXT,
     COMMANDER_DECK_SIZE,
+    DEFAULT_FORMAT,
+    FORMATS,
     MAX_COMMANDERS,
     UNLIMITED_COPIES_TEXT,
 )
@@ -168,13 +171,14 @@ def check_decklist(entries: list) -> list:
     return issues
 
 
-def check_deck(processed_cards: list) -> list:
-    """Checks the fetched deck against the Commander deck-construction rules.
+def check_deck(processed_cards: list, fmt: str = DEFAULT_FORMAT) -> list:
+    """Checks the fetched deck against the deck-construction rules of ``fmt``.
 
     Re-runs the structural checks on the real cards (quantities can only be
-    trusted once every name has resolved) and adds the two rules that need
-    Scryfall data: commander eligibility and color identity. Returns every
-    problem at once, so the caller can report them all together.
+    trusted once every name has resolved) and adds the rules that need Scryfall
+    data: commander eligibility, color identity and the ban list. Only the ban
+    list varies with the format — construction is identical across them.
+    Returns every problem at once, so the caller can report them all together.
     """
     issues = _size_issue(sum(item["quantity"] for item in processed_cards))
 
@@ -203,6 +207,7 @@ def check_deck(processed_cards: list) -> list:
             issues += _singleton_issue(card.get("name", "Unknown card"), qty)
 
     issues.extend(_color_identity_issues(processed_cards, cmdrs))
+    issues.extend(_legality_issues(processed_cards, fmt))
 
     return issues
 
@@ -227,4 +232,32 @@ def _color_identity_issues(processed_cards: list, cmdrs: list) -> list:
                 f"falls outside the commander's color identity "
                 f"({_format_identity([c for c in WUBRG if c in allowed])})."
             )
+    return issues
+
+
+def _legality_issues(processed_cards: list, fmt: str = DEFAULT_FORMAT) -> list:
+    """Lists the cards the given format does not allow.
+
+    Reads the format's own key inside Scryfall's ``legalities``, which separates
+    a card banned from an otherwise legal pool (Black Lotus) from one that was
+    never printed in a legal product (un-sets, Alchemy rebalances, playtest
+    cards). Anything else — including a missing field, as on decks analyzed
+    before it was persisted — counts as legal: an absent field must never fail
+    a deck.
+
+    The two lists genuinely differ: Sol Ring is legal in Commander and banned
+    in Duel Commander.
+    """
+    rules = FORMATS[fmt]
+    issues = []
+    for item in processed_cards:
+        card = item["data"]
+        legality = (card.get("legalities") or {}).get(rules.legality_key)
+        if legality not in ("banned", "not_legal"):
+            continue
+        name = card.get("name", "Unknown card")
+        if legality == "banned":
+            issues.append(f"“{name}” is banned in {rules.label}.")
+        else:
+            issues.append(f"“{name}” is not legal in {rules.label}.")
     return issues

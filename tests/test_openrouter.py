@@ -130,3 +130,33 @@ def test_log_analysis_unavailable_explains_how_to_enable_the_analysis(caplog):
         openrouter.log_analysis_unavailable()
 
     assert "OPENROUTER_API_KEY" in caplog.text
+
+
+class TestPromptFormat:
+    """The prompt describes the game the deck is actually played in."""
+
+    def _prompt(self, posted, fmt=None):
+        kwargs = {"api_key": "key-123"}
+        if fmt is not None:
+            kwargs["fmt"] = fmt
+        openrouter.analyze_deck_list(DECKLIST, **kwargs)
+        return posted.call["json"]["messages"][0]["content"]
+
+    def test_commander_prompt_describes_a_multiplayer_pod(self, posted):
+        prompt = self._prompt(posted, "commander")
+        assert "40 starting life" in prompt
+        assert "four-player pod" in prompt
+
+    def test_duel_prompt_describes_a_1v1_duel(self, posted):
+        prompt = self._prompt(posted, "duel")
+        assert "20 starting life" in prompt
+        assert "1v1 duel" in prompt
+        assert "four-player pod" not in prompt
+
+    def test_the_prompt_names_the_format(self, posted):
+        assert "Duel Commander" in self._prompt(posted, "duel")
+
+    def test_the_default_is_still_commander(self, posted):
+        prompt = self._prompt(posted)
+        assert "40 starting life" in prompt
+        assert "four-player pod" in prompt
