@@ -5,6 +5,8 @@ import uuid
 from django.db import models
 from django.utils import timezone
 
+from .domain.constants import DEFAULT_FORMAT, format_choices
+
 
 class Deck(models.Model):
     """A submitted Commander deck together with its fetched cards and analysis."""
@@ -20,6 +22,13 @@ class Deck(models.Model):
 
     name = models.CharField(max_length=255)
     raw_decklist = models.TextField()
+
+    # Which Commander format the deck is built for. It picks the ban list the
+    # deck is validated against and the game the AI analysis assumes; deck
+    # construction itself is identical across formats.
+    format = models.CharField(
+        max_length=16, choices=format_choices(), default=DEFAULT_FORMAT
+    )
 
     # Lifecycle of the background analysis. Defaults to READY so decks created
     # directly (e.g. in tests/fixtures) need no extra handling; the async

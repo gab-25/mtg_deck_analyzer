@@ -687,3 +687,19 @@ def test_destructive_actions_use_confirm_modal(client):
     assert f'action="/decks/{deck.id}/reanalyze"' in detail
     assert 'id="confirm-delete"' in detail
     assert f'action="/decks/{deck.id}/delete"' in detail
+
+
+@pytest.mark.django_db
+def test_a_new_deck_defaults_to_the_commander_format():
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(name="Untitled", raw_decklist="")
+    assert deck.format == "commander"
+
+
+@pytest.mark.django_db
+def test_the_format_is_persisted():
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(name="Duel", raw_decklist="", format="duel")
+    assert Deck.objects.get(pk=deck.pk).format == "duel"
