@@ -2,6 +2,7 @@
 
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -17,8 +18,28 @@ class Deck(models.Model):
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
 
+    class Visibility(models.TextChoices):
+        PRIVATE = "private", "Private"
+        UNLISTED = "unlisted", "Unlisted"
+
     # UUID primary key so deck URLs aren't sequentially enumerable.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Who submitted the deck. NULL for the decks that predate ownership: they
+    # stay visible to every signed-in user, exactly as they were before.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="decks",
+    )
+
+    # PRIVATE is owner-only; UNLISTED is readable by anyone holding the link.
+    # No share token is needed: ``id`` is a UUID, so deck URLs aren't enumerable.
+    visibility = models.CharField(
+        max_length=16, choices=Visibility.choices, default=Visibility.PRIVATE
+    )
 
     name = models.CharField(max_length=255)
     raw_decklist = models.TextField()
