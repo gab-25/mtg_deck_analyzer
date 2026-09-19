@@ -7,7 +7,8 @@ different data:
   the web form can reject an illegal deck instantly.
 * :func:`check_deck` runs on the *processed cards* — the ``{"quantity",
   "is_commander", "data"}`` dicts built from Scryfall data — and covers the
-  rules that need the real card (commander eligibility, color identity).
+  rules that need the real card (commander eligibility, color identity, ban
+  list).
 """
 
 import re
@@ -172,8 +173,8 @@ def check_deck(processed_cards: list) -> list:
     """Checks the fetched deck against the Commander deck-construction rules.
 
     Re-runs the structural checks on the real cards (quantities can only be
-    trusted once every name has resolved) and adds the two rules that need
-    Scryfall data: commander eligibility and color identity. Returns every
+    trusted once every name has resolved) and adds the rules that need Scryfall
+    data: commander eligibility, color identity and the ban list. Returns every
     problem at once, so the caller can report them all together.
     """
     issues = _size_issue(sum(item["quantity"] for item in processed_cards))
@@ -203,6 +204,7 @@ def check_deck(processed_cards: list) -> list:
             issues += _singleton_issue(card.get("name", "Unknown card"), qty)
 
     issues.extend(_color_identity_issues(processed_cards, cmdrs))
+    issues.extend(_legality_issues(processed_cards))
 
     return issues
 
@@ -227,4 +229,27 @@ def _color_identity_issues(processed_cards: list, cmdrs: list) -> list:
                 f"falls outside the commander's color identity "
                 f"({_format_identity([c for c in WUBRG if c in allowed])})."
             )
+    return issues
+
+
+def _legality_issues(processed_cards: list) -> list:
+    """Lists the cards the Commander format does not allow.
+
+    Reads Scryfall's ``legalities.commander``, which separates a card banned
+    from an otherwise legal pool (Black Lotus) from one that was never printed
+    in a Commander-legal product (un-sets, Alchemy rebalances, playtest cards).
+    Anything else — including a missing field, as on decks analyzed before it
+    was persisted — counts as legal: an absent field must never fail a deck.
+    """
+    issues = []
+    for item in processed_cards:
+        card = item["data"]
+        legality = (card.get("legalities") or {}).get("commander")
+        if legality not in ("banned", "not_legal"):
+            continue
+        name = card.get("name", "Unknown card")
+        if legality == "banned":
+            issues.append(f"“{name}” is banned in Commander.")
+        else:
+            issues.append(f"“{name}” is not legal in Commander.")
     return issues

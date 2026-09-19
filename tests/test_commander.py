@@ -23,8 +23,9 @@ def _card(
     rules_text="",
     mana_cost="",
     card_id=None,
+    legalities=None,
 ):
-    return {
+    card = {
         "id": card_id or name,
         "name": name,
         "type_line": type_line,
@@ -38,6 +39,11 @@ def _card(
             }
         ],
     }
+    # Omitted entirely when not given: cards stored before legalities were
+    # persisted have no such key.
+    if legalities is not None:
+        card["legalities"] = legalities
+    return card
 
 
 def _item(qty, card, is_commander=False):
@@ -193,6 +199,83 @@ class TestCheckDeck:
         # The deck is now oversized, but the duplicates are not a problem.
         issues = check_deck(cards)
         assert all("singleton" not in issue for issue in issues)
+
+
+class TestBanList:
+    """The Commander ban list, read from Scryfall's ``legalities.commander``."""
+
+    def _legal_cards(self):
+        return TestCheckDeck()._legal_cards()
+
+    def test_reports_a_banned_card(self):
+        cards = self._legal_cards()
+        cards[1] = _item(
+            1,
+            _card("Black Lotus", type_line="Artifact",
+                  legalities={"commander": "banned"}),
+        )
+        issues = check_deck(cards)
+        assert len(issues) == 1
+        assert "Black Lotus" in issues[0] and "banned in Commander" in issues[0]
+
+    def test_reports_a_card_that_was_never_legal(self):
+        cards = self._legal_cards()
+        cards[1] = _item(
+            1,
+            _card("Nalathni Dragon", identity=("R",),
+                  legalities={"commander": "not_legal"}),
+        )
+        issues = check_deck(cards)
+        # The card is also off-identity; the legality problem is reported too.
+        assert any(
+            "Nalathni Dragon" in issue and "not legal in Commander" in issue
+            for issue in issues
+        )
+
+    def test_reports_every_offending_card_at_once(self):
+        cards = self._legal_cards()
+        cards[1] = _item(1, _card("Mana Crypt", type_line="Artifact",
+                                  legalities={"commander": "banned"}))
+        cards[2] = _item(1, _card("Dockside Extortionist", identity=("R",),
+                                  legalities={"commander": "banned"}))
+        cards[3] = _item(1, _card("Sword of Dungeons & Dragons", type_line="Artifact",
+                                  legalities={"commander": "not_legal"}))
+        legality_issues = [
+            issue for issue in check_deck(cards) if "Commander." in issue
+        ]
+        assert len(legality_issues) == 3
+
+    def test_the_commander_itself_is_checked(self):
+        cards = self._legal_cards()
+        cards[0] = _item(
+            1,
+            _card(ATRAXA, type_line="Legendary Creature — Phyrexian Angel Horror",
+                  identity=("W", "U", "B", "G"),
+                  legalities={"commander": "banned"}),
+            is_commander=True,
+        )
+        issues = check_deck(cards)
+        assert len(issues) == 1
+        assert ATRAXA in issues[0] and "banned in Commander" in issues[0]
+
+    def test_a_card_without_legalities_passes(self):
+        # Decks analyzed before the field was persisted must not start failing.
+        assert check_deck(self._legal_cards()) == []
+
+    def test_an_unknown_legality_value_passes(self):
+        cards = self._legal_cards()
+        cards[1] = _item(1, _card("Sol Ring", legalities={"commander": "restricted"}))
+        assert check_deck(cards) == []
+
+    def test_an_empty_legalities_dict_passes(self):
+        cards = self._legal_cards()
+        cards[1] = _item(1, _card("Sol Ring", legalities={}))
+        assert check_deck(cards) == []
+
+    def test_a_legal_card_passes(self):
+        cards = self._legal_cards()
+        cards[1] = _item(1, _card("Sol Ring", legalities={"commander": "legal"}))
+        assert check_deck(cards) == []
 
 
 class TestDoubleFacedCards:

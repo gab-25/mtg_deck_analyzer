@@ -90,3 +90,12 @@ class TestProcessCachedCard:
     def test_missing_name_falls_back(self):
         out = process_cached_card({"id": "x"}, _NoImageCache())
         assert out["name"] == "Unknown Card"
+
+    def test_carries_the_legalities_through(self):
+        card = {"id": "x", "name": "Black Lotus", "legalities": {"commander": "banned"}}
+        out = process_cached_card(card, _NoImageCache())
+        assert out["legalities"] == {"commander": "banned"}
+
+    def test_missing_legalities_becomes_an_empty_dict(self):
+        out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
+        assert out["legalities"] == {}

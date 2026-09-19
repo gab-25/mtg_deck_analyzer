@@ -11,7 +11,7 @@ See [Web Service](#web-service) to get it running.
 ## Features
 
 - **Commander-aware**: The commander is a first-class citizen — declared in the decklist, highlighted on the deck page (art, type line, badge on its card row), printed on the PDF fact sheet, and used to anchor the AI analysis. The deck's color pips come from the commander's **color identity**, not from the mana costs it happens to play.
-- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), and every card sits inside its color identity — are enforced during the analysis, which fails with the same kind of explanation.
+- **Commander legality checks**: A decklist that is not a legal Commander deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), every card sits inside its color identity, and no card is on the Commander ban list — are enforced during the analysis, which fails with the same kind of explanation.
 - **Fact Sheet & Statistics**: Adds a summary info box at the top of the PDF containing:
   - The format (always Commander) and the deck's commander.
   - Total number of cards in the deck.
@@ -178,9 +178,10 @@ A deck is only stored once it satisfies all of these:
 | Singleton: one copy per card, except basic lands and "any number" cards such as Relentless Rats | on submit |
 | The commander is a legendary creature, or says it can be your commander | during the analysis |
 | Every card sits inside the commander's color identity | during the analysis |
+| No card is banned in Commander, or was never legal in it | during the analysis |
 
 The first three need nothing but the pasted text, so they are reported instantly and
-all at once in the form. The last two need the real cards from Scryfall, so they run
+all at once in the form. The last three need the real cards from Scryfall, so they run
 in the background analysis: the deck is marked as failed with the same explanation
 instead of being stored as ready.
 
