@@ -22,7 +22,7 @@ REQUEST_TIMEOUT = 180
 
 # Optional attribution headers, used by OpenRouter to credit the calling app.
 APP_URL = "https://github.com/gab-25/mtg_deck_analyzer"
-APP_TITLE = "MTG Deck Analyzer"
+APP_TITLE = "mtg_deck_analyzer"
 
 
 def log_analysis_unavailable() -> None:
