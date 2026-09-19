@@ -767,10 +767,12 @@ def test_created_deck_honours_the_chosen_visibility(client):
 
 
 @pytest.mark.django_db
-def test_deleting_the_owner_leaves_the_deck_in_place_as_ownerless(client, owner):
-    """An ownerless deck is a valid, already-supported state — it's what every
-    pre-branch deck is — so a deleted account must demote the deck to that
-    state (SET_NULL) rather than cascade-deleting it and its version trail.
+def test_deleting_the_owner_deletes_their_decks_and_versions(client, owner):
+    """Demoting an orphaned deck to ownerless (SET_NULL) would put it in the
+    same state as every pre-branch legacy deck — readable AND writable by
+    every signed-in user. That would turn deleting a user into publishing
+    all of that user's private decks, so the owner FK cascades instead: the
+    deck and its version trail must be gone, not merely ownerless.
     """
     from mtg_deck_analyzer.models import Deck, DeckVersion
 
@@ -780,10 +782,8 @@ def test_deleting_the_owner_leaves_the_deck_in_place_as_ownerless(client, owner)
 
     owner.delete()
 
-    deck.refresh_from_db()
-    assert deck.id == deck_id
-    assert deck.owner is None
-    assert deck.versions.count() == 1
+    assert not Deck.objects.filter(id=deck_id).exists()
+    assert not DeckVersion.objects.filter(deck_id=deck_id).exists()
 
 
 @pytest.mark.django_db

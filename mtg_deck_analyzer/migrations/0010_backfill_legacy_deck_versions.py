@@ -31,7 +31,7 @@ def backfill_legacy_versions(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('mtg_deck_analyzer', '0009_deck_owner_set_null'),
+        ('mtg_deck_analyzer', '0008_deck_version'),
     ]
 
     operations = [

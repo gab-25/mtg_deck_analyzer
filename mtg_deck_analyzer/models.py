@@ -25,15 +25,17 @@ class Deck(models.Model):
     # UUID primary key so deck URLs aren't sequentially enumerable.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # Who submitted the deck. NULL for the decks that predate ownership: they
-    # stay visible to every signed-in user, exactly as they were before. A
-    # deleted owner leaves the deck in that same legacy state rather than
-    # destroying it and its version trail.
+    # Who submitted the deck. NULL means only that the deck predates
+    # ownership: those decks stay visible to every signed-in user, exactly
+    # as they were before. Deleting a user deletes their decks and their
+    # version history (CASCADE) rather than orphaning them to NULL, which
+    # would otherwise make a deleted user's private decks readable and
+    # writable by everyone.
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name="decks",
     )
 
