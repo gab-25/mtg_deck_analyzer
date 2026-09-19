@@ -201,31 +201,6 @@ def test_pending_deck_redirects_to_index(client):
 
 
 @pytest.mark.django_db
-def test_pending_unlisted_deck_shows_an_analyzing_page_to_an_anonymous_visitor(client):
-    """`index` is login-gated, so redirecting an anonymous holder of an
-    unlisted link there while the owner re-edits the deck would just bounce
-    them on to `/login` — a dead end. They should get a small standalone page
-    instead, without ever leaving anonymous-land.
-    """
-    from mtg_deck_analyzer.models import Deck
-
-    deck = Deck.objects.create(
-        name="Being Re-analyzed",
-        raw_decklist="1 Forest",
-        visibility=Deck.Visibility.UNLISTED,
-        status=Deck.Status.PENDING,
-    )
-    client.logout()
-
-    r = client.get(f"/decks/{deck.id}")
-    assert r.status_code == 200
-    body = r.content.decode()
-    assert "Being Re-analyzed" in body
-    assert "being analyzed" in body.lower() or "analysis in progress" in body.lower()
-    # No dead-end nav control for an anonymous visitor on this page either.
-    assert "/login" not in body
-
-
 @pytest.mark.django_db
 def test_index_shows_processing_status_and_polls(client):
     from mtg_deck_analyzer.models import Deck
@@ -716,7 +691,7 @@ def test_destructive_actions_use_confirm_modal(client):
     assert f'action="/decks/{deck.id}/delete"' in detail
 
 
-# --- Ownership and visibility -------------------------------------------------
+# --- Ownership ---------------------------------------------------------------
 
 
 @pytest.fixture
@@ -724,7 +699,7 @@ def owner(django_user_model):
     return django_user_model.objects.create_user(username="owner", password="pw")
 
 
-def _owned_deck(owner, visibility="private", name="Owned"):
+def _owned_deck(owner, name="Owned"):
     """A ready deck belonging to ``owner``, straight into the database."""
     from mtg_deck_analyzer.models import Deck
 
@@ -732,7 +707,6 @@ def _owned_deck(owner, visibility="private", name="Owned"):
         name=name,
         raw_decklist="1 Forest",
         owner=owner,
-        visibility=visibility,
         status=Deck.Status.READY,
         total_cards=1,
         category_counts={"Land": 1},
@@ -747,25 +721,9 @@ def test_created_deck_belongs_to_the_submitting_user(client, django_user_model):
     client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
     deck = Deck.objects.get(name="Mine")
     assert deck.owner == django_user_model.objects.get(username="tester")
-    # Private unless the submitter says otherwise.
-    assert deck.visibility == Deck.Visibility.PRIVATE
 
 
 @pytest.mark.django_db
-def test_created_deck_honours_the_chosen_visibility(client):
-    from mtg_deck_analyzer.models import Deck
-
-    client.post(
-        "/decks",
-        data={
-            "name": "Shared",
-            "decklist": _legal_decklist(),
-            "visibility": "unlisted",
-        },
-    )
-    assert Deck.objects.get(name="Shared").visibility == Deck.Visibility.UNLISTED
-
-
 @pytest.mark.django_db
 def test_deleting_the_owner_deletes_their_decks_and_versions(client, owner):
     """Demoting an orphaned deck to ownerless (SET_NULL) would put it in the
@@ -826,46 +784,8 @@ def test_a_private_deck_sends_an_anonymous_visitor_to_the_login(client, owner):
 
 
 @pytest.mark.django_db
-def test_an_unlisted_deck_opens_for_anyone_holding_the_link(client, owner):
-    deck = _owned_deck(owner, visibility="unlisted", name="Open Deck")
-
-    # Another signed-in user.
-    assert client.get(f"/decks/{deck.id}").status_code == 200
-    # And an anonymous visitor.
-    client.logout()
-    r = client.get(f"/decks/{deck.id}")
-    assert r.status_code == 200
-    assert "Open Deck" in r.content.decode()
-
-
 @pytest.mark.django_db
-def test_anonymous_reader_of_an_unlisted_deck_sees_no_login_bound_nav_control(
-    client, owner
-):
-    """The nav's brand link and "New deck" button both lead somewhere behind
-    login; for an anonymous visitor who can only ever be here via an unlisted
-    link, showing them is a guaranteed dead end.
-    """
-    deck = _owned_deck(owner, visibility="unlisted", name="Open Deck")
-    client.logout()
-
-    body = client.get(f"/decks/{deck.id}").content.decode()
-    assert 'href="/decks/new"' not in body
-    assert "/login" not in body
-
-
 @pytest.mark.django_db
-def test_an_unlisted_deck_is_still_not_editable_by_its_readers(client, owner):
-    deck = _owned_deck(owner, visibility="unlisted")
-
-    assert client.get(f"/decks/{deck.id}/edit").status_code == 404
-    assert client.post(f"/decks/{deck.id}/delete").status_code == 404
-    # And the page it can read offers it no destructive control.
-    body = client.get(f"/decks/{deck.id}").content.decode()
-    assert f'action="/decks/{deck.id}/delete"' not in body
-    assert f'href="/decks/{deck.id}/edit"' not in body
-
-
 @pytest.mark.django_db
 def test_the_owner_still_sees_every_control(client, django_user_model):
     from mtg_deck_analyzer.models import Deck
@@ -879,93 +799,10 @@ def test_the_owner_still_sees_every_control(client, django_user_model):
 
 
 @pytest.mark.django_db
-def test_an_unlisted_deck_is_labelled_as_shared_for_its_owner(client):
-    from mtg_deck_analyzer.models import Deck
-
-    client.post(
-        "/decks",
-        data={"name": "Shared", "decklist": _legal_decklist(), "visibility": "unlisted"},
-    )
-    deck = Deck.objects.get(name="Shared")
-    assert "Unlisted" in client.get(f"/decks/{deck.id}").content.decode()
-
-
 @pytest.mark.django_db
-def test_update_can_change_the_visibility(client):
-    from mtg_deck_analyzer.models import Deck
-
-    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
-    deck = Deck.objects.get(name="Mine")
-    client.post(
-        f"/decks/{deck.id}/update",
-        data={
-            "name": "Mine",
-            "decklist": deck.raw_decklist,
-            "visibility": "unlisted",
-        },
-    )
-    deck.refresh_from_db()
-    assert deck.visibility == Deck.Visibility.UNLISTED
-
-
 @pytest.mark.django_db
-def test_update_without_a_visibility_field_preserves_it(client, django_user_model):
-    from mtg_deck_analyzer.models import Deck
-
-    client.post(
-        "/decks",
-        data={"name": "Mine", "decklist": _legal_decklist(), "visibility": "unlisted"},
-    )
-    deck = Deck.objects.get(name="Mine")
-    assert deck.visibility == Deck.Visibility.UNLISTED
-
-    # A partial submission (name + decklist only, no visibility key at all)
-    # must not silently un-share the deck.
-    client.post(
-        f"/decks/{deck.id}/update",
-        data={"name": "Mine", "decklist": deck.raw_decklist},
-    )
-    deck.refresh_from_db()
-    assert deck.visibility == Deck.Visibility.UNLISTED
-
-
 @pytest.mark.django_db
-def test_update_with_an_unrecognized_visibility_falls_back_to_private(client):
-    from mtg_deck_analyzer.models import Deck
-
-    client.post(
-        "/decks",
-        data={"name": "Mine", "decklist": _legal_decklist(), "visibility": "unlisted"},
-    )
-    deck = Deck.objects.get(name="Mine")
-
-    # The field is present but holds a value the form never offers.
-    client.post(
-        f"/decks/{deck.id}/update",
-        data={
-            "name": "Mine",
-            "decklist": deck.raw_decklist,
-            "visibility": "public",
-        },
-    )
-    deck.refresh_from_db()
-    assert deck.visibility == Deck.Visibility.PRIVATE
-
-
 @pytest.mark.django_db
-def test_card_images_load_for_an_anonymous_reader_of_an_unlisted_deck(client, owner):
-    from mtg_deck_analyzer.models import ScryfallImage
-
-    _owned_deck(owner, visibility="unlisted")
-    ScryfallImage.objects.create(name="img_seed.jpg", data=b"\x01")
-    client.logout()
-
-    # The card art cache is shared, public Scryfall data — without it an
-    # unlisted page would render nothing but broken images.
-    assert client.get("/media/img_seed.jpg").status_code == 200
-    assert client.get("/card-image", {"name": "img_seed.jpg"}).status_code == 200
-
-
 @pytest.mark.django_db
 def test_legacy_ownerless_decks_stay_reachable_and_editable(client):
     from mtg_deck_analyzer.models import Deck
@@ -986,26 +823,6 @@ def test_legacy_ownerless_decks_stay_reachable_and_editable(client):
 
 
 @pytest.mark.django_db
-def test_a_failed_unlisted_deck_hides_owner_controls_from_a_reader(client, owner):
-    from mtg_deck_analyzer.models import Deck
-
-    deck = Deck.objects.create(
-        name="Broke",
-        raw_decklist="1 Forest",
-        owner=owner,
-        visibility=Deck.Visibility.UNLISTED,
-        status=Deck.Status.FAILED,
-        error="Not a valid decklist.",
-    )
-    client.logout()
-    r = client.get(f"/decks/{deck.id}")
-    assert r.status_code == 200
-    body = r.content.decode()
-    assert f'href="/decks/{deck.id}/edit"' not in body
-    assert f'action="/decks/{deck.id}/delete"' not in body
-    assert f'action="/decks/{deck.id}/reanalyze"' not in body
-
-
 @pytest.mark.django_db
 def test_a_failed_deck_shows_every_control_to_its_owner(client, django_user_model):
     from mtg_deck_analyzer.models import Deck
@@ -1149,7 +966,7 @@ def test_a_rejected_update_records_nothing(client):
 
 @pytest.mark.django_db
 def test_a_rejected_update_keeps_the_note_in_the_form(client):
-    """Every neighbouring field (name, decklist, visibility) round-trips
+    """Every neighbouring field (name, decklist, format) round-trips
     through the re-rendered 422 form; the note must too, or a would-be
     changelog note typed alongside an illegal decklist is silently lost.
     """
@@ -1274,18 +1091,12 @@ def test_version_pages_follow_the_same_access_rule_as_the_deck(client, owner):
     deck = _owned_deck(owner)
     version = DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
 
-    # Another user: the deck is private, so its history is too.
+    # Another user: the deck is not theirs, so neither is its history.
     assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 404
-
-    deck.visibility = Deck.Visibility.UNLISTED
-    deck.save(update_fields=["visibility"])
-    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 200
 
 
 @pytest.mark.django_db
-def test_version_pages_send_an_anonymous_visitor_to_the_login_for_a_private_deck(
-    client, owner
-):
+def test_version_pages_send_an_anonymous_visitor_to_the_login(client, owner):
     from mtg_deck_analyzer.models import Deck, DeckVersion
 
     deck = _owned_deck(owner)
@@ -1295,10 +1106,6 @@ def test_version_pages_send_an_anonymous_visitor_to_the_login_for_a_private_deck
     r = client.get(f"/decks/{deck.id}/versions/{version.id}")
     assert r.status_code == 302
     assert r["Location"].startswith("/login")
-
-    deck.visibility = Deck.Visibility.UNLISTED
-    deck.save(update_fields=["visibility"])
-    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 200
 
 
 @pytest.mark.django_db

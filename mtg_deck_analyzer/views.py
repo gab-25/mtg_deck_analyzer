@@ -14,7 +14,7 @@ from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from .access import can_edit, decks_visible_in_library, requires_deck_edit, requires_deck_view
+from .access import decks_visible_in_library, requires_deck_access
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
 from .domain.changelog import decklist_changes
@@ -285,21 +285,6 @@ def _decklist_errors(decklist: str) -> list:
     return check_decklist(entries)
 
 
-def _visibility(post, current: str | None = None) -> str:
-    """Reads the visibility choice off a submitted form.
-
-    A form that omits the field entirely leaves the deck's current visibility
-    alone — a partial submission must never silently un-share a deck. A value
-    that is present but unrecognized falls back to private, so a malformed
-    form never shares one by accident.
-    """
-    if "visibility" not in post:
-        return current or Deck.Visibility.PRIVATE
-    value = post.get("visibility")
-    allowed = {choice for choice, _ in Deck.Visibility.choices}
-    return value if value in allowed else Deck.Visibility.PRIVATE
-
-
 def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt: str):
     """Runs the heavy analysis for ``deck_id`` and persists the outcome.
 
@@ -409,9 +394,7 @@ def index(request):
 @login_required
 @require_http_methods(["GET"])
 def new_deck(request):
-    return render(
-        request, "create.html", _create_context(form_visibility=Deck.Visibility.PRIVATE)
-    )
+    return render(request, "create.html", _create_context())
 
 
 @login_required
@@ -432,7 +415,6 @@ def create_deck(request):
                 errors=errors,
                 form_name=name,
                 form_decklist=decklist,
-                form_visibility=_visibility(request.POST),
                 form_format=fmt,
             ),
             status=422,
@@ -443,7 +425,6 @@ def create_deck(request):
         raw_decklist=decklist,
         status=Deck.Status.PENDING,
         owner=request.user,
-        visibility=_visibility(request.POST),
         format=fmt,
     )
     # The list as submitted opens the deck's history.
@@ -456,28 +437,17 @@ def create_deck(request):
 
 
 @require_http_methods(["GET"])
-@requires_deck_view
+@requires_deck_access
 def deck_detail(request, deck):
-    # While the analysis is still running there's nothing to show yet. A caller
-    # who can reach the library (the owner, or anyone on an ownerless legacy
-    # deck) goes there instead, where the deck shows its live "Analyzing…"
-    # status. Everyone else — most notably an anonymous visitor holding an
-    # unlisted link — can't reach `index` (it's login-gated), so sending them
-    # there would just be a dead end through the login page; they get a small
-    # standalone page instead.
+    # While the analysis is still running there's nothing to show yet — send the
+    # user to the list, where the deck displays its live "Analyzing…" status.
     if deck.status in {Deck.Status.PENDING, Deck.Status.PROCESSING}:
-        if can_edit(request.user, deck):
-            return redirect("index")
-        return render(request, "deck_analyzing.html", {"deck": deck})
+        return redirect("index")
     if deck.status == Deck.Status.FAILED:
         return render(
             request,
             "deck_failed.html",
-            {
-                "deck": deck,
-                "can_edit": can_edit(request.user, deck),
-                "version_history": _version_history(deck),
-            },
+            {"deck": deck, "version_history": _version_history(deck)},
         )
 
     analysis_html = None
@@ -492,7 +462,6 @@ def deck_detail(request, deck):
         "deck.html",
         {
             "deck": deck,
-            "can_edit": can_edit(request.user, deck),
             "analysis_html": analysis_html,
             "pips": _deck_pips(deck),
             "commander_cards": _commander_cards(stored_cards),
@@ -507,7 +476,7 @@ def deck_detail(request, deck):
 
 
 @require_http_methods(["GET"])
-@requires_deck_view
+@requires_deck_access
 def deck_version(request, deck, version_id: int):
     """Shows one stored decklist from the deck's history.
 
@@ -536,7 +505,7 @@ def deck_version(request, deck, version_id: int):
 
 
 @require_http_methods(["GET"])
-@requires_deck_edit
+@requires_deck_access
 def edit_deck(request, deck):
     return render(
         request,
@@ -545,7 +514,6 @@ def edit_deck(request, deck):
             deck=deck,
             form_name=deck.name,
             form_decklist=deck.raw_decklist,
-            form_visibility=deck.visibility,
             form_note="",
             form_format=deck.format,
         ),
@@ -553,11 +521,10 @@ def edit_deck(request, deck):
 
 
 @require_http_methods(["POST"])
-@requires_deck_edit
+@requires_deck_access
 def update_deck(request, deck):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
-    visibility = _visibility(request.POST, current=deck.visibility)
     note = request.POST.get("note") or ""
     fmt = _posted_format(request)
 
@@ -571,7 +538,6 @@ def update_deck(request, deck):
                 errors=errors,
                 form_name=name,
                 form_decklist=decklist,
-                form_visibility=visibility,
                 form_note=note,
                 form_format=fmt,
             ),
@@ -586,7 +552,6 @@ def update_deck(request, deck):
 
     deck.name = name
     deck.raw_decklist = decklist
-    deck.visibility = visibility
     deck.format = fmt
     if needs_reanalysis:
         deck.status = Deck.Status.PENDING
@@ -610,7 +575,7 @@ def update_deck(request, deck):
 
 
 @require_http_methods(["POST"])
-@requires_deck_edit
+@requires_deck_access
 def reanalyze_deck(request, deck):
     """Re-runs the analysis for an existing deck from its stored decklist."""
     deck.status = Deck.Status.PENDING
@@ -624,14 +589,14 @@ def reanalyze_deck(request, deck):
 
 
 @require_http_methods(["POST"])
-@requires_deck_edit
+@requires_deck_access
 def delete_deck(request, deck):
     deck.delete()
     return redirect("index")
 
 
 @require_http_methods(["GET"])
-@requires_deck_view
+@requires_deck_access
 def deck_pdf(request, deck):
     # The PDF needs the fetched cards; they only exist once analysis is done.
     if deck.status != Deck.Status.READY:
@@ -660,7 +625,7 @@ def deck_pdf(request, deck):
 
 
 @require_http_methods(["GET"])
-@requires_deck_view
+@requires_deck_access
 def deck_proxy_pdf(request, deck):
     """Generates a 1:1 proxy PDF: every card image repeated by its quantity."""
     # The proxies need the fetched images; they only exist once analysis is done.
@@ -682,9 +647,7 @@ def deck_proxy_pdf(request, deck):
     )
 
 
-# The card art cache is shared across every deck and keyed by card name: public
-# Scryfall data, not user data. Serving it without a login is what lets an
-# unlisted deck page actually render for the visitor holding its link.
+@login_required
 @require_http_methods(["GET"])
 def media(request, name: str):
     """Serves a cached card image from the database."""
@@ -694,6 +657,7 @@ def media(request, name: str):
     return HttpResponse(data, content_type="image/jpeg")
 
 
+@login_required
 @require_http_methods(["GET"])
 def card_image_modal(request):
     """Returns the zoom-modal fragment for a cached card's faces (HTMX).

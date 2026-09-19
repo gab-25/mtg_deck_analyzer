@@ -18,9 +18,4 @@ class Migration(migrations.Migration):
             name='owner',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='decks', to=settings.AUTH_USER_MODEL),
         ),
-        migrations.AddField(
-            model_name='deck',
-            name='visibility',
-            field=models.CharField(choices=[('private', 'Private'), ('unlisted', 'Unlisted')], default='private', max_length=16),
-        ),
     ]

@@ -11,13 +11,12 @@ class DeckAdmin(admin.ModelAdmin):
         "id",
         "name",
         "owner",
-        "visibility",
         "total_cards",
         "total_value_eur",
         "status",
         "created_at",
     )
-    list_filter = ("status", "visibility")
+    list_filter = ("status",)
     search_fields = ("name", "raw_decklist")
     readonly_fields = ("created_at",)
 
