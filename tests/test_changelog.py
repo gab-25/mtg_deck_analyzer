@@ -87,9 +87,15 @@ def test_a_card_with_changed_count_spelled_differently_reports_a_single_delta():
     ]
 
 
-def test_a_removed_card_is_printed_with_its_previous_spelling():
-    # A card removed is shown with the spelling it had in the previous list.
-    assert decklist_changes("1 ARCANE SIGNET", "1 Sol Ring") == [
+def test_a_removed_card_uses_its_previous_spelling_despite_casing_elsewhere():
+    # When a card with changed spelling is removed, it displays with the
+    # previous spelling. This test involves a casing-variant collision:
+    # forest/FOREST are the same card (normalized), so they should not appear
+    # in the changelog, but ARCANE SIGNET (which is removed) should display
+    # with its original spelling from the previous list.
+    before = "1 ARCANE SIGNET\n1 forest"
+    after = "1 FOREST\n1 Sol Ring"
+    assert decklist_changes(before, after) == [
         {"sign": "+", "quantity": 1, "name": "Sol Ring"},
         {"sign": "-", "quantity": 1, "name": "ARCANE SIGNET"},
     ]

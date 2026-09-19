@@ -29,10 +29,11 @@ def decklist_changes(previous: str, current: str) -> list:
     """Card-level differences between two decklists.
 
     Returns ``{"sign": "+" | "-", "quantity": int, "name": str}`` entries —
-    additions first, removals after, each group alphabetical — so the trail
-    reads the way deck building is actually thought about: ``+1 Rhystic Study``
-    next to ``-1 Arcane Signet``. A count that moved reports only the
-    difference, and an unchanged card reports nothing at all.
+    additions first, removals after, each group alphabetical by normalized name
+    (front face, lowercased) — so the trail reads the way deck building is
+    actually thought about: ``+1 Rhystic Study`` next to ``-1 Arcane Signet``.
+    A count that moved reports only the difference, and an unchanged card
+    reports nothing at all.
 
     Cards are compared by normalized name (front face, lowercased), but the
     output uses the display name from the current (newer) list when available,
