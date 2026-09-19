@@ -703,3 +703,104 @@ def test_the_format_is_persisted():
 
     deck = Deck.objects.create(name="Duel", raw_decklist="", format="duel")
     assert Deck.objects.get(pk=deck.pk).format == "duel"
+
+
+@pytest.mark.django_db
+def test_creating_a_deck_persists_the_chosen_format(client):
+    from mtg_deck_analyzer.models import Deck
+
+    r = client.post(
+        "/decks",
+        data={"name": "Duel Deck", "decklist": _legal_decklist(), "format": "duel"},
+    )
+    assert r.status_code == 302
+    assert Deck.objects.get(name="Duel Deck").format == "duel"
+
+
+@pytest.mark.django_db
+def test_creating_a_deck_without_a_format_defaults_to_commander(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Plain", "decklist": _legal_decklist()})
+    assert Deck.objects.get(name="Plain").format == "commander"
+
+
+@pytest.mark.django_db
+def test_an_unknown_format_falls_back_to_the_default(client):
+    # Only a tampered or stale form can send this; it must not be a 500.
+    from mtg_deck_analyzer.models import Deck
+
+    r = client.post(
+        "/decks",
+        data={"name": "Tampered", "decklist": _legal_decklist(), "format": "nonsense"},
+    )
+    assert r.status_code == 302
+    assert Deck.objects.get(name="Tampered").format == "commander"
+
+
+@pytest.mark.django_db
+def test_changing_only_the_format_triggers_a_reanalysis(client, monkeypatch):
+    from mtg_deck_analyzer import views
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Deck", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Deck")
+    assert deck.status == Deck.Status.READY
+
+    started = []
+    monkeypatch.setattr(views, "_start_analysis", lambda *a: started.append(a))
+
+    r = client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Deck", "decklist": deck.raw_decklist, "format": "duel"},
+    )
+    assert r.status_code == 302
+
+    deck.refresh_from_db()
+    assert deck.format == "duel"
+    assert deck.status == Deck.Status.PENDING
+    assert started, "changing the format must re-run the analysis"
+
+
+@pytest.mark.django_db
+def test_renaming_alone_does_not_trigger_a_reanalysis(client, monkeypatch):
+    from mtg_deck_analyzer import views
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Deck", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Deck")
+
+    started = []
+    monkeypatch.setattr(views, "_start_analysis", lambda *a: started.append(a))
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Renamed",
+            "decklist": deck.raw_decklist,
+            "format": deck.format,
+        },
+    )
+
+    deck.refresh_from_db()
+    assert deck.name == "Renamed"
+    assert deck.status == Deck.Status.READY
+    assert not started, "a plain rename must not re-run minutes of work"
+
+
+@pytest.mark.django_db
+def test_reanalyzing_keeps_the_stored_format(client, monkeypatch):
+    from mtg_deck_analyzer import views
+    from mtg_deck_analyzer.models import Deck
+
+    client.post(
+        "/decks",
+        data={"name": "Deck", "decklist": _legal_decklist(), "format": "duel"},
+    )
+    deck = Deck.objects.get(name="Deck")
+
+    started = []
+    monkeypatch.setattr(views, "_start_analysis", lambda *a: started.append(a))
+    client.post(f"/decks/{deck.id}/reanalyze")
+
+    assert started and started[0][3] == "duel"
