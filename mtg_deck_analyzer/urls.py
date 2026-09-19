@@ -14,6 +14,11 @@ urlpatterns = [
     path("decks/new", views.new_deck, name="new_deck"),
     path("decks", views.create_deck, name="create_deck"),
     path("decks/<uuid:deck_id>", views.deck_detail, name="deck_detail"),
+    path(
+        "decks/<uuid:deck_id>/versions/<int:version_id>",
+        views.deck_version,
+        name="deck_version",
+    ),
     path("decks/<uuid:deck_id>/edit", views.edit_deck, name="edit_deck"),
     path("decks/<uuid:deck_id>/update", views.update_deck, name="update_deck"),
     path("decks/<uuid:deck_id>/reanalyze", views.reanalyze_deck, name="reanalyze_deck"),

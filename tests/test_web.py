@@ -1037,6 +1037,95 @@ def test_deleting_a_deck_takes_its_versions_with_it(client):
     client.post(f"/decks/{deck.id}/delete")
 
     assert not DeckVersion.objects.filter(deck_id=deck.id).exists()
+
+
+def _revise(client, deck, decklist, note=""):
+    """Posts a new card list for ``deck`` and returns the version it created."""
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": deck.name, "decklist": decklist, "note": note},
+    )
+    return deck.versions.last()
+
+
+@pytest.mark.django_db
+def test_deck_page_lists_the_versions_with_their_changelog(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    second = _legal_decklist().replace("1 Spell 0", "1 Rhystic Study")
+    _revise(client, deck, second, note="Added the tax")
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert "Version history" in body
+    # The changelog against the version before, in the +/- form.
+    assert "+1 Rhystic Study" in body
+    assert "-1 Spell 0" in body
+    assert "Added the tax" in body
+    # The oldest version has nothing to compare against.
+    assert "Initial version" in body
+
+
+@pytest.mark.django_db
+def test_an_older_version_can_be_opened(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    first = deck.versions.first()
+    _revise(client, deck, _legal_decklist().replace("1 Spell 0", "1 Rhystic Study"))
+
+    r = client.get(f"/decks/{deck.id}/versions/{first.id}")
+    assert r.status_code == 200
+    body = r.content.decode()
+    # The stored list as it was, in full.
+    assert "1 Spell 0" in body
+    assert "Rhystic Study" not in body
+
+
+@pytest.mark.django_db
+def test_a_version_cannot_be_read_across_decks(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "One", "decklist": _legal_decklist()})
+    client.post("/decks", data={"name": "Two", "decklist": _legal_decklist()})
+    one = Deck.objects.get(name="One")
+    two = Deck.objects.get(name="Two")
+
+    # A version id belonging to another deck is not reachable through this one.
+    assert client.get(f"/decks/{one.id}/versions/{two.versions.first().id}").status_code == 404
+
+
+@pytest.mark.django_db
+def test_version_pages_follow_the_same_access_rule_as_the_deck(client, owner):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = _owned_deck(owner)
+    version = DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
+
+    # Another user: the deck is private, so its history is too.
+    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 404
+
+    deck.visibility = Deck.Visibility.UNLISTED
+    deck.save(update_fields=["visibility"])
+    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_deck_without_versions_shows_no_history_panel(client):
+    from mtg_deck_analyzer.models import Deck
+
+    # A legacy deck, created before versions existed.
+    deck = Deck.objects.create(
+        name="Legacy",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    assert "Version history" not in client.get(f"/decks/{deck.id}").content.decode()
 @pytest.mark.django_db
 def test_a_new_deck_defaults_to_the_commander_format():
     from mtg_deck_analyzer.models import Deck

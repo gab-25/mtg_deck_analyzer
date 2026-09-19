@@ -11,13 +11,14 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.db.models import Q
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from .access import can_edit, requires_deck_edit, requires_deck_view
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
+from .domain.changelog import decklist_changes
 from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
 from .domain.constants import CATEGORY_ORDER
@@ -212,6 +213,32 @@ def _moxfield_text(stored_cards: list) -> str:
         if not item.get("is_commander")
     )
     return "\n".join(lines)
+
+
+def _version_history(deck) -> list:
+    """The deck's versions, newest first, each against the one before it.
+
+    The trail is short by nature (one row per submitted list), so it is read
+    whole and diffed in memory rather than paged. The oldest version has no
+    predecessor and therefore no changelog.
+    """
+    versions = list(deck.versions.all())  # Oldest first (model ordering).
+    history = []
+    for index in range(len(versions) - 1, -1, -1):
+        previous = versions[index - 1] if index else None
+        history.append(
+            {
+                "version": versions[index],
+                "number": index + 1,
+                "is_current": index == len(versions) - 1,
+                "changes": (
+                    decklist_changes(previous.raw_decklist, versions[index].raw_decklist)
+                    if previous
+                    else []
+                ),
+            }
+        )
+    return history
 
 
 def _resolved_api_key() -> str | None:
@@ -453,6 +480,41 @@ def deck_detail(request, deck):
             "mana_curve": _mana_curve(stored_cards),
             "type_bars": _type_bars(deck.category_counts or {}),
             "value_stats": _value_stats(stored_cards, deck.total_value_eur),
+            "version_history": _version_history(deck),
+        },
+    )
+
+
+@require_http_methods(["GET"])
+@requires_deck_view
+def deck_version(request, deck, version_id: int):
+    """Shows one stored decklist from the deck's history.
+
+    Read-only by design: restoring a version re-opens the analysis lifecycle
+    and is deliberately not part of this feature.
+    """
+    versions = list(deck.versions.all())
+    position = next(
+        (i for i, v in enumerate(versions) if v.id == version_id), None
+    )
+    if position is None:
+        raise Http404("No version matches the given query.")
+
+    version = versions[position]
+    previous = versions[position - 1] if position else None
+    return render(
+        request,
+        "deck_version.html",
+        {
+            "deck": deck,
+            "version": version,
+            "number": position + 1,
+            "is_current": position == len(versions) - 1,
+            "changes": (
+                decklist_changes(previous.raw_decklist, version.raw_decklist)
+                if previous
+                else []
+            ),
         },
     )
 
