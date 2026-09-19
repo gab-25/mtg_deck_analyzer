@@ -1104,6 +1104,35 @@ def test_a_plain_rename_does_not_append_a_version(client):
 
 
 @pytest.mark.django_db
+def test_switching_format_alone_does_not_append_a_version(client):
+    """A format switch re-runs the analysis but is not a change to the cards.
+
+    The two triggers are different questions: the format picks the ban list the
+    deck is validated against, so changing it has to re-analyze, but the card
+    list is untouched and a version recording it would carry an empty changelog.
+    """
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Mine",
+            "decklist": _legal_decklist(),
+            "format": "duel",
+        },
+    )
+
+    deck.refresh_from_db()
+    # The format switch landed and the analysis was re-run...
+    assert deck.format == "duel"
+    # ...but the trail still holds only the list as originally submitted.
+    assert deck.versions.count() == 1
+
+
+@pytest.mark.django_db
 def test_a_rejected_update_records_nothing(client):
     from mtg_deck_analyzer.models import Deck
 

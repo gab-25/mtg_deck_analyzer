@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('mtg_deck_analyzer', '0007_deck_ownership'),
+        ('mtg_deck_analyzer', '0008_deck_ownership'),
     ]
 
     operations = [

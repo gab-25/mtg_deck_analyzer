@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('mtg_deck_analyzer', '0006_commander_format'),
+        ('mtg_deck_analyzer', '0007_deck_format'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
