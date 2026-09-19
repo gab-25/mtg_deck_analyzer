@@ -1050,21 +1050,49 @@ def _revise(client, deck, decklist, note=""):
 
 @pytest.mark.django_db
 def test_deck_page_lists_the_versions_with_their_changelog(client):
+    """Each entry shows its OWN changelog, in the right slot — not just any
+    matching substrings anywhere on the page. With two versions, several wrong
+    orderings (e.g. the changelog attached to the wrong entry) would still
+    satisfy pure membership checks, so this pins every fact to its position in
+    the rendered body instead: three versions, distinct diffs, and asserted
+    ordering rather than "appears somewhere".
+    """
     from mtg_deck_analyzer.models import Deck
 
     client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
     deck = Deck.objects.get(name="Mine")
     second = _legal_decklist().replace("1 Spell 0", "1 Rhystic Study")
     _revise(client, deck, second, note="Added the tax")
+    third = second.replace("1 Spell 1", "1 Smothering Tithe")
+    _revise(client, deck, third, note="Added another tax")
 
     body = client.get(f"/decks/{deck.id}").content.decode()
     assert "Version history" in body
-    # The changelog against the version before, in the +/- form.
-    assert "+1 Rhystic Study" in body
-    assert "-1 Spell 0" in body
-    assert "Added the tax" in body
-    # The oldest version has nothing to compare against.
-    assert "Initial version" in body
+
+    v3 = body.index("Version 3")
+    v2 = body.index("Version 2")
+    v1 = body.index("Version 1")
+    # Newest first.
+    assert v3 < v2 < v1
+
+    # The "Current" marker sits with the newest entry, not any other.
+    assert v3 < body.index("Current") < v2
+
+    # The newest changelog (against version 2) sits between the version-3
+    # heading and the version-2 heading — not swapped onto another entry.
+    assert v3 < body.index("+1 Smothering Tithe") < v2
+    assert v3 < body.index("-1 Spell 1") < v2
+    assert v3 < body.index("Added another tax") < v2
+
+    # The middle changelog (against version 1) sits between the version-2
+    # heading and the version-1 heading.
+    assert v2 < body.index("+1 Rhystic Study") < v1
+    assert v2 < body.index("-1 Spell 0") < v1
+    assert v2 < body.index("Added the tax") < v1
+
+    # The oldest version has nothing to compare against, and "Initial version"
+    # belongs to it, not to any other entry.
+    assert body.index("Initial version") > v1
 
 
 @pytest.mark.django_db
@@ -1106,6 +1134,25 @@ def test_version_pages_follow_the_same_access_rule_as_the_deck(client, owner):
 
     # Another user: the deck is private, so its history is too.
     assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 404
+
+    deck.visibility = Deck.Visibility.UNLISTED
+    deck.save(update_fields=["visibility"])
+    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 200
+
+
+@pytest.mark.django_db
+def test_version_pages_send_an_anonymous_visitor_to_the_login_for_a_private_deck(
+    client, owner
+):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = _owned_deck(owner)
+    version = DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
+    client.logout()
+
+    r = client.get(f"/decks/{deck.id}/versions/{version.id}")
+    assert r.status_code == 302
+    assert r["Location"].startswith("/login")
 
     deck.visibility = Deck.Visibility.UNLISTED
     deck.save(update_fields=["visibility"])
