@@ -38,5 +38,9 @@
         </div>
         {% endif %}
     </div>
+
+    {% if version_history %}
+    {% include "partials/deck_versions.html" %}
+    {% endif %}
 </div>
 {% endblock %}

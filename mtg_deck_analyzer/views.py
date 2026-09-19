@@ -10,12 +10,11 @@ import markdown as md
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
-from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
-from .access import can_edit, requires_deck_edit, requires_deck_view
+from .access import can_edit, decks_visible_in_library, requires_deck_edit, requires_deck_view
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
 from .domain.changelog import decklist_changes
@@ -215,6 +214,29 @@ def _moxfield_text(stored_cards: list) -> str:
     return "\n".join(lines)
 
 
+def _version_entry(versions: list, position: int) -> dict:
+    """Builds one version's view-model: its number, currency and changelog.
+
+    ``versions`` is the deck's full history, oldest first (model ordering);
+    ``position`` is this entry's index into it. Shared by ``_version_history``
+    (every entry) and ``deck_version`` (a single one), so both compute the
+    same numbering, "current" flag and diff-against-the-previous-version the
+    same way.
+    """
+    version = versions[position]
+    previous = versions[position - 1] if position else None
+    return {
+        "version": version,
+        "number": position + 1,
+        "is_current": position == len(versions) - 1,
+        "changes": (
+            decklist_changes(previous.raw_decklist, version.raw_decklist)
+            if previous
+            else []
+        ),
+    }
+
+
 def _version_history(deck) -> list:
     """The deck's versions, newest first, each against the one before it.
 
@@ -223,22 +245,10 @@ def _version_history(deck) -> list:
     predecessor and therefore no changelog.
     """
     versions = list(deck.versions.all())  # Oldest first (model ordering).
-    history = []
-    for index in range(len(versions) - 1, -1, -1):
-        previous = versions[index - 1] if index else None
-        history.append(
-            {
-                "version": versions[index],
-                "number": index + 1,
-                "is_current": index == len(versions) - 1,
-                "changes": (
-                    decklist_changes(previous.raw_decklist, versions[index].raw_decklist)
-                    if previous
-                    else []
-                ),
-            }
-        )
-    return history
+    return [
+        _version_entry(versions, position)
+        for position in range(len(versions) - 1, -1, -1)
+    ]
 
 
 def _resolved_api_key() -> str | None:
@@ -362,7 +372,7 @@ def index(request):
     query = (request.GET.get("q") or "").strip()
     # The library is the signed-in user's own decks plus the ownerless ones that
     # predate ownership — those belonged to everybody and still do.
-    owned = Deck.objects.filter(Q(owner=request.user) | Q(owner__isnull=True))
+    owned = decks_visible_in_library(request.user)
     decks = list(owned.order_by("-created_at"))
     if query:
         needle = query.lower()
@@ -448,15 +458,26 @@ def create_deck(request):
 @require_http_methods(["GET"])
 @requires_deck_view
 def deck_detail(request, deck):
-    # While the analysis is still running there's nothing to show yet — send the
-    # user to the list, where the deck displays its live "Analyzing…" status.
+    # While the analysis is still running there's nothing to show yet. A caller
+    # who can reach the library (the owner, or anyone on an ownerless legacy
+    # deck) goes there instead, where the deck shows its live "Analyzing…"
+    # status. Everyone else — most notably an anonymous visitor holding an
+    # unlisted link — can't reach `index` (it's login-gated), so sending them
+    # there would just be a dead end through the login page; they get a small
+    # standalone page instead.
     if deck.status in {Deck.Status.PENDING, Deck.Status.PROCESSING}:
-        return redirect("index")
+        if can_edit(request.user, deck):
+            return redirect("index")
+        return render(request, "deck_analyzing.html", {"deck": deck})
     if deck.status == Deck.Status.FAILED:
         return render(
             request,
             "deck_failed.html",
-            {"deck": deck, "can_edit": can_edit(request.user, deck)},
+            {
+                "deck": deck,
+                "can_edit": can_edit(request.user, deck),
+                "version_history": _version_history(deck),
+            },
         )
 
     analysis_html = None
@@ -500,21 +521,16 @@ def deck_version(request, deck, version_id: int):
     if position is None:
         raise Http404("No version matches the given query.")
 
-    version = versions[position]
-    previous = versions[position - 1] if position else None
+    entry = _version_entry(versions, position)
     return render(
         request,
         "deck_version.html",
         {
             "deck": deck,
-            "version": version,
-            "number": position + 1,
-            "is_current": position == len(versions) - 1,
-            "changes": (
-                decklist_changes(previous.raw_decklist, version.raw_decklist)
-                if previous
-                else []
-            ),
+            "version": entry["version"],
+            "number": entry["number"],
+            "is_current": entry["is_current"],
+            "changes": entry["changes"],
         },
     )
 
@@ -530,6 +546,7 @@ def edit_deck(request, deck):
             form_name=deck.name,
             form_decklist=deck.raw_decklist,
             form_visibility=deck.visibility,
+            form_note="",
             form_format=deck.format,
         ),
     )
@@ -541,6 +558,7 @@ def update_deck(request, deck):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
     visibility = _visibility(request.POST, current=deck.visibility)
+    note = request.POST.get("note") or ""
     fmt = _posted_format(request)
 
     errors = _decklist_errors(decklist)
@@ -554,6 +572,7 @@ def update_deck(request, deck):
                 form_name=name,
                 form_decklist=decklist,
                 form_visibility=visibility,
+                form_note=note,
                 form_format=fmt,
             ),
             status=422,
@@ -581,7 +600,7 @@ def update_deck(request, deck):
         DeckVersion.objects.create(
             deck=deck,
             raw_decklist=decklist,
-            note=(request.POST.get("note") or "").strip()[:255],
+            note=note.strip()[:255],
         )
 
     if needs_reanalysis:

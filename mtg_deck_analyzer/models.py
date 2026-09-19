@@ -26,12 +26,14 @@ class Deck(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     # Who submitted the deck. NULL for the decks that predate ownership: they
-    # stay visible to every signed-in user, exactly as they were before.
+    # stay visible to every signed-in user, exactly as they were before. A
+    # deleted owner leaves the deck in that same legacy state rather than
+    # destroying it and its version trail.
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="decks",
     )
 

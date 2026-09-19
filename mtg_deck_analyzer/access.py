@@ -1,13 +1,14 @@
 """Who may see and change a deck.
 
-Every deck endpoint and every template flag comes from the two predicates
-below, so the rule lives in one file instead of being re-derived at each of
-the deck routes in ``urls.py``.
+Every deck endpoint and every template flag comes from the rules below, so
+access lives in one file instead of being re-derived at each of the deck
+routes in ``urls.py``.
 """
 
 from functools import wraps
 
 from django.contrib.auth.views import redirect_to_login
+from django.db.models import Q, QuerySet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -27,6 +28,18 @@ def can_view(user, deck) -> bool:
     if not user.is_authenticated:
         return False
     return deck.owner_id is None or deck.owner_id == user.id
+
+
+def decks_visible_in_library(user) -> QuerySet:
+    """The decks ``user``'s library page may list.
+
+    Deliberately narrower than ``can_view``: an unlisted deck is readable by
+    anyone holding its link, but the library must never use that to surface
+    *other people's* unlisted decks to a browsing user who never got the
+    link. So the library shows only decks the user owns, plus the ownerless
+    ones that predate ownership and still belong to everybody.
+    """
+    return Deck.objects.filter(Q(owner=user) | Q(owner__isnull=True))
 
 
 def can_edit(user, deck) -> bool:

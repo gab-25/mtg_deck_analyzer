@@ -1,7 +1,5 @@
 """What changed between two submitted decklists."""
 
-from collections import defaultdict
-
 from .decklist import parse_decklist_text
 from .text_utils import front_face_name
 
@@ -10,18 +8,21 @@ def _quantities(text: str) -> dict:
     """Total copies per card (by normalized name) with display name preservation.
 
     Keys by front_face_name(name).lower() to treat equivalent cards (different
-    casing, double-faced variants) as the same. Returns a dict where each key
-    maps to {"quantity": int, "display_name": str}.
+    casing, double-faced variants) as the same. Returns a plain dict where
+    each key maps to {"quantity": int, "display_name": str}: every caller
+    guards its lookups with ``in`` first, so there is no reason to risk a
+    stray access silently inserting a zero-quantity row.
 
     Sections don't matter here: a card promoted to commander is the same card
     in the same count, and reporting that as a swap would be noise.
     """
-    totals = defaultdict(lambda: {"quantity": 0, "display_name": None})
+    totals = {}
     for entry in parse_decklist_text(text):
         normalized_key = front_face_name(entry["name"]).lower()
-        totals[normalized_key]["quantity"] += entry["quantity"]
+        row = totals.setdefault(normalized_key, {"quantity": 0, "display_name": None})
+        row["quantity"] += entry["quantity"]
         # Keep the display name from this entry (will use the last one seen)
-        totals[normalized_key]["display_name"] = entry["name"]
+        row["display_name"] = entry["name"]
     return totals
 
 

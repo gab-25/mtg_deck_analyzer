@@ -3,7 +3,7 @@
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from mtg_deck_analyzer.access import can_edit, can_view
+from mtg_deck_analyzer.access import can_edit, can_view, decks_visible_in_library
 from mtg_deck_analyzer.models import Deck
 
 
@@ -71,3 +71,19 @@ def test_ownerless_legacy_decks_keep_their_old_behaviour(stranger):
 def test_a_new_deck_is_private_by_default(owner):
     deck = Deck.objects.create(name="Fresh", raw_decklist="1 Forest", owner=owner)
     assert deck.visibility == Deck.Visibility.PRIVATE
+
+
+@pytest.mark.django_db
+def test_decks_visible_in_library_excludes_other_users_unlisted_decks(owner, stranger):
+    """The one deliberate divergence from can_view: an unlisted deck is
+    readable by anyone holding its link, but that must never make it show up
+    in a browsing user's own library — only in the page a link points at.
+    """
+    unlisted_by_owner = _deck(owner=owner, visibility=Deck.Visibility.UNLISTED)
+    strangers_own = _deck(owner=stranger)
+    legacy = _deck(owner=None)
+
+    visible = set(decks_visible_in_library(stranger).values_list("id", flat=True))
+    assert strangers_own.id in visible
+    assert legacy.id in visible
+    assert unlisted_by_owner.id not in visible

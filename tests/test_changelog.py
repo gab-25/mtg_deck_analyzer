@@ -1,6 +1,8 @@
 """The changelog between two submitted decklists."""
 
-from mtg_deck_analyzer.domain.changelog import decklist_changes
+import pytest
+
+from mtg_deck_analyzer.domain.changelog import _quantities, decklist_changes
 
 
 def test_no_difference_produces_no_changelog():
@@ -99,3 +101,13 @@ def test_a_removed_card_uses_its_previous_spelling_despite_casing_elsewhere():
         {"sign": "+", "quantity": 1, "name": "Sol Ring"},
         {"sign": "-", "quantity": 1, "name": "ARCANE SIGNET"},
     ]
+
+
+def test_quantities_returns_a_plain_dict_with_no_auto_vivifying_default():
+    # A defaultdict factory never legitimately fires (every caller in this
+    # module guards with `in` first), so a stray unguarded lookup should raise
+    # like it would on any other dict, not silently insert a zero-quantity row.
+    totals = _quantities("1 Forest")
+    assert type(totals) is dict
+    with pytest.raises(KeyError):
+        totals["nonexistent card"]
