@@ -65,3 +65,31 @@ def test_an_empty_previous_list_reports_everything_as_added():
     assert decklist_changes("", "2 Forest") == [
         {"sign": "+", "quantity": 2, "name": "Forest"}
     ]
+
+
+def test_the_same_card_with_different_casing_produces_no_change():
+    # Same card, different casing — should be treated as the same card.
+    assert decklist_changes("1 Sol Ring", "1 sol ring") == []
+
+
+def test_a_double_faced_card_spelled_two_ways_produces_no_change():
+    # Delver of Secrets // Insectile Aberration and Delver of Secrets are the same card.
+    before = "1 Delver of Secrets // Insectile Aberration"
+    after = "1 Delver of Secrets"
+    assert decklist_changes(before, after) == []
+
+
+def test_a_card_with_changed_count_spelled_differently_reports_a_single_delta():
+    # Changed count with different casing should report one delta, not add + remove.
+    # The CURRENT (newer) list's spelling should be used.
+    assert decklist_changes("38 FOREST", "40 Forest") == [
+        {"sign": "+", "quantity": 2, "name": "Forest"}
+    ]
+
+
+def test_a_removed_card_is_printed_with_its_previous_spelling():
+    # A card removed is shown with the spelling it had in the previous list.
+    assert decklist_changes("1 ARCANE SIGNET", "1 Sol Ring") == [
+        {"sign": "+", "quantity": 1, "name": "Sol Ring"},
+        {"sign": "-", "quantity": 1, "name": "ARCANE SIGNET"},
+    ]
