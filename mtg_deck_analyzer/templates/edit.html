@@ -42,6 +42,14 @@
                         Images and prices are pulled from Scryfall automatically.
                     </div>
                 </div>
+                <div>
+                    <label class="field-label mb-2">What changed? <span class="text-txt3 font-light">(optional)</span></label>
+                    <input type="text" name="note" maxlength="255" value="{{ form_note }}"
+                        placeholder="e.g. Swapped Arcane Signet for Rhystic Study" class="field" />
+                    <div class="text-[12px] text-txt3 mt-2 font-light">
+                        Saved with this revision in the deck's history, next to its changelog.
+                    </div>
+                </div>
             </div>
 
             <div class="editor-sidebar flex flex-col gap-4 sticky top-[78px]">

@@ -10,12 +10,14 @@ import markdown as md
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
-from django.http import FileResponse, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import FileResponse, Http404, HttpResponse
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from .access import decks_visible_in_library, requires_deck_access
 from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
+from .domain.changelog import decklist_changes
 from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
 from .domain.constants import CATEGORY_ORDER
@@ -29,7 +31,7 @@ from .domain.storage import (
 )
 from .domain.text_utils import slugify
 from .logging_context import deck_log_context
-from .models import Deck
+from .models import Deck, DeckVersion
 from .pipeline import analyze_decklist
 from .rendering.pdf import generate_pdf, generate_proxy_pdf
 
@@ -212,6 +214,43 @@ def _moxfield_text(stored_cards: list) -> str:
     return "\n".join(lines)
 
 
+def _version_entry(versions: list, position: int) -> dict:
+    """Builds one version's view-model: its number, currency and changelog.
+
+    ``versions`` is the deck's full history, oldest first (model ordering);
+    ``position`` is this entry's index into it. Shared by ``_version_history``
+    (every entry) and ``deck_version`` (a single one), so both compute the
+    same numbering, "current" flag and diff-against-the-previous-version the
+    same way.
+    """
+    version = versions[position]
+    previous = versions[position - 1] if position else None
+    return {
+        "version": version,
+        "number": position + 1,
+        "is_current": position == len(versions) - 1,
+        "changes": (
+            decklist_changes(previous.raw_decklist, version.raw_decklist)
+            if previous
+            else []
+        ),
+    }
+
+
+def _version_history(deck) -> list:
+    """The deck's versions, newest first, each against the one before it.
+
+    The trail is short by nature (one row per submitted list), so it is read
+    whole and diffed in memory rather than paged. The oldest version has no
+    predecessor and therefore no changelog.
+    """
+    versions = list(deck.versions.all())  # Oldest first (model ordering).
+    return [
+        _version_entry(versions, position)
+        for position in range(len(versions) - 1, -1, -1)
+    ]
+
+
 def _resolved_api_key() -> str | None:
     return os.environ.get("OPENROUTER_API_KEY")
 
@@ -316,7 +355,10 @@ def _start_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt:
 @require_http_methods(["GET"])
 def index(request):
     query = (request.GET.get("q") or "").strip()
-    decks = list(Deck.objects.order_by("-created_at"))
+    # The library is the signed-in user's own decks plus the ownerless ones that
+    # predate ownership — those belonged to everybody and still do.
+    owned = decks_visible_in_library(request.user)
+    decks = list(owned.order_by("-created_at"))
     if query:
         needle = query.lower()
         decks = [d for d in decks if needle in d.name.lower()]
@@ -331,7 +373,7 @@ def index(request):
     )
 
     # Library-wide stats for the header cards (independent of the search filter).
-    all_decks = Deck.objects.all()
+    all_decks = owned
     stat_total = all_decks.count()
     stat_analyzed = all_decks.filter(status=Deck.Status.READY).count()
     stat_value = sum(d.total_value_eur for d in all_decks)
@@ -382,8 +424,11 @@ def create_deck(request):
         name=name,
         raw_decklist=decklist,
         status=Deck.Status.PENDING,
+        owner=request.user,
         format=fmt,
     )
+    # The list as submitted opens the deck's history.
+    DeckVersion.objects.create(deck=deck, raw_decklist=decklist)
     _start_analysis(deck.id, decklist, _resolved_api_key(), fmt)
 
     # Post/Redirect/Get: back to the deck list, where the new deck shows an
@@ -391,17 +436,19 @@ def create_deck(request):
     return redirect("index")
 
 
-@login_required
 @require_http_methods(["GET"])
-def deck_detail(request, deck_id: uuid.UUID):
-    deck = get_object_or_404(Deck, pk=deck_id)
-
+@requires_deck_access
+def deck_detail(request, deck):
     # While the analysis is still running there's nothing to show yet — send the
     # user to the list, where the deck displays its live "Analyzing…" status.
     if deck.status in {Deck.Status.PENDING, Deck.Status.PROCESSING}:
         return redirect("index")
     if deck.status == Deck.Status.FAILED:
-        return render(request, "deck_failed.html", {"deck": deck})
+        return render(
+            request,
+            "deck_failed.html",
+            {"deck": deck, "version_history": _version_history(deck)},
+        )
 
     analysis_html = None
     if deck.analysis_md:
@@ -423,14 +470,43 @@ def deck_detail(request, deck_id: uuid.UUID):
             "mana_curve": _mana_curve(stored_cards),
             "type_bars": _type_bars(deck.category_counts or {}),
             "value_stats": _value_stats(stored_cards, deck.total_value_eur),
+            "version_history": _version_history(deck),
         },
     )
 
 
-@login_required
 @require_http_methods(["GET"])
-def edit_deck(request, deck_id: uuid.UUID):
-    deck = get_object_or_404(Deck, pk=deck_id)
+@requires_deck_access
+def deck_version(request, deck, version_id: int):
+    """Shows one stored decklist from the deck's history.
+
+    Read-only by design: restoring a version re-opens the analysis lifecycle
+    and is deliberately not part of this feature.
+    """
+    versions = list(deck.versions.all())
+    position = next(
+        (i for i, v in enumerate(versions) if v.id == version_id), None
+    )
+    if position is None:
+        raise Http404("No version matches the given query.")
+
+    entry = _version_entry(versions, position)
+    return render(
+        request,
+        "deck_version.html",
+        {
+            "deck": deck,
+            "version": entry["version"],
+            "number": entry["number"],
+            "is_current": entry["is_current"],
+            "changes": entry["changes"],
+        },
+    )
+
+
+@require_http_methods(["GET"])
+@requires_deck_access
+def edit_deck(request, deck):
     return render(
         request,
         "edit.html",
@@ -438,17 +514,18 @@ def edit_deck(request, deck_id: uuid.UUID):
             deck=deck,
             form_name=deck.name,
             form_decklist=deck.raw_decklist,
+            form_note="",
             form_format=deck.format,
         ),
     )
 
 
-@login_required
 @require_http_methods(["POST"])
-def update_deck(request, deck_id: uuid.UUID):
-    deck = get_object_or_404(Deck, pk=deck_id)
+@requires_deck_access
+def update_deck(request, deck):
     name = (request.POST.get("name") or "").strip() or "Untitled Deck"
     decklist = request.POST.get("decklist", "")
+    note = request.POST.get("note") or ""
     fmt = _posted_format(request)
 
     errors = _decklist_errors(decklist)
@@ -461,6 +538,7 @@ def update_deck(request, deck_id: uuid.UUID):
                 errors=errors,
                 form_name=name,
                 form_decklist=decklist,
+                form_note=note,
                 form_format=fmt,
             ),
             status=422,
@@ -469,7 +547,8 @@ def update_deck(request, deck_id: uuid.UUID):
     # The decklist and the format both feed the analysis — the format picks the
     # ban list the deck is validated against — so either one changing has to
     # re-run it. A plain rename still triggers nothing.
-    needs_reanalysis = decklist != deck.raw_decklist or fmt != deck.format
+    decklist_changed = decklist != deck.raw_decklist
+    needs_reanalysis = decklist_changed or fmt != deck.format
 
     deck.name = name
     deck.raw_decklist = decklist
@@ -479,17 +558,26 @@ def update_deck(request, deck_id: uuid.UUID):
         deck.error = None
     deck.save()
 
+    # Only a real change to the card list is worth a version: a rename, or a
+    # format switch that leaves the same 100 cards, would add a row whose
+    # changelog is empty.
+    if decklist_changed:
+        DeckVersion.objects.create(
+            deck=deck,
+            raw_decklist=decklist,
+            note=note.strip()[:255],
+        )
+
     if needs_reanalysis:
         _start_analysis(deck.id, decklist, _resolved_api_key(), fmt)
         return redirect("index")
     return redirect("deck_detail", deck_id=deck.id)
 
 
-@login_required
 @require_http_methods(["POST"])
-def reanalyze_deck(request, deck_id: uuid.UUID):
+@requires_deck_access
+def reanalyze_deck(request, deck):
     """Re-runs the analysis for an existing deck from its stored decklist."""
-    deck = get_object_or_404(Deck, pk=deck_id)
     deck.status = Deck.Status.PENDING
     deck.error = None
     deck.save(update_fields=["status", "error"])
@@ -500,18 +588,16 @@ def reanalyze_deck(request, deck_id: uuid.UUID):
     return redirect("index")
 
 
-@login_required
 @require_http_methods(["POST"])
-def delete_deck(request, deck_id: uuid.UUID):
-    Deck.objects.filter(pk=deck_id).delete()
+@requires_deck_access
+def delete_deck(request, deck):
+    deck.delete()
     return redirect("index")
 
 
-@login_required
 @require_http_methods(["GET"])
-def deck_pdf(request, deck_id: uuid.UUID):
-    deck = get_object_or_404(Deck, pk=deck_id)
-
+@requires_deck_access
+def deck_pdf(request, deck):
     # The PDF needs the fetched cards; they only exist once analysis is done.
     if deck.status != Deck.Status.READY:
         return redirect("deck_detail", deck_id=deck.id)
@@ -538,12 +624,10 @@ def deck_pdf(request, deck_id: uuid.UUID):
     )
 
 
-@login_required
 @require_http_methods(["GET"])
-def deck_proxy_pdf(request, deck_id: uuid.UUID):
+@requires_deck_access
+def deck_proxy_pdf(request, deck):
     """Generates a 1:1 proxy PDF: every card image repeated by its quantity."""
-    deck = get_object_or_404(Deck, pk=deck_id)
-
     # The proxies need the fetched images; they only exist once analysis is done.
     if deck.status != Deck.Status.READY:
         return redirect("deck_detail", deck_id=deck.id)

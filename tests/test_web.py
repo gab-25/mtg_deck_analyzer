@@ -193,12 +193,14 @@ def test_pending_deck_redirects_to_index(client):
         raw_decklist="1 Forest",
         status=Deck.Status.PROCESSING,
     )
-    # No status page: the detail view sends in-progress decks back to the list.
+    # No status page for a caller who can reach the library: the detail view
+    # sends in-progress decks back to the list.
     r = client.get(f"/decks/{deck.id}")
     assert r.status_code == 302
     assert r["Location"] == "/"
 
 
+@pytest.mark.django_db
 @pytest.mark.django_db
 def test_index_shows_processing_status_and_polls(client):
     from mtg_deck_analyzer.models import Deck
@@ -689,6 +691,496 @@ def test_destructive_actions_use_confirm_modal(client):
     assert f'action="/decks/{deck.id}/delete"' in detail
 
 
+# --- Ownership ---------------------------------------------------------------
+
+
+@pytest.fixture
+def owner(django_user_model):
+    return django_user_model.objects.create_user(username="owner", password="pw")
+
+
+def _owned_deck(owner, name="Owned"):
+    """A ready deck belonging to ``owner``, straight into the database."""
+    from mtg_deck_analyzer.models import Deck
+
+    return Deck.objects.create(
+        name=name,
+        raw_decklist="1 Forest",
+        owner=owner,
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+
+
+@pytest.mark.django_db
+def test_created_deck_belongs_to_the_submitting_user(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    assert deck.owner == django_user_model.objects.get(username="tester")
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_deleting_the_owner_deletes_their_decks_and_versions(client, owner):
+    """Demoting an orphaned deck to ownerless (SET_NULL) would put it in the
+    same state as every pre-branch legacy deck — readable AND writable by
+    every signed-in user. That would turn deleting a user into publishing
+    all of that user's private decks, so the owner FK cascades instead: the
+    deck and its version trail must be gone, not merely ownerless.
+    """
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = _owned_deck(owner, name="Orphaned")
+    DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
+    deck_id = deck.id
+
+    owner.delete()
+
+    assert not Deck.objects.filter(id=deck_id).exists()
+    assert not DeckVersion.objects.filter(deck_id=deck_id).exists()
+
+
+@pytest.mark.django_db
+def test_index_lists_only_your_own_decks_and_legacy_ones(client, owner):
+    from mtg_deck_analyzer.models import Deck
+
+    _owned_deck(owner, name="Someone Elses")
+    Deck.objects.create(name="Legacy Pile", raw_decklist="1 Forest")
+    client.post("/decks", data={"name": "My Deck", "decklist": _legal_decklist()})
+
+    body = client.get("/").content.decode()
+    assert "My Deck" in body
+    # The ownerless deck predates ownership and stays visible to everyone.
+    assert "Legacy Pile" in body
+    assert "Someone Elses" not in body
+
+
+@pytest.mark.django_db
+def test_a_private_deck_is_404_for_another_user(client, owner):
+    deck = _owned_deck(owner)
+    # A 404 rather than a 403: another user's private deck does not exist for you.
+    assert client.get(f"/decks/{deck.id}").status_code == 404
+    assert client.get(f"/decks/{deck.id}/pdf").status_code == 404
+    assert client.get(f"/decks/{deck.id}/proxy").status_code == 404
+    assert client.get(f"/decks/{deck.id}/edit").status_code == 404
+    assert client.post(f"/decks/{deck.id}/delete").status_code == 404
+    assert client.post(f"/decks/{deck.id}/reanalyze").status_code == 404
+    assert client.post(
+        f"/decks/{deck.id}/update", data={"name": "Hijacked", "decklist": "1 Forest"}
+    ).status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_private_deck_sends_an_anonymous_visitor_to_the_login(client, owner):
+    deck = _owned_deck(owner)
+    client.logout()
+    r = client.get(f"/decks/{deck.id}")
+    assert r.status_code == 302
+    assert r["Location"].startswith("/login")
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_the_owner_still_sees_every_control(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'href="/decks/{deck.id}/edit"' in body
+    assert f'action="/decks/{deck.id}/delete"' in body
+    assert f'action="/decks/{deck.id}/reanalyze"' in body
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_legacy_ownerless_decks_stay_reachable_and_editable(client):
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(
+        name="Legacy",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    assert client.get(f"/decks/{deck.id}").status_code == 200
+    assert client.get(f"/decks/{deck.id}/edit").status_code == 200
+
+
+# --- FAILED-deck controls are also owner-gated -------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+def test_a_failed_deck_shows_every_control_to_its_owner(client, django_user_model):
+    from mtg_deck_analyzer.models import Deck
+
+    tester = django_user_model.objects.get(username="tester")
+    deck = Deck.objects.create(
+        name="Broke",
+        raw_decklist="1 Forest",
+        owner=tester,
+        status=Deck.Status.FAILED,
+        error="Not a valid decklist.",
+    )
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert f'href="/decks/{deck.id}/edit"' in body
+    assert f'action="/decks/{deck.id}/delete"' in body
+    assert f'action="/decks/{deck.id}/reanalyze"' in body
+
+
+@pytest.mark.django_db
+def test_a_failed_deck_shows_its_version_history(client):
+    """The trail is exactly what a user wants when a re-analysis just failed:
+    a look at what they changed. It must not disappear on this branch of
+    deck_detail just because it's the FAILED one.
+    """
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = Deck.objects.create(
+        name="Broke",
+        raw_decklist="1 Rhystic Study",
+        status=Deck.Status.FAILED,
+        error="Not a valid decklist.",
+    )
+    DeckVersion.objects.create(deck=deck, raw_decklist="1 Sol Ring")
+    DeckVersion.objects.create(deck=deck, raw_decklist="1 Rhystic Study")
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert "Version history" in body
+    assert "+1 Rhystic Study" in body
+    assert "-1 Sol Ring" in body
+
+
+# --- Version history ----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_creating_a_deck_records_its_first_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    versions = list(deck.versions.all())
+    assert len(versions) == 1
+    assert versions[0].raw_decklist == _legal_decklist()
+
+
+@pytest.mark.django_db
+def test_every_decklist_change_appends_a_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    second = _legal_decklist().replace("1 Spell 0", "1 Rhystic Study")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Mine", "decklist": second, "note": "Added the tax"},
+    )
+
+    versions = list(deck.versions.all())
+    # Oldest first: the trail is append-only, nothing is rewritten.
+    assert len(versions) == 2
+    assert versions[0].raw_decklist == _legal_decklist()
+    assert versions[1].raw_decklist == second
+    assert versions[1].note == "Added the tax"
+
+
+@pytest.mark.django_db
+def test_a_plain_rename_does_not_append_a_version(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Renamed", "decklist": _legal_decklist()},
+    )
+
+    # The card list is what a version records; a title change is not one.
+    assert deck.versions.count() == 1
+    # The rename itself still has to land, or this test would trivially pass
+    # if update_deck started rejecting rename-only posts outright.
+    deck.refresh_from_db()
+    assert deck.name == "Renamed"
+
+
+@pytest.mark.django_db
+def test_switching_format_alone_does_not_append_a_version(client):
+    """A format switch re-runs the analysis but is not a change to the cards.
+
+    The two triggers are different questions: the format picks the ban list the
+    deck is validated against, so changing it has to re-analyze, but the card
+    list is untouched and a version recording it would carry an empty changelog.
+    """
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Mine",
+            "decklist": _legal_decklist(),
+            "format": "duel",
+        },
+    )
+
+    deck.refresh_from_db()
+    # The format switch landed and the analysis was re-run...
+    assert deck.format == "duel"
+    # ...but the trail still holds only the list as originally submitted.
+    assert deck.versions.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_rejected_update_records_nothing(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    r = client.post(
+        f"/decks/{deck.id}/update", data={"name": "Mine", "decklist": "1 Sol Ring"}
+    )
+    assert r.status_code == 422
+    # Only a successful update is part of the history.
+    assert deck.versions.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_rejected_update_keeps_the_note_in_the_form(client):
+    """Every neighbouring field (name, decklist, format) round-trips
+    through the re-rendered 422 form; the note must too, or a would-be
+    changelog note typed alongside an illegal decklist is silently lost.
+    """
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+
+    r = client.post(
+        f"/decks/{deck.id}/update",
+        data={
+            "name": "Mine",
+            "decklist": "1 Sol Ring",
+            "note": "Swapped Arcane Signet for Rhystic Study",
+        },
+    )
+    assert r.status_code == 422
+    assert "Swapped Arcane Signet for Rhystic Study" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_deleting_a_deck_takes_its_versions_with_it(client):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    client.post(f"/decks/{deck.id}/delete")
+
+    assert not DeckVersion.objects.filter(deck_id=deck.id).exists()
+
+
+def _revise(client, deck, decklist, note=""):
+    """Posts a new card list for ``deck`` and returns the version it created."""
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": deck.name, "decklist": decklist, "note": note},
+    )
+    return deck.versions.last()
+
+
+@pytest.mark.django_db
+def test_deck_page_lists_the_versions_with_their_changelog(client):
+    """Each entry shows its OWN changelog, in the right slot — not just any
+    matching substrings anywhere on the page. With two versions, several wrong
+    orderings (e.g. the changelog attached to the wrong entry) would still
+    satisfy pure membership checks, so this pins every fact to its position in
+    the rendered body instead: three versions, distinct diffs, and asserted
+    ordering rather than "appears somewhere".
+    """
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    second = _legal_decklist().replace("1 Spell 0", "1 Rhystic Study")
+    _revise(client, deck, second, note="Added the tax")
+    third = second.replace("1 Spell 1", "1 Smothering Tithe")
+    _revise(client, deck, third, note="Added another tax")
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert "Version history" in body
+
+    v3 = body.index("Version 3")
+    v2 = body.index("Version 2")
+    v1 = body.index("Version 1")
+    # Newest first.
+    assert v3 < v2 < v1
+
+    # The "Current" marker sits with the newest entry, not any other.
+    assert v3 < body.index("Current") < v2
+
+    # The newest changelog (against version 2) sits between the version-3
+    # heading and the version-2 heading — not swapped onto another entry.
+    assert v3 < body.index("+1 Smothering Tithe") < v2
+    assert v3 < body.index("-1 Spell 1") < v2
+    assert v3 < body.index("Added another tax") < v2
+
+    # The middle changelog (against version 1) sits between the version-2
+    # heading and the version-1 heading.
+    assert v2 < body.index("+1 Rhystic Study") < v1
+    assert v2 < body.index("-1 Spell 0") < v1
+    assert v2 < body.index("Added the tax") < v1
+
+    # The oldest version has nothing to compare against, and "Initial version"
+    # belongs to it, not to any other entry.
+    assert body.index("Initial version") > v1
+
+
+@pytest.mark.django_db
+def test_an_older_version_can_be_opened(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Mine", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Mine")
+    first = deck.versions.first()
+    _revise(client, deck, _legal_decklist().replace("1 Spell 0", "1 Rhystic Study"))
+
+    r = client.get(f"/decks/{deck.id}/versions/{first.id}")
+    assert r.status_code == 200
+    body = r.content.decode()
+    # The stored list as it was, in full.
+    assert "1 Spell 0" in body
+    assert "Rhystic Study" not in body
+
+
+@pytest.mark.django_db
+def test_a_version_cannot_be_read_across_decks(client):
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "One", "decklist": _legal_decklist()})
+    client.post("/decks", data={"name": "Two", "decklist": _legal_decklist()})
+    one = Deck.objects.get(name="One")
+    two = Deck.objects.get(name="Two")
+
+    # A version id belonging to another deck is not reachable through this one.
+    assert client.get(f"/decks/{one.id}/versions/{two.versions.first().id}").status_code == 404
+
+
+@pytest.mark.django_db
+def test_version_pages_follow_the_same_access_rule_as_the_deck(client, owner):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = _owned_deck(owner)
+    version = DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
+
+    # Another user: the deck is not theirs, so neither is its history.
+    assert client.get(f"/decks/{deck.id}/versions/{version.id}").status_code == 404
+
+
+@pytest.mark.django_db
+def test_version_pages_send_an_anonymous_visitor_to_the_login(client, owner):
+    from mtg_deck_analyzer.models import Deck, DeckVersion
+
+    deck = _owned_deck(owner)
+    version = DeckVersion.objects.create(deck=deck, raw_decklist="1 Forest")
+    client.logout()
+
+    r = client.get(f"/decks/{deck.id}/versions/{version.id}")
+    assert r.status_code == 302
+    assert r["Location"].startswith("/login")
+
+
+@pytest.mark.django_db
+def test_a_deck_without_versions_shows_no_history_panel(client):
+    from mtg_deck_analyzer.models import Deck
+
+    # A legacy deck, created before versions existed.
+    deck = Deck.objects.create(
+        name="Legacy",
+        raw_decklist="1 Forest",
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    assert "Version history" not in client.get(f"/decks/{deck.id}").content.decode()
+
+
+@pytest.mark.django_db
+def test_legacy_deck_backfill_then_edit_shows_a_real_changelog_not_a_lost_one(client):
+    """Reproduces the production sequence for a deck that predates version
+    history: the 0010 data migration backfills one version from the deck's
+    existing decklist at deploy time, then the deck's first post-upgrade edit
+    (through the view) adds a second version carrying the real changelog —
+    instead of that edit's version being the only one, mislabelled "Initial
+    version" with its diff against the deck's true prior state lost.
+
+    A test can't easily re-run a historical data migration, so this calls the
+    migration's own backfill function directly (via the real, non-historical
+    app registry, which it also works against) against a deck created
+    straight through the ORM with no versions — a stand-in for a pre-branch
+    row. That is exactly the production shape: migrate, then edit.
+    """
+    import importlib
+
+    from django.apps import apps as real_apps
+
+    from mtg_deck_analyzer.models import Deck
+
+    legacy_list = _legal_decklist()
+    deck = Deck.objects.create(
+        name="Legacy",
+        raw_decklist=legacy_list,
+        status=Deck.Status.READY,
+        total_cards=1,
+        category_counts={"Land": 1},
+        cards=[],
+    )
+    assert deck.versions.count() == 0  # A pre-branch row: no history yet.
+
+    backfill = importlib.import_module(
+        "mtg_deck_analyzer.migrations.0010_backfill_legacy_deck_versions"
+    )
+    backfill.backfill_legacy_versions(real_apps, None)
+
+    deck.refresh_from_db()
+    assert deck.versions.count() == 1
+
+    revised = legacy_list.replace("1 Spell 0", "1 Rhystic Study")
+    client.post(
+        f"/decks/{deck.id}/update",
+        data={"name": "Legacy", "decklist": revised, "note": "Swapped in the tax"},
+    )
+
+    versions = list(deck.versions.all())
+    # Without the backfill, this would be a single version (the bug): the
+    # edit's version would have nothing to compare against.
+    assert len(versions) == 2
+    assert versions[0].raw_decklist == legacy_list
+    assert versions[1].raw_decklist == revised
+
+    body = client.get(f"/decks/{deck.id}").content.decode()
+    assert "Initial version" in body
+    assert "+1 Rhystic Study" in body
+    assert "-1 Spell 0" in body
 @pytest.mark.django_db
 def test_a_new_deck_defaults_to_the_commander_format():
     from mtg_deck_analyzer.models import Deck

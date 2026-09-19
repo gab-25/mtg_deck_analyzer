@@ -34,5 +34,9 @@
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>
     </div>
+
+    {% if version_history %}
+    {% include "partials/deck_versions.html" %}
+    {% endif %}
 </div>
 {% endblock %}
