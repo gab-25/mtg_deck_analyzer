@@ -122,3 +122,116 @@ CATEGORY_ORDER = [
 # Full colour names, as the deck page and the PDF both label their columns.
 COLOR_FULL_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red",
                     "G": "Green", "C": "Colorless"}
+# --- Commander Bracket signals ------------------------------------------
+# The bracket estimate mirrors the method Moxfield documents: three
+# list-based signals checked against the official guidance. Combos, tutor
+# density and game speed are deliberately not estimated, because a decklist
+# does not settle them.
+
+# Official bracket names (Commander Format Panel). 1 and 5 are never
+# estimated from a list, but a verdict has to be able to name them.
+BRACKET_LABELS = {
+    1: "Exhibition",
+    2: "Core",
+    3: "Upgraded",
+    4: "Optimized",
+    5: "cEDH",
+}
+
+# Scryfall exposes a ``game_changer`` boolean per card, which is the primary
+# source. This list is the fallback for cache entries written before that
+# field reached this app: 53 cards as of the February 9, 2026 update, stored
+# by front face. The Commander Format Panel revises it every 3-4 months.
+GAME_CHANGER_NAMES = frozenset(
+    name.lower()
+    for name in (
+        "Ad Nauseam",
+        "Ancient Tomb",
+        "Aura Shards",
+        "Biorhythm",
+        "Bolas's Citadel",
+        "Braids, Cabal Minion",
+        "Chrome Mox",
+        "Coalition Victory",
+        "Consecrated Sphinx",
+        "Crop Rotation",
+        "Cyclonic Rift",
+        "Demonic Tutor",
+        "Drannith Magistrate",
+        "Enlightened Tutor",
+        "Farewell",
+        "Field of the Dead",
+        "Fierce Guardianship",
+        "Force of Will",
+        "Gaea's Cradle",
+        "Gamble",
+        "Gifts Ungiven",
+        "Glacial Chasm",
+        "Grand Arbiter Augustin IV",
+        "Grim Monolith",
+        "Humility",
+        "Imperial Seal",
+        "Intuition",
+        "Jeska's Will",
+        "Lion's Eye Diamond",
+        "Mana Vault",
+        "Mishra's Workshop",
+        "Mox Diamond",
+        "Mystical Tutor",
+        "Narset, Parter of Veils",
+        "Natural Order",
+        "Necropotence",
+        "Notion Thief",
+        "Opposition Agent",
+        "Orcish Bowmasters",
+        "Panoptic Mirror",
+        "Rhystic Study",
+        "Seedborn Muse",
+        "Serra's Sanctum",
+        "Smothering Tithe",
+        "Survival of the Fittest",
+        "Teferi's Protection",
+        "Tergrid, God of Fright",
+        "Thassa's Oracle",
+        "The One Ring",
+        "The Tabernacle at Pendrell Vale",
+        "Underworld Breach",
+        "Vampiric Tutor",
+        "Worldly Tutor",
+    )
+)
+
+# Mass land denial, hand-maintained the way Moxfield maintains its own: cards
+# that strip or lock every player's lands, which the guidance keeps out of
+# brackets 2 and 3. Symmetrical sweepers only — single-target land removal
+# and colour hosers (Blood Moon) are not mass denial.
+MASS_LAND_DENIAL_NAMES = frozenset(
+    name.lower()
+    for name in (
+        "Armageddon",
+        "Ravages of War",
+        "Catastrophe",
+        "Cataclysm",
+        "Decree of Annihilation",
+        "Devastation",
+        "Epicenter",
+        "Global Ruin",
+        "Impending Disaster",
+        "Jokulhaups",
+        "Mana Vortex",
+        "Obliterate",
+        "Sunder",
+        "Wake of Destruction",
+        "Worms of the Earth",
+        "Back to Basics",
+        "Rising Waters",
+        "Stasis",
+        "Static Orb",
+        "Winter Orb",
+    )
+)
+
+# Every extra-turn card shares this wording ("Take an extra turn after this
+# one"), so the oracle text settles the signal and no name list has to be
+# kept up to date set after set.
+EXTRA_TURN_TEXT = "extra turn"
