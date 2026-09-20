@@ -22,6 +22,7 @@ from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
 from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
+from .domain.statistics import curve_bars, deck_statistics
 from .domain.storage import (
     cards_for_pdf,
     cards_for_storage,
@@ -83,23 +84,6 @@ def _deck_pips(deck) -> list:
     return [{"letter": c, "hex": COLOR_HEX.get(c, COLOR_HEX["C"])} for c in letters]
 
 
-def _mana_curve(stored_cards: list) -> list:
-    """Buckets non-land cards by mana value (0–6, then 7+), weighted by quantity."""
-    buckets = [0] * 8  # indices 0..6 exact, 7 => "7+"
-    for item in stored_cards:
-        data = item["data"]
-        if classify_card(data) == "Land":
-            continue
-        idx = min(int(data.get("cmc", 0) or 0), 7)
-        buckets[idx] += item["quantity"]
-    peak = max(buckets) or 1
-    labels = ["0", "1", "2", "3", "4", "5", "6", "7+"]
-    return [
-        {"label": labels[i], "count": buckets[i], "pct": round(buckets[i] / peak * 100)}
-        for i in range(8)
-    ]
-
-
 def _type_bars(category_counts: dict) -> list:
     """Turns the stored category counts into proportional bars for the sidebar."""
     total = sum(category_counts.values()) or 1
@@ -127,6 +111,104 @@ def _value_stats(stored_cards: list, total_value: float) -> dict:
         "total": total_value,
         "avg": total_value / total_cards,
         "max": max(prices) if prices else 0.0,
+    }
+
+
+# Full color names, for a fixing line that reads as a sentence.
+COLOR_NAMES = {
+    "W": "White",
+    "U": "Blue",
+    "B": "Black",
+    "R": "Red",
+    "G": "Green",
+}
+
+
+def _pct(probability: float) -> int:
+    """A probability as a whole percentage, which is all the panel shows."""
+    return round(probability * 100)
+
+
+def _fixing_rows(fixing: list) -> list:
+    """Color-fixing entries, with the color's name and how far the deck gets."""
+    rows = []
+    for entry in fixing:
+        required = entry["required"]
+        rows.append(
+            {
+                **entry,
+                "name": COLOR_NAMES[entry["color"]],
+                "hex": COLOR_HEX[entry["color"]],
+                # Nothing required means nothing to fall short of.
+                "pct": (
+                    min(100, round(entry["sources"] / required * 100))
+                    if required
+                    else 100
+                ),
+                "ok": entry["shortfall"] == 0,
+            }
+        )
+    return rows
+
+
+def _baseline_rows(baseline: list) -> list:
+    """Baseline entries, with the target as a range and a within/outside flag."""
+    return [
+        {**entry, "range": f"{entry['low']}–{entry['high']}", "ok": entry["delta"] == 0}
+        for entry in baseline
+    ]
+
+
+def _opening_hand_rows(opening_hand: dict) -> dict:
+    """The opening-hand block with every probability turned into a percentage."""
+    return {
+        "hand_size": opening_hand["hand_size"],
+        "keepable": _pct(opening_hand["keepable"]),
+        "land_counts": [
+            {"lands": entry["lands"], "pct": _pct(entry["p"])}
+            for entry in opening_hand["land_counts"]
+        ],
+        "land_drops": [
+            {"turn": entry["turn"], "pct": _pct(entry["p"])}
+            for entry in opening_hand["land_drops"]
+        ],
+        "roles": [
+            {
+                "key": entry["key"],
+                "label": entry["label"],
+                "count": entry["count"],
+                "odds": [
+                    {"turn": odd["turn"], "pct": _pct(odd["p"])}
+                    for odd in entry["odds"]
+                ],
+            }
+            for entry in opening_hand["roles"]
+        ],
+    }
+
+
+def _statistics_panel(deck) -> dict | None:
+    """View-model for the Statistics panel, or None when there is nothing to show.
+
+    Uses the statistics stored at analysis time; a deck analyzed before they
+    existed is recomputed from its stored cards, so the panel doesn't simply
+    vanish for it. The one thing that cannot be recovered that way is
+    ``produced_mana``, so ``sources_known`` tells the template to ask for a
+    re-analysis rather than report zero sources.
+    """
+    stats = deck.statistics or deck_statistics(deck.cards or [])
+    if not stats.get("library_size"):
+        return None
+
+    return {
+        "library_size": stats["library_size"],
+        "land_count": stats["land_count"],
+        "sources_known": stats["sources_known"],
+        "curve": curve_bars(stats["curve"]),
+        "fixing": _fixing_rows(stats["fixing"]),
+        "roles": stats["roles"],
+        "baseline": _baseline_rows(stats["baseline"]),
+        "opening_hand": _opening_hand_rows(stats["opening_hand"]),
     }
 
 
@@ -499,7 +581,7 @@ def deck_detail(request, deck):
             "commander_cards": _commander_cards(stored_cards),
             "card_groups": _detail_card_groups(stored_cards),
             "moxfield_text": _moxfield_text(stored_cards),
-            "mana_curve": _mana_curve(stored_cards),
+            "statistics": _statistics_panel(deck),
             "type_bars": _type_bars(deck.category_counts or {}),
             "value_stats": _value_stats(stored_cards, deck.total_value_eur),
             "version_history": _version_history(deck),

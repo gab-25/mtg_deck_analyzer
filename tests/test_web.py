@@ -1541,3 +1541,60 @@ def test_the_analysis_stores_the_statistics(client):
 
     assert deck.statistics["library_size"] == 2
     assert deck.statistics["opening_hand"]["hand_size"] == 7
+
+
+@pytest.mark.django_db
+class TestStatisticsPanel:
+    """The Statistics panel on the deck page."""
+
+    def _deck(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        client.post("/decks", data={"name": "Stats", "decklist": _legal_decklist()})
+        return Deck.objects.get(name="Stats")
+
+    def test_the_panel_is_rendered_for_an_analyzed_deck(self, client):
+        deck = self._deck(client)
+        response = client.get(f"/decks/{deck.id}")
+
+        assert response.status_code == 200
+        assert "Statistics" in response.content.decode()
+        assert response.context["statistics"] is not None
+
+    def test_probabilities_are_whole_percentages(self, client):
+        deck = self._deck(client)
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+
+        keepable = panel["opening_hand"]["keepable"]
+        assert isinstance(keepable, int)
+        assert 0 <= keepable <= 100
+
+    def test_a_freshly_analyzed_deck_reports_its_sources(self, client):
+        deck = self._deck(client)
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+
+        assert panel["sources_known"] is True
+
+    def test_a_deck_without_stored_statistics_still_gets_a_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Analyzed before the panel existed: neither stored statistics nor
+        # produced_mana on the cards. The panel is recomputed anyway, and says
+        # the sources are the one thing it cannot recover.
+        cards = deck.cards
+        for item in cards:
+            item["data"].pop("produced_mana", None)
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=cards)
+
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+        assert panel["curve"]
+        assert panel["sources_known"] is False
+
+    def test_a_deck_with_no_cards_has_no_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=[])
+
+        assert client.get(f"/decks/{deck.id}").context["statistics"] is None

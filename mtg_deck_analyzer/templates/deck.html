@@ -70,6 +70,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </div>
             {% endif %}
 
+            {% if statistics %}
+            {% include "partials/deck_statistics.html" %}
+            {% endif %}
+
             <div class="panel-card overflow-hidden">
                 <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
                     <span class="ms text-txt2 text-[20px]">playing_cards</span>
@@ -165,20 +169,6 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                 </div>
             </div>
             {% endif %}
-
-            <div class="panel-card p-[18px]">
-                <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Mana curve</div>
-                <div class="flex items-end gap-[7px] h-[120px]">
-                    {% for b in mana_curve %}
-                    <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                        <span class="font-mono2 font-bold text-[11px] text-txt2">{{ b.count }}</span>
-                        <div class="w-full min-h-[3px] rounded-t-[5px] rounded-b-[2px] bg-[linear-gradient(180deg,var(--violet2),var(--violet))]" style="height:{{ b.pct }}%"></div>
-                        <span class="font-mono2 text-[11px] text-txt3">{{ b.label }}</span>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="text-center mt-2.5 text-[11px] text-txt3">Avg CMC {{ deck.avg_cmc|floatformat:2 }} · non-lands</div>
-            </div>
 
             <div class="panel-card p-[18px]">
                 <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Card types</div>
