@@ -18,21 +18,32 @@ from .constants import (
     ROLE_ORDER,
 )
 
+# Basic land type names, so a fetchland ("Search your library for a Forest or
+# Plains card...") is recognized as a land search even though it never says
+# the word "land" itself.
+_BASIC_LAND_TYPES = ("plains", "island", "swamp", "mountain", "forest")
+_LAND_WORDS = ("land",) + _BASIC_LAND_TYPES
+_LAND_SEARCH_ALTERNATION = "|".join(_LAND_WORDS)
+
 # One readable registry: role -> the rules-text patterns that give it away.
-# Loose by design (they read printed text, not the rules engine), with one
-# exception: the protection patterns match only what a card *grants*, never a
+# Loose by design (they read printed text, not the rules engine), with three
+# exceptions: the protection patterns match only what a card *grants*, never a
 # creature that simply has hexproof, or the interaction count would fill up
-# with ordinary creatures.
+# with ordinary creatures; the draw pattern requires the bare "draw" form —
+# English gives "you draw"/"Draw a card" (imperative) that form, and reserves
+# "draws" for a third-person subject, so "an opponent draws a card" is never
+# mistaken for the deck's own draw; and the sacrifice pattern excludes a
+# sacrifice that pays for a mana ability, which is ramp, not interaction.
 ROLE_PATTERNS: dict[str, tuple[str, ...]] = {
     "ramp": (
         r"\badd \{",
         r"\badd (one|two|three|x) mana\b",
-        r"search your library for .{0,60}?land",
+        rf"search your library for .{{0,60}}?(?:{_LAND_SEARCH_ALTERNATION})",
         r"put .{0,60}?land card.{0,40}?onto the battlefield",
         r"\bplay an additional land\b",
     ),
     "draw": (
-        r"\bdraws? (a|one|two|three|four|five|six|seven|x|that many|\d+) cards?\b",
+        r"\bdraw (a|one|two|three|four|five|six|seven|x|that many|\d+) cards?\b",
         r"\bdraw cards equal to\b",
         r"\binvestigate\b",
     ),
@@ -54,7 +65,7 @@ ROLE_PATTERNS: dict[str, tuple[str, ...]] = {
         r"\bcounter target\b",
         r"\bcounter it unless\b",
         r"\b(gain|gains|have|has) (hexproof|indestructible|shroud|protection from)\b",
-        r"\bsacrifice (a|another) (creature|permanent|artifact|enchantment)\b",
+        r"\bsacrifice (a|another) (creature|permanent|artifact|enchantment)\b(?!\s*:\s*add\b)",
         r"\bphases? out\b",
     ),
 }
@@ -74,7 +85,10 @@ _INTERACTION_ROLES = frozenset({"targeted_removal", "board_wipe", "interaction"}
 
 def _searches_for_a_spell(text: str) -> bool:
     """Whether any library search looks for something other than a land."""
-    return any("land" not in tail for tail in _SEARCH_RE.findall(text))
+    return any(
+        not any(word in tail for word in _LAND_WORDS)
+        for tail in _SEARCH_RE.findall(text)
+    )
 
 
 def card_roles(card_data: dict) -> set:

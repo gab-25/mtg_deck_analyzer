@@ -66,6 +66,15 @@ class TestDraw:
     def test_a_vanilla_creature_does_not_draw(self):
         assert "draw" not in card_roles(_card("Flying", "Creature — Bird"))
 
+    def test_an_opponent_drawing_a_card_is_not_the_decks_draw(self):
+        # Underworld Dreams: a punisher effect, not a draw source.
+        card = _card(
+            "Whenever an opponent draws a card, Underworld Dreams deals 1 "
+            "damage to that player.",
+            "Enchantment",
+        )
+        assert "draw" not in card_roles(card)
+
 
 class TestRemoval:
     def test_destroy_target_is_targeted_removal(self):
@@ -112,6 +121,27 @@ class TestTutor:
         assert "ramp" in roles
         assert "tutor" not in roles
 
+    def test_fetching_a_named_basic_land_type_is_ramp_not_tutor(self):
+        # Wood Elves-style ETB: names the type instead of saying "land".
+        card = _card(
+            "When this creature enters, search your library for a Forest "
+            "card, reveal it, and put it into your hand.",
+            "Creature — Elf Scout",
+        )
+        roles = card_roles(card)
+        assert "ramp" in roles
+        assert "tutor" not in roles
+
+    def test_a_fetchland_naming_basic_types_is_not_a_tutor(self):
+        # Windswept Heath: says "a Forest or Plains card", never "land".
+        card = _card(
+            "{T}, Pay 1 life, Sacrifice Windswept Heath: Search your "
+            "library for a Forest or Plains card, put it onto the "
+            "battlefield, then shuffle.",
+            "Land",
+        )
+        assert "tutor" not in card_roles(card)
+
 
 class TestInteraction:
     def test_a_counterspell_interacts(self):
@@ -129,6 +159,14 @@ class TestInteraction:
     def test_a_sacrifice_outlet_interacts(self):
         card = _card("Sacrifice a creature: Draw a card.", "Enchantment")
         assert "interaction" in card_roles(card)
+
+    def test_a_sacrifice_that_pays_for_a_mana_ability_is_not_interaction(self):
+        # Ashnod's Altar: the sacrifice is a mana ability's cost, not a real
+        # sacrifice outlet.
+        card = _card("Sacrifice a creature: Add {C}{C}.", "Artifact")
+        roles = card_roles(card)
+        assert "ramp" in roles
+        assert "interaction" not in roles
 
 
 class TestMultipleRoles:
