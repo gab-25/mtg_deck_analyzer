@@ -19,6 +19,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from ..domain.bracket import estimate_bracket
 from ..domain.cards import classify_card, compute_statistics
 from ..domain.constants import (
     CATEGORY_ORDER,
@@ -48,6 +49,7 @@ _STATS_LABELS = {
     "cards": "Total Cards",
     "value": "Estimated Value (Cardmarket)",
     "cmc": "Average Mana Value (non-Lands)",
+    "bracket": "Commander Bracket",
 }
 
 
@@ -91,6 +93,7 @@ def create_stats_table(
     category_counts: dict,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
+    bracket: dict = None,
 ):
     """Creates a styled statistics table for the top of the PDF."""
     stats_labels = _STATS_LABELS
@@ -127,8 +130,31 @@ def create_stats_table(
     cmc_html = ""
     if avg_cmc is not None:
         cmc_html = f'<br/><b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}'
+
+    # A minimum estimate, and the sheet says so: the reader has to be able to
+    # tell a computed floor from a claim about how the deck plays.
+    bracket_html = ""
+    if bracket:
+        signals = bracket.get("signals", {})
+        fired = []
+        for key, label in (
+            ("game_changers", "Game Changers"),
+            ("mass_land_denial", "mass land denial"),
+            ("extra_turns", "extra turns"),
+        ):
+            names = signals.get(key) or []
+            if names:
+                fired.append(f"{label}: {html.escape(', '.join(names))}")
+        detail = "; ".join(fired) or "no signals fired"
+        bracket_html = (
+            f'<b>{stats_labels["bracket"]}:</b> {bracket["bracket"]} &mdash; '
+            f'{html.escape(bracket["label"])} (minimum estimate)<br/>'
+            f'<font size="7">{detail}</font><br/>'
+        )
+
     left_html = f"""
     <b>{stats_labels["format"]}:</b> {FORMATS[fmt].label}<br/>
+    {bracket_html}
     {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
     <b>{stats_labels["value"]}:</b> {val_str}{cmc_html}
@@ -694,8 +720,18 @@ def generate_pdf(
     average_mv = (statistics or {}).get("mana_values", {}).get(
         "average_without_lands"
     )
+    # Recomputed here for the same reason the statistics are: the PDF is built
+    # from the stored cards, so it stays correct even for a deck whose stored
+    # verdict predates this feature.
+    bracket = estimate_bracket(processed_cards)
     stats_table = create_stats_table(
-        total_cards, total_price, average_mv, category_counts, commanders, fmt
+        total_cards,
+        total_price,
+        average_mv,
+        category_counts,
+        commanders,
+        fmt,
+        bracket,
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))

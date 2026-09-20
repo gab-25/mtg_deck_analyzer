@@ -337,6 +337,22 @@ class TestStatisticsSection:
         # computed here from the cards. A rendered PDF is compressed, so the
         # handover is where the claim can be read.
         assert received == [{}]
+def test_stats_table_names_the_bracket_and_its_signals():
+    table = create_stats_table(
+        100, 250.0, 3.1, {"Creature": 30},
+        commanders=["Atraxa, Praetors' Voice"],
+        bracket={"bracket": 3, "label": "Upgraded", "signals": {
+            "game_changers": ["Rhystic Study"],
+            "mass_land_denial": [], "extra_turns": [],
+        }},
+    )
+    rendered = _stats_text(table)
+    assert "3 &mdash; Upgraded" in rendered or "3 — Upgraded" in rendered
+    assert "Rhystic Study" in rendered
+
+
+def test_stats_table_without_a_bracket_still_builds():
+    assert create_stats_table(100, 250.0, 3.1, {"Creature": 30}) is not None
 
 
 def _make_png(path):
