@@ -189,7 +189,6 @@ def _curve_chart(curve: list) -> dict:
 
     return {
         "width": _CHART["w"], "height": _CHART["h"],
-        "baseline": round(y_of(0), 2),
         "axis_x": _CHART["left"],
         "label_y": round(y_of(0) + 16, 2),
         "bars": out,
@@ -249,7 +248,7 @@ def _statistics_panel(deck) -> dict | None:
             "median_without_lands": f"{mv['median_without_lands']:g}",
         },
         "colors": [
-            {**entry,
+            {**{k: v for k, v in entry.items() if k != "curve"},
              "name": COLOR_FULL_NAMES[entry["key"]],
              "hex": COLOR_HEX[entry["key"]],
              "used": entry["card_pct"] > 0 or entry["production_pct"] > 0,
