@@ -234,12 +234,10 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     flowables = [Paragraph("Deck Statistics", styles["h2"]), Spacer(1, 4)]
 
     # 1. Mana curve, permanents against spells — same legend as the deck page.
-    caption = Paragraph(
+    flowables.append(Paragraph(
         "<b>Mana curve</b> &mdash; "
         "<font color='#7c5cff'>Permanents</font> and "
-        "<font color='#6b7280'>Spells</font>, lands excluded", text)
-    flowables.append(_plain_table(
-        [[caption]], [_CURVE_BAR_WIDTH + 58], _SECTION_TABLE_STYLE))
+        "<font color='#6b7280'>Spells</font>, lands excluded", text))
     bars = curve_bars(statistics["curve"])
     peak = max((b["total"] for b in bars), default=0)
     flowables.append(_plain_table(

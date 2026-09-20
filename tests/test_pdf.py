@@ -226,8 +226,10 @@ class TestStatisticsSection:
 
     def test_the_curve_row_separates_permanents_from_spells(self):
         flowables = create_statistics_flowables(self._statistics(), _build_styles())
-        texts = [getattr(cell, "text", "") for f in flowables
-                 for row in getattr(f, "_cellvalues", []) for cell in row]
+        # Text lives either on a bare Paragraph flowable or inside a Table cell.
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
         assert any("Permanents" in t for t in texts)
         assert any("Spells" in t for t in texts)
 
