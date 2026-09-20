@@ -60,7 +60,7 @@ class TestCurve:
         curve = deck_statistics(_deck())["curve"]
         assert curve[0]["count"] == 0
         assert curve[2]["count"] == 51
-        assert curve[3]["count"] == 11  # 10 Divination + the commander
+        assert curve[3]["count"] == 10  # 10 Divination; the commander is excluded
 
 
 class TestSourcesKnown:

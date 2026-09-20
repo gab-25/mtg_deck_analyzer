@@ -129,25 +129,41 @@ class TestDeckSources:
 class TestManaCurve:
     def test_lands_are_excluded(self):
         deck = [_item(_card(type_line="Basic Land — Forest", cmc=0.0), 38)]
-        assert mana_curve(deck) == [0] * 8
-
-    def test_cards_land_in_their_mana_value_bucket(self):
-        deck = [_item(_card(cmc=2.0), 3), _item(_card(cmc=5.0), 1)]
         curve = mana_curve(deck)
-        assert curve[2] == 3
-        assert curve[5] == 1
+        assert all(b["permanents"] == 0 and b["spells"] == 0 for b in curve)
+
+    def test_permanents_and_spells_are_separated(self):
+        deck = [
+            _item(_card(type_line="Creature — Bear", cmc=2.0), 3),
+            _item(_card(type_line="Instant", cmc=2.0), 4),
+        ]
+        assert mana_curve(deck)[2] == {"permanents": 3, "spells": 4}
+
+    def test_artifacts_enchantments_and_planeswalkers_are_permanents(self):
+        for type_line in ("Artifact", "Enchantment — Aura",
+                          "Legendary Planeswalker — Jace", "Battle — Siege"):
+            deck = [_item(_card(type_line=type_line, cmc=3.0))]
+            assert mana_curve(deck)[3]["permanents"] == 1, type_line
+
+    def test_sorceries_are_spells(self):
+        deck = [_item(_card(type_line="Sorcery", cmc=1.0))]
+        assert mana_curve(deck)[1] == {"permanents": 0, "spells": 1}
 
     def test_everything_from_seven_up_is_merged(self):
-        deck = [_item(_card(cmc=7.0)), _item(_card(cmc=12.0))]
-        assert mana_curve(deck)[7] == 2
+        deck = [_item(_card(type_line="Sorcery", cmc=7.0)),
+                _item(_card(type_line="Sorcery", cmc=12.0))]
+        assert mana_curve(deck)[7]["spells"] == 2
+
+    def test_the_commander_is_excluded(self):
+        # Moxfield leaves the commander out of the curve; so do we.
+        deck = [_item(_card(type_line="Legendary Creature — Elf", cmc=3.0),
+                      is_commander=True)]
+        assert mana_curve(deck)[3]["permanents"] == 0
 
     def test_a_spell_with_a_land_back_stays_on_the_curve(self):
-        card = {
-            "type_line": "Instant // Land",
-            "cmc": 3.0,
-            "faces": [{"type_line": "Instant"}, {"type_line": "Land"}],
-        }
-        assert mana_curve([_item(card)])[3] == 1
+        card = {"type_line": "Instant // Land", "cmc": 3.0,
+                "faces": [{"type_line": "Instant"}, {"type_line": "Land"}]}
+        assert mana_curve([_item(card)])[3]["spells"] == 1
 
 
 from mtg_deck_analyzer.domain.mana import cards_seen

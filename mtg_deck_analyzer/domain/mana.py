@@ -7,7 +7,7 @@ mana curve.
 
 import re
 
-from .cards import classify_card
+from .cards import classify_card, front_type_line
 from .commander import WUBRG
 
 _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
@@ -135,19 +135,36 @@ def deck_sources(processed_cards: list) -> dict:
     return totals
 
 
-def mana_curve(processed_cards: list) -> list:
-    """Card count per mana value, lands excluded, everything 7+ merged.
+# Card types that stay on the battlefield. Everything else that is not a land
+# — instants and sorceries — is a spell, which is the split Moxfield's curve
+# shows and the only one that needs naming here.
+PERMANENT_TYPES = ("creature", "artifact", "enchantment", "planeswalker", "battle")
 
-    An average collapses the shape it is worth seeing: ten one-drops and ten
-    seven-drops average out to the same number as twenty four-drops.
+
+def mana_curve(processed_cards: list) -> list:
+    """Cards per mana value, lands out, permanents and spells kept apart.
+
+    The commander is excluded: it starts in the command zone rather than the
+    deck, so it is not part of the curve you draw into. (Moxfield does the
+    same, which is how the reference deck's curve sums to its 74 non-lands.)
     """
-    buckets = [0] * CURVE_BUCKETS
+    buckets = [{"permanents": 0, "spells": 0} for _ in range(CURVE_BUCKETS)]
+
     for item in processed_cards:
+        if item.get("is_commander"):
+            continue
         data = item["data"]
         if classify_card(data) == "Land":
             continue
         value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
-        buckets[value] += item["quantity"]
+        type_line = front_type_line(data)
+        key = (
+            "permanents"
+            if any(t in type_line for t in PERMANENT_TYPES)
+            else "spells"
+        )
+        buckets[value][key] += item["quantity"]
+
     return buckets
 
 

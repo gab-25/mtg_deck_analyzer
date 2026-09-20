@@ -93,8 +93,8 @@ def deck_statistics(processed_cards: list) -> dict:
         "library_size": library_size,
         "land_count": land_count,
         "curve": [
-            {"label": label, "count": count}
-            for label, count in zip(CURVE_LABELS, mana_curve(processed_cards))
+            {"label": label, "count": entry["permanents"] + entry["spells"]}
+            for label, entry in zip(CURVE_LABELS, mana_curve(processed_cards))
         ],
         "pips": deck_pips(processed_cards),
         "sources": deck_sources(processed_cards),
