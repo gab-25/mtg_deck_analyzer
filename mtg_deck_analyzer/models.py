@@ -78,12 +78,12 @@ class Deck(models.Model):
     total_value_eur = models.FloatField(default=0.0)
     category_counts = models.JSONField(default=dict)
 
-    # The statistics panel, derived from ``cards`` at analysis time: mana
-    # curve, pips against colored sources, the color-fixing verdict, the
-    # functional role counts and the opening-hand odds. One JSON blob rather
-    # than five columns, because nothing queries it — it is only ever read
-    # whole. Empty for decks analyzed before it existed; the deck page
-    # recomputes it for those.
+    # The statistics panel, derived from ``cards`` at analysis time: the
+    # stacked mana curve, the mana-value sentence, the six-column colour
+    # block and the opening-hand odds. One JSON blob rather than four
+    # columns, because nothing queries it — it is only ever read whole, and
+    # it carries a ``schema`` version so both renderers can tell a blob from
+    # before the current shape apart from an empty one and recompute it.
     statistics = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "is_commander": bool,
