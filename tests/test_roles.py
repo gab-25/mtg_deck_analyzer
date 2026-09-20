@@ -195,3 +195,12 @@ class TestBaselineReport:
         from mtg_deck_analyzer.domain.constants import BASELINE_ORDER
 
         assert [e["key"] for e in baseline_report([])] == BASELINE_ORDER
+
+    def test_interaction_total_is_distinct_from_the_narrow_interaction_role(self):
+        # Targeted removal counts toward the broad baseline figure but not
+        # the narrow "interaction" role (counterspells/protection/sac
+        # outlets) — the two must not share a key and silently collide.
+        deck = self._deck(removal=6)
+        report = {e["key"]: e for e in baseline_report(deck)}
+        assert report["interaction_total"]["count"] == 6
+        assert role_counts(deck)["interaction"] == 0

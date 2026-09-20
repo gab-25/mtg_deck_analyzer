@@ -142,15 +142,19 @@ ROLE_LABELS = {
 EDH_BASELINE = {
     "ramp": (10, 12),
     "draw": (10, 12),
-    "interaction": (8, 12),
+    "interaction_total": (8, 12),
     "lands": (36, 38),
 }
 
-BASELINE_ORDER = ["ramp", "draw", "interaction", "lands"]
+BASELINE_ORDER = ["ramp", "draw", "interaction_total", "lands"]
 
+# "interaction_total" here is the broad count (targeted removal + wipes +
+# protection), distinct from the narrow "interaction" role in ROLE_LABELS
+# above (counterspells/protection/sac outlets) — they used to share the same
+# key, which silently overwrote one count with the other.
 BASELINE_LABELS = {
     "ramp": "Ramp",
     "draw": "Card draw",
-    "interaction": "Interaction",
+    "interaction_total": "Interaction (total)",
     "lands": "Lands",
 }

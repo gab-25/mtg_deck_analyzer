@@ -138,7 +138,7 @@ def baseline_report(processed_cards: list) -> list:
     counts = role_counts(processed_cards)
     tallies = {
         **counts,
-        "interaction": interaction_count(processed_cards),
+        "interaction_total": interaction_count(processed_cards),
         "lands": _land_count(processed_cards),
     }
 
