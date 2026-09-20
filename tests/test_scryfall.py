@@ -100,6 +100,14 @@ class TestProcessCachedCard:
         out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
         assert out["legalities"] == {}
 
+    def test_carries_the_game_changer_flag_through(self):
+        card = {"id": "x", "name": "Rhystic Study", "game_changer": True}
+        out = process_cached_card(card, _NoImageCache())
+        assert out["game_changer"] is True
+
+    def test_missing_game_changer_becomes_false(self):
+        out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
+        assert out["game_changer"] is False
 
 class TestProducedMana:
     """``produced_mana`` drives the deck's colored-source count."""

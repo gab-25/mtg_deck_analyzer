@@ -159,6 +159,10 @@ def process_cached_card(card: dict, cache) -> dict:
         "produced_mana": card.get("produced_mana", []),
         # Per-format legality; the Commander entry drives the ban-list check.
         "legalities": card.get("legalities", {}),
+        # Official Game Changer flag, the primary signal behind the bracket
+        # estimate. A cache entry written before Scryfall exposed it has no
+        # key at all, which is what ``GAME_CHANGER_NAMES`` backs up.
+        "game_changer": bool(card.get("game_changer", False)),
     }
 
 
