@@ -75,6 +75,28 @@ class TestDraw:
         )
         assert "draw" not in card_roles(card)
 
+    def test_target_player_draws_is_draw(self):
+        # Sign in Blood: "target player" is normally the caster.
+        card = _card("Target player draws two cards and loses 2 life.")
+        assert "draw" in card_roles(card)
+
+    def test_each_player_draws_after_discarding_is_draw(self):
+        # Wheel of Fortune: a symmetric wheel is still a draw source.
+        card = _card(
+            "Each player discards their hand, then draws seven cards.",
+            "Sorcery",
+        )
+        assert "draw" in card_roles(card)
+
+    def test_each_player_draws_cards_equal_to_is_draw(self):
+        # Windfall.
+        card = _card(
+            "Each player discards their hand, then draws cards equal to the "
+            "greatest number of cards a player discarded this way.",
+            "Sorcery",
+        )
+        assert "draw" in card_roles(card)
+
 
 class TestRemoval:
     def test_destroy_target_is_targeted_removal(self):

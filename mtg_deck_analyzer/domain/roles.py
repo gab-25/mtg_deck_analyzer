@@ -25,14 +25,30 @@ _BASIC_LAND_TYPES = ("plains", "island", "swamp", "mountain", "forest")
 _LAND_WORDS = ("land",) + _BASIC_LAND_TYPES
 _LAND_SEARCH_ALTERNATION = "|".join(_LAND_WORDS)
 
+# Subjects that mean the card is a "punisher" triggered by an *opponent's*
+# draw (Underworld Dreams: "whenever an opponent draws a card...") rather than
+# a draw the deck benefits from. Matched as fixed-width negative lookbehinds
+# right before "draws", so "target player draws"/"each player ... draws" (the
+# caster's own symmetric or targeted draw) still matches.
+_OPPONENT_DRAW_SUBJECTS = (
+    r"(?<!an opponent )",
+    r"(?<!each opponent )",
+    r"(?<!target opponent )",
+    r"(?<!another player )",
+    r"(?<!than you )",
+)
+_NOT_OPPONENT_DRAW = "".join(_OPPONENT_DRAW_SUBJECTS)
+
 # One readable registry: role -> the rules-text patterns that give it away.
 # Loose by design (they read printed text, not the rules engine), with three
 # exceptions: the protection patterns match only what a card *grants*, never a
 # creature that simply has hexproof, or the interaction count would fill up
-# with ordinary creatures; the draw pattern requires the bare "draw" form —
-# English gives "you draw"/"Draw a card" (imperative) that form, and reserves
-# "draws" for a third-person subject, so "an opponent draws a card" is never
-# mistaken for the deck's own draw; and the sacrifice pattern excludes a
+# with ordinary creatures; the draw pattern matches both "draw" (imperative,
+# "Draw a card") and third-person "draws" ("Target player draws two cards"),
+# since a symmetric wheel or a targeted draw spell is still the deck's own
+# draw — but excludes "draws" whose subject is an opponent (see
+# _OPPONENT_DRAW_SUBJECTS above), so a punisher payoff like Underworld Dreams
+# is never mistaken for a draw source; and the sacrifice pattern excludes a
 # sacrifice that pays for a mana ability, which is ramp, not interaction.
 ROLE_PATTERNS: dict[str, tuple[str, ...]] = {
     "ramp": (
@@ -43,8 +59,9 @@ ROLE_PATTERNS: dict[str, tuple[str, ...]] = {
         r"\bplay an additional land\b",
     ),
     "draw": (
-        r"\bdraw (a|one|two|three|four|five|six|seven|x|that many|\d+) cards?\b",
-        r"\bdraw cards equal to\b",
+        rf"\b{_NOT_OPPONENT_DRAW}draws? "
+        r"(a|one|two|three|four|five|six|seven|x|that many|\d+) cards?\b",
+        rf"\b{_NOT_OPPONENT_DRAW}draws? cards equal to\b",
         r"\binvestigate\b",
     ),
     "targeted_removal": (
