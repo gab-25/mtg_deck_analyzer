@@ -1,8 +1,6 @@
 {% comment %}
-The Statistics panel: mana curve, colored pips against colored sources, the
-color-fixing verdict, the functional role counts against the EDH baseline and
-the opening-hand odds. Every number is precomputed in the view; this file only
-lays them out.
+The Statistics panel: mana curve and the opening-hand odds. Every number is
+precomputed in the view; this file only lays them out.
 {% endcomment %}
 <div class="panel-card overflow-hidden">
     <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
@@ -28,71 +26,6 @@ lays them out.
         </div>
 
         <div>
-            <div class="mb-1.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Color fixing</div>
-            <div class="mb-3.5 text-[11px] text-txt3 font-light">
-                Sources needed to cast this deck’s most demanding card of each color on
-                curve, 90% of the time. A strict target, not a deckbuilding goal.
-            </div>
-            {% if not statistics.sources_known %}
-            <div class="mb-3.5 py-2 px-2.5 rounded-md border border-line2 text-[12px] text-txt3">
-                <span class="ms text-[15px]">info</span>
-                This deck was analyzed before mana sources were recorded. Re-analyze it to see them.
-            </div>
-            {% endif %}
-            <div class="flex flex-col gap-3">
-                {% for f in statistics.fixing %}
-                <div>
-                    <div class="flex items-center justify-between gap-2 mb-[5px] text-[13px]">
-                        <span class="flex items-center gap-2">
-                            <span class="pip" style="background:{{ f.hex }}"></span>
-                            <span class="text-txt2">{{ f.name }}</span>
-                            <span class="font-mono2 text-[11px] text-txt3">{{ f.pips }} pips</span>
-                        </span>
-                        <span class="font-mono2 font-bold text-[12px] {% if not f.sources_known or f.ok %}text-txt2{% else %}text-gold{% endif %}">
-                            {% if f.sources_known %}{{ f.sources }}{% else %}—{% endif %} / {{ f.required }}
-                        </span>
-                    </div>
-                    <div class="h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
-                        <div class="h-full rounded-full" style="background:{{ f.hex }};width:{{ f.pct }}%"></div>
-                    </div>
-                    {% if f.demand_card %}
-                    <div class="mt-1.5 text-[11px] text-txt3 font-light">
-                        {% if f.sources_known %}{% if f.ok %}Enough for{% else %}{{ f.shortfall }} short for{% endif %} {% endif %}{{ f.demand_card }} — {{ f.demand_pips }} pip{{ f.demand_pips|pluralize }} on turn {{ f.demand_turn }}.
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div>
-            <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Roles</div>
-            {# grid-template-columns inline: the compiled CSS ships no grid-cols-2. #}
-            <div class="grid gap-2.5" style="grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px">
-                {% for r in statistics.roles %}
-                <div class="flex justify-between text-[13px]">
-                    <span class="text-txt2">{{ r.label }}</span>
-                    <span class="font-mono2 font-bold text-[12px] text-txt3">{{ r.count }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="mt-3.5 pt-[13px] border-t border-line2 flex flex-col gap-2.5">
-                {% for b in statistics.baseline %}
-                <div class="flex justify-between items-center text-[13px]">
-                    <span class="text-txt2">{{ b.label }}</span>
-                    <span class="flex items-center gap-2">
-                        <span class="font-mono2 font-bold text-[12px]">{{ b.count }}</span>
-                        <span class="font-mono2 text-[11px] text-txt3">vs {{ b.range }}</span>
-                        {% if not b.ok %}
-                        <span class="chip">{% if b.delta > 0 %}+{% endif %}{{ b.delta }}</span>
-                        {% endif %}
-                    </span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div>
             <div class="mb-1.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Opening hand</div>
             <div class="mb-3.5 text-[11px] text-txt3 font-light">
                 Exact odds over a {{ statistics.library_size }}-card library, on the play.
@@ -115,14 +48,6 @@ lays them out.
                 <div class="flex justify-between text-[13px]">
                     <span class="text-txt2">Every land drop through turn {{ d.turn }}</span>
                     <span class="font-mono2 font-bold text-[12px] text-txt3">{{ d.pct }}%</span>
-                </div>
-                {% endfor %}
-            </div>
-            <div class="mt-3.5 pt-[13px] border-t border-line2 flex flex-col gap-2">
-                {% for r in statistics.opening_hand.roles %}
-                <div class="flex justify-between text-[13px]">
-                    <span class="text-txt2">{{ r.label }} by turn 3</span>
-                    <span class="font-mono2 font-bold text-[12px] text-txt3">{{ r.turn3_pct }}%</span>
                 </div>
                 {% endfor %}
             </div>

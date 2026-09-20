@@ -1,16 +1,14 @@
 """What the deck asks for in colored mana, and what it offers.
 
 Pure functions over the processed cards. Three counts read straight off the
-cards — the pips a deck's costs demand, the sources that can pay them and the
-mana curve — plus (see :mod:`.statistics`) the verdict that puts the first two
-next to each other.
+cards: the pips a deck's costs demand, the sources that can pay them and the
+mana curve.
 """
 
 import re
 
 from .cards import classify_card
 from .commander import WUBRG
-from .probability import min_successes_for
 
 _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
 
@@ -78,8 +76,7 @@ def card_pips(card_data: dict) -> dict:
     Every face that has a mana cost counts, so both halves of a split card are
     counted and a transform back (which has none) adds nothing. Both halves of
     an adventure or a modal DFC are genuinely castable, so their pips are
-    summed here too — see :func:`_hardest_cast` for why they are not paired
-    with the card's overall mana value.
+    summed here too.
     """
     pips = _empty_counts()
     for face in card_data.get("faces", []):
@@ -154,97 +151,11 @@ def mana_curve(processed_cards: list) -> list:
     return buckets
 
 
-# The opening hand, and the confidence the color-fixing verdict is held to.
+# The opening hand's size: the cards a player starts with before the London
+# mulligan considerations even come up.
 OPENING_HAND_SIZE = 7
-FIXING_CONFIDENCE = 0.90
 
 
 def cards_seen(turn: int) -> int:
     """Cards seen by ``turn`` on the play: the opening seven, plus one a turn."""
     return OPENING_HAND_SIZE + max(0, turn - 1)
-
-
-def sources_required(pips: int, turn: int, library_size: int) -> int | None:
-    """Sources needed to have ``pips`` of them in hand by ``turn``.
-
-    This is Karsten's question — "how many sources does this card need to be
-    castable on curve?" — answered against *this* deck's library instead of a
-    table printed for 60-card decks: the fewest sources that put ``pips`` of
-    them among the cards seen by then, :data:`FIXING_CONFIDENCE` of the time.
-
-    A strict threshold, and stricter than the published tables, which also
-    model the London mulligan and fetchlands. ``None`` when no count reaches
-    it, which only happens on a library too small to hold the requirement.
-    """
-    return min_successes_for(
-        library_size, cards_seen(turn), pips, FIXING_CONFIDENCE
-    )
-
-
-def _hardest_cast(processed_cards: list, color: str, library_size: int) -> dict:
-    """The face that asks the most of ``color``, and what it asks for.
-
-    "Most" is measured in sources required, not in pips: a triple-pip seven-drop
-    has four extra turns to find its mana, and is an easier cast than a
-    double-pip two-drop.
-
-    Judged **per face**, not per card: for a split card Scryfall's ``cmc`` is
-    the sum of both halves, so pairing a card's summed pips with its ``cmc``
-    is fine. For an adventure or a modal DFC, ``cmc`` is the *front face only*
-    — pairing the summed pips with it would pair one face's mana value with
-    the other face's colors. Each face is judged on its own cost instead.
-    """
-    hardest = {"demand_card": "", "demand_pips": 0, "demand_turn": 0, "required": 0}
-    for item in processed_cards:
-        data = item["data"]
-        for face in data.get("faces", []):
-            mana_cost = face.get("mana_cost") or ""
-            pips = _pips_in_cost(mana_cost)[color]
-            if not pips:
-                continue
-            # A face cannot be cast before its own mana value allows.
-            turn = max(1, _face_mana_value(mana_cost))
-            required = sources_required(pips, turn, library_size)
-            # An unreachable requirement outranks every reachable one.
-            if required is None or hardest["required"] is None:
-                better = required is None
-            else:
-                better = required > hardest["required"]
-            if better:
-                hardest = {
-                    "demand_card": data.get("name", ""),
-                    "demand_pips": pips,
-                    "demand_turn": turn,
-                    "required": required,
-                }
-    return hardest
-
-
-def color_fixing(processed_cards: list, library_size: int) -> list:
-    """Per color: pips asked for, sources offered and the gap between them.
-
-    One entry per color the deck touches at all, in WUBRG order. ``shortfall``
-    is how many sources are missing (0 when the deck is fine, ``None`` when the
-    requirement cannot be met at all).
-    """
-    pips = deck_pips(processed_cards)
-    sources = deck_sources(processed_cards)
-
-    entries = []
-    for color in WUBRG:
-        if not pips[color] and not sources[color]:
-            continue
-        hardest = _hardest_cast(processed_cards, color, library_size)
-        required = hardest["required"]
-        entries.append(
-            {
-                "color": color,
-                "pips": pips[color],
-                "sources": sources[color],
-                "shortfall": (
-                    None if required is None else max(0, required - sources[color])
-                ),
-                **hardest,
-            }
-        )
-    return entries

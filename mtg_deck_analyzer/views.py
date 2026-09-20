@@ -114,65 +114,9 @@ def _value_stats(stored_cards: list, total_value: float) -> dict:
     }
 
 
-# Full color names, for a fixing line that reads as a sentence.
-COLOR_NAMES = {
-    "W": "White",
-    "U": "Blue",
-    "B": "Black",
-    "R": "Red",
-    "G": "Green",
-}
-
-
 def _pct(probability: float) -> int:
     """A probability as a whole percentage, which is all the panel shows."""
     return round(probability * 100)
-
-
-def _fixing_rows(fixing: list, sources_known: bool) -> list:
-    """Color-fixing entries, with the color's name and how far the deck gets.
-
-    ``sources_known`` is false for a deck analyzed before ``produced_mana``
-    was recorded: its sources are genuinely 0, not "the deck has none", so the
-    template must not render a source count or a shortfall verdict for it.
-    """
-    rows = []
-    for entry in fixing:
-        required = entry["required"]
-        rows.append(
-            {
-                **entry,
-                "name": COLOR_NAMES[entry["color"]],
-                "hex": COLOR_HEX[entry["color"]],
-                "sources_known": sources_known,
-                # Nothing required means nothing to fall short of.
-                "pct": (
-                    min(100, round(entry["sources"] / required * 100))
-                    if required
-                    else 100
-                ),
-                "ok": entry["shortfall"] == 0,
-            }
-        )
-    return rows
-
-
-def _baseline_rows(baseline: list) -> list:
-    """Baseline entries, with the target as a range and a within/outside flag."""
-    return [
-        {**entry, "range": f"{entry['low']}–{entry['high']}", "ok": entry["delta"] == 0}
-        for entry in baseline
-    ]
-
-
-# The turn the panel's "by turn N" role odds line reports, chosen by value so
-# a reorder of statistics.ROLE_TURNS can't silently point it at a different turn.
-ROLE_ODDS_TURN = 3
-
-
-def _turn_pct(odds: list, turn: int) -> int:
-    """The percentage for the entry whose ``turn`` matches, looked up by value."""
-    return next(_pct(entry["p"]) for entry in odds if entry["turn"] == turn)
 
 
 def _opening_hand_rows(opening_hand: dict) -> dict:
@@ -187,19 +131,6 @@ def _opening_hand_rows(opening_hand: dict) -> dict:
         "land_drops": [
             {"turn": entry["turn"], "pct": _pct(entry["p"])}
             for entry in opening_hand["land_drops"]
-        ],
-        "roles": [
-            {
-                "key": entry["key"],
-                "label": entry["label"],
-                "count": entry["count"],
-                "odds": [
-                    {"turn": odd["turn"], "pct": _pct(odd["p"])}
-                    for odd in entry["odds"]
-                ],
-                "turn3_pct": _turn_pct(entry["odds"], ROLE_ODDS_TURN),
-            }
-            for entry in opening_hand["roles"]
         ],
     }
 
@@ -222,9 +153,6 @@ def _statistics_panel(deck) -> dict | None:
         "land_count": stats["land_count"],
         "sources_known": stats["sources_known"],
         "curve": curve_bars(stats["curve"]),
-        "fixing": _fixing_rows(stats["fixing"], stats["sources_known"]),
-        "roles": stats["roles"],
-        "baseline": _baseline_rows(stats["baseline"]),
         "opening_hand": _opening_hand_rows(stats["opening_hand"]),
     }
 

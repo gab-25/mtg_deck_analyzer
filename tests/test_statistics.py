@@ -46,7 +46,7 @@ class TestShape:
     def test_an_empty_deck_does_not_explode(self):
         stats = deck_statistics([])
         assert stats["library_size"] == 0
-        assert stats["fixing"] == []
+        assert stats["sources"] == {c: 0 for c in "WUBRG"}
 
 
 class TestCurve:
@@ -75,17 +75,16 @@ class TestSourcesKnown:
         assert stats["sources"]["G"] == 0
 
 
-class TestRoles:
-    def test_roles_are_labelled_and_ordered(self):
-        from mtg_deck_analyzer.domain.constants import ROLE_ORDER
+class TestRemovedBlocks:
+    """Fixing and role tagging are gone; the panel no longer reports them."""
 
-        roles = deck_statistics(_deck())["roles"]
-        assert [entry["key"] for entry in roles] == ROLE_ORDER
-        assert roles[0]["label"] == "Ramp"
+    def test_the_statistics_carry_no_fixing_or_roles(self):
+        stats = deck_statistics(_deck())
+        for gone in ("fixing", "roles", "baseline"):
+            assert gone not in stats
 
-    def test_the_draw_role_is_counted(self):
-        roles = {e["key"]: e for e in deck_statistics(_deck())["roles"]}
-        assert roles["draw"]["count"] == 10
+    def test_the_opening_hand_carries_no_role_odds(self):
+        assert "roles" not in deck_statistics(_deck())["opening_hand"]
 
 
 class TestOpeningHand:
@@ -107,21 +106,6 @@ class TestOpeningHand:
         assert drops[1] == pytest.approx(0.9707, abs=1e-4)
         assert drops[3] == pytest.approx(0.7482, abs=1e-4)
         assert drops[5] == pytest.approx(0.4202, abs=1e-4)
-
-    def test_role_odds_rise_with_every_draw_step(self):
-        hand = deck_statistics(_deck())["opening_hand"]
-        draw = next(entry for entry in hand["roles"] if entry["key"] == "draw")
-        odds = {entry["turn"]: entry["p"] for entry in draw["odds"]}
-        assert draw["count"] == 10
-        assert odds[1] == pytest.approx(0.5372, abs=1e-4)
-        assert odds[3] == pytest.approx(0.6328, abs=1e-4)
-        assert odds[5] == pytest.approx(0.7103, abs=1e-4)
-
-    def test_a_role_the_deck_does_not_play_is_never_drawn(self):
-        hand = deck_statistics(_deck())["opening_hand"]
-        tutor = next(entry for entry in hand["roles"] if entry["key"] == "tutor")
-        assert tutor["count"] == 0
-        assert all(entry["p"] == 0.0 for entry in tutor["odds"])
 
 
 class TestCurveBars:

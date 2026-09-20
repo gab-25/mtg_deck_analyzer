@@ -2,7 +2,6 @@
 
 import datetime
 import html
-from itertools import zip_longest
 
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
@@ -201,18 +200,6 @@ def _curve_bar(pct: int) -> Table:
     return bar
 
 
-# The turn the "At least one by turn N" role-odds line reports.
-_ROLE_ODDS_TURN = 3
-
-
-def _p_at_turn(odds: list, turn: int) -> float:
-    """The probability for the entry whose ``turn`` matches, looked up by value
-    rather than position — statistics.ROLE_TURNS is not guaranteed to keep 3
-    at a fixed index.
-    """
-    return next(entry["p"] for entry in odds if entry["turn"] == turn)
-
-
 _SECTION_TABLE_STYLE = TableStyle(
     [
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -223,39 +210,9 @@ _SECTION_TABLE_STYLE = TableStyle(
     ]
 )
 
-# The roles grid and the baseline rows below it, laid out as the deck page lays
-# them out: two columns of label/count pairs, then a rule, then one row per
-# tracked role with its target range beside the count.
-_ROLE_LABEL_W, _ROLE_COUNT_W = 125, 32
-_ROLES_GRID_STYLE = TableStyle(
-    [
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        # The count sits against its label, as the flex row does on the page.
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("ALIGN", (3, 0), (3, -1), "RIGHT"),
-    ]
-)
-_BASELINE_STYLE = TableStyle(
-    [
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        # The page separates the two blocks with a rule; so does this.
-        ("LINEABOVE", (0, 0), (-1, 0), 0.5, HexColor("#e2e8f0")),
-        ("TOPPADDING", (0, 0), (-1, 0), 6),
-    ]
-)
-
 
 def create_statistics_flowables(statistics: dict, styles: dict) -> list:
-    """The "Deck Statistics" section: curve, fixing, roles and opening hand.
+    """The "Deck Statistics" section: curve and opening hand.
 
     The same numbers the deck page shows, laid out with the flowables already
     used elsewhere in this file — the bars are tables with a colored background
@@ -283,109 +240,7 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     )
     flowables.append(Spacer(1, 8))
 
-    # 2. Colored pips against colored sources, and what the deck's hardest
-    #    cast in each color asks for.
-    flowables.append(
-        Paragraph(
-            "<b>Color fixing</b> &mdash; sources needed to cast the most "
-            "demanding card of each color on curve, 90% of the time",
-            text,
-        )
-    )
-    sources_known = statistics["sources_known"]
-    fixing_rows = [
-        [
-            Paragraph("<b>Color</b>", text),
-            Paragraph("<b>Pips</b>", text),
-            Paragraph("<b>Sources</b>", text),
-            Paragraph("<b>Needed</b>", text),
-            Paragraph("<b>Short</b>", text),
-            Paragraph("<b>Hardest cast</b>", text),
-        ]
-    ]
-    for entry in statistics["fixing"]:
-        demand = (
-            f"{html.escape(entry['demand_card'])} "
-            f"({entry['demand_pips']} pips, turn {entry['demand_turn']})"
-            if entry["demand_card"]
-            else "&mdash;"
-        )
-        # Sources are unknown for a deck analyzed before produced_mana was
-        # recorded: a real 0 there is not the same as "the deck has none".
-        sources_cell = str(entry["sources"]) if sources_known else "&mdash;"
-        shortfall_cell = (
-            str(entry["shortfall"])
-            if sources_known and entry["shortfall"] is not None
-            else "&mdash;"
-        )
-        fixing_rows.append(
-            [
-                Paragraph(entry["color"], text),
-                Paragraph(str(entry["pips"]), text),
-                Paragraph(sources_cell, text),
-                Paragraph(str(entry["required"]), text),
-                Paragraph(shortfall_cell, text),
-                Paragraph(demand, text),
-            ]
-        )
-    flowables.append(
-        _plain_table(fixing_rows, [35, 35, 45, 45, 45, 215], _SECTION_TABLE_STYLE)
-    )
-    if not statistics["sources_known"]:
-        flowables.append(
-            Paragraph(
-                "<i>Analyzed before mana sources were recorded; re-analyze the "
-                "deck to see them.</i>",
-                text,
-            )
-        )
-    flowables.append(Spacer(1, 8))
-
-    # 3. Functional roles, and the deck against the EDH baseline. Laid out as
-    #    the deck page lays it out: a two-column grid of counts, a rule, then
-    #    the baseline rows. Printing both as bullet lists put two near-identical
-    #    lines side by side, which read as a duplicate rather than as two blocks.
-    flowables.append(Paragraph("<b>Roles</b>", text))
-    roles = statistics["roles"]
-    grid_rows = []
-    for left, right in zip_longest(roles[::2], roles[1::2]):
-        grid_rows.append(
-            [
-                Paragraph(left["label"], text),
-                Paragraph(str(left["count"]), text),
-                Paragraph(right["label"], text) if right else "",
-                Paragraph(str(right["count"]), text) if right else "",
-            ]
-        )
-    flowables.append(
-        _plain_table(
-            grid_rows,
-            [_ROLE_LABEL_W, _ROLE_COUNT_W, _ROLE_LABEL_W, _ROLE_COUNT_W],
-            _ROLES_GRID_STYLE,
-        )
-    )
-
-    baseline_rows = []
-    for entry in statistics["baseline"]:
-        # The page shows the delta only when the deck sits outside the range.
-        delta = entry["delta"]
-        gap = f"{'+' if delta > 0 else ''}{delta}" if delta else ""
-        baseline_rows.append(
-            [
-                Paragraph(entry["label"], text),
-                Paragraph(str(entry["count"]), text),
-                Paragraph(
-                    f"vs {entry['low']}&ndash;{entry['high']}", text
-                ),
-                Paragraph(gap, text),
-            ]
-        )
-    flowables.append(
-        _plain_table(baseline_rows, [_ROLE_LABEL_W, _ROLE_COUNT_W, 60, 40], _BASELINE_STYLE)
-    )
-    flowables.append(Spacer(1, 8))
-
-    # 4. Opening hand, computed rather than simulated.
+    # 2. Opening hand, computed rather than simulated.
     hand = statistics["opening_hand"]
     flowables.append(
         Paragraph(
@@ -410,14 +265,6 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
         for entry in hand["land_drops"]
     )
     flowables.append(Paragraph(f"Every land drop through &mdash; {drops_line}", text))
-    roles_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{entry['label']}:</b> "
-        f"{round(_p_at_turn(entry['odds'], _ROLE_ODDS_TURN) * 100)}%"
-        for entry in hand["roles"]
-    )
-    flowables.append(
-        Paragraph(f"At least one by turn {_ROLE_ODDS_TURN} &mdash; {roles_line}", text)
-    )
     flowables.append(Spacer(1, 8))
 
     return flowables

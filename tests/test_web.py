@@ -1560,35 +1560,6 @@ class TestStatisticsPanel:
         assert isinstance(keepable, int)
         assert 0 <= keepable <= 100
 
-    def test_the_turn3_odds_are_selected_by_turn_value_not_position(self, client):
-        """Reorders each role's odds so turn 3 is not at index 1, proving the
-        "by turn 3" figure is looked up by turn rather than by position —
-        the panel would otherwise silently break if ROLE_TURNS were reordered.
-        """
-        from mtg_deck_analyzer.models import Deck
-
-        deck = self._deck(client)
-        stats = dict(deck.statistics)
-        stats["opening_hand"] = dict(stats["opening_hand"])
-        order = {1: 0, 5: 1, 3: 2}  # turn 3 now at index 2, not 1
-        reordered_roles = [
-            {**role, "odds": sorted(role["odds"], key=lambda o: order[o["turn"]])}
-            for role in stats["opening_hand"]["roles"]
-        ]
-        stats["opening_hand"]["roles"] = reordered_roles
-        Deck.objects.filter(pk=deck.id).update(statistics=stats)
-
-        panel = client.get(f"/decks/{deck.id}").context["statistics"]
-        for row, original in zip(panel["opening_hand"]["roles"], reordered_roles):
-            turn3 = next(o for o in original["odds"] if o["turn"] == 3)
-            assert row["turn3_pct"] == round(turn3["p"] * 100)
-
-    def test_a_freshly_analyzed_deck_reports_its_sources(self, client):
-        deck = self._deck(client)
-        panel = client.get(f"/decks/{deck.id}").context["statistics"]
-
-        assert panel["sources_known"] is True
-
     def test_a_deck_without_stored_statistics_still_gets_a_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 
@@ -1604,63 +1575,6 @@ class TestStatisticsPanel:
         panel = client.get(f"/decks/{deck.id}").context["statistics"]
         assert panel["curve"]
         assert panel["sources_known"] is False
-
-    def test_unknown_sources_do_not_render_a_false_shortfall_claim(self, client):
-        from mtg_deck_analyzer.models import Deck
-
-        deck = self._deck(client)
-        # A deck analyzed before produced_mana existed, with a real colored
-        # pip demand: nothing carries produced_mana, so sources are unknown.
-        cards = [
-            {
-                "quantity": 1,
-                "is_commander": False,
-                "data": {
-                    "name": "Blue Spell",
-                    "type_line": "Instant",
-                    "cmc": 1.0,
-                    "price_eur": 0.0,
-                    "image_paths": [],
-                    "faces": [
-                        {
-                            "name": "Blue Spell",
-                            "mana_cost": "{U}",
-                            "type_line": "Instant",
-                            "rules_text": "",
-                        }
-                    ],
-                },
-            },
-            {
-                "quantity": 38,
-                "is_commander": False,
-                "data": {
-                    "name": "Forest",
-                    "type_line": "Basic Land — Forest",
-                    "cmc": 0.0,
-                    "price_eur": 0.0,
-                    "image_paths": [],
-                    "faces": [
-                        {
-                            "name": "Forest",
-                            "mana_cost": "",
-                            "type_line": "Basic Land — Forest",
-                            "rules_text": "",
-                        }
-                    ],
-                },
-            },
-        ]
-        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=cards)
-
-        response = client.get(f"/decks/{deck.id}")
-        body = response.content.decode()
-        panel = response.context["statistics"]
-
-        assert panel["sources_known"] is False
-        blue = next(row for row in panel["fixing"] if row["color"] == "U")
-        assert blue["required"] > 0
-        assert "short for" not in body
 
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
