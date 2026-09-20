@@ -182,21 +182,31 @@ def _plain_table(data: list, col_widths: list, style: TableStyle) -> Table:
     return table
 
 
-def _curve_bar(pct: int) -> Table:
-    """One horizontal bar, as wide as its bucket is tall."""
-    bar = Table([[""]], colWidths=[max(1, round(_CURVE_BAR_WIDTH * pct / 100))],
-                rowHeights=[7])
-    bar.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), HexColor("#4a5568")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]
-        )
-    )
+# Colours for the two halves of a curve bar, matching the deck page's legend.
+_PERMANENT_COLOR = HexColor("#7c5cff")
+_SPELL_COLOR = HexColor("#6b7280")
+
+
+def _stacked_bar(permanents: int, spells: int, peak: int) -> Table:
+    """One curve bar: permanents then spells, each as wide as its count."""
+    unit = _CURVE_BAR_WIDTH / (peak or 1)
+    widths, styles, row = [], [], []
+    for count, color in ((permanents, _PERMANENT_COLOR), (spells, _SPELL_COLOR)):
+        if count <= 0:
+            continue
+        widths.append(max(1, round(count * unit)))
+        styles.append(("BACKGROUND", (len(row), 0), (len(row), 0), color))
+        row.append("")
+    if not row:
+        widths, row = [1], [""]
+
+    bar = Table([row], colWidths=widths, rowHeights=[7], hAlign="LEFT")
+    bar.setStyle(TableStyle(styles + [
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
     return bar
 
 
@@ -212,12 +222,10 @@ _SECTION_TABLE_STYLE = TableStyle(
 
 
 def create_statistics_flowables(statistics: dict, styles: dict) -> list:
-    """The "Deck Statistics" section: curve and opening hand.
+    """The "Deck Statistics" section: curve, mana values, colours, opening hand.
 
-    The same numbers the deck page shows, laid out with the flowables already
-    used elsewhere in this file — the bars are tables with a colored background
-    as wide as the value, so no charting library is needed. Returns an empty
-    list for a deck with no cards, so the caller can simply extend with it.
+    The same numbers the deck page shows. Returns an empty list for a deck with
+    no cards, so the caller can extend with it unconditionally.
     """
     if not statistics.get("library_size"):
         return []
@@ -225,46 +233,58 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     text = styles["body"]
     flowables = [Paragraph("Deck Statistics", styles["h2"]), Spacer(1, 4)]
 
-    # 1. Mana curve, lands excluded.
-    flowables.append(Paragraph("<b>Mana curve</b> (non-lands)", text))
-    curve_rows = [
-        [
-            Paragraph(entry["label"], text),
-            _curve_bar(entry["pct"]),
-            Paragraph(str(entry["total"]), text),
-        ]
-        for entry in curve_bars(statistics["curve"])
-    ]
-    flowables.append(
-        _plain_table(curve_rows, [22, _CURVE_BAR_WIDTH + 6, 30], _SECTION_TABLE_STYLE)
-    )
+    # 1. Mana curve, permanents against spells — same legend as the deck page.
+    caption = Paragraph(
+        "<b>Mana curve</b> &mdash; "
+        "<font color='#7c5cff'>Permanents</font> and "
+        "<font color='#6b7280'>Spells</font>, lands excluded", text)
+    flowables.append(_plain_table(
+        [[caption]], [_CURVE_BAR_WIDTH + 58], _SECTION_TABLE_STYLE))
+    bars = curve_bars(statistics["curve"])
+    peak = max((b["total"] for b in bars), default=0)
+    flowables.append(_plain_table(
+        [[Paragraph(b["label"], text),
+          _stacked_bar(b["permanents"], b["spells"], peak),
+          Paragraph(str(b["total"]), text)] for b in bars],
+        [22, _CURVE_BAR_WIDTH + 6, 30], _SECTION_TABLE_STYLE))
     flowables.append(Spacer(1, 8))
 
-    # 2. Opening hand, computed rather than simulated.
+    # 2. The mana-value sentence.
+    mv = statistics["mana_values"]
+    flowables.append(Paragraph(
+        f"<b>Mana value</b> &mdash; average {mv['average']:.2f} with lands and "
+        f"{mv['average_without_lands']:.2f} without; median {mv['median']:g} "
+        f"and {mv['median_without_lands']:g}; total {mv['total']}", text))
+    flowables.append(Spacer(1, 8))
+
+    # 3. One row per colour.
+    flowables.append(Paragraph("<b>Colors</b>", text))
+    rows = [[Paragraph(f"<b>{h}</b>", text) for h in
+             ("Color", "Cards", "Symbols", "Production", "On lands")]]
+    for entry in statistics["colors"]:
+        rows.append([Paragraph(entry["key"], text),
+                     Paragraph(f"{entry['card_pct']}%", text),
+                     Paragraph(f"{entry['symbol_pct']}%", text),
+                     Paragraph(f"{entry['production_pct']}%", text),
+                     Paragraph(f"{entry['lands_pct']}%", text)])
+    flowables.append(_plain_table(rows, [45, 50, 55, 65, 55],
+                                  _SECTION_TABLE_STYLE))
+    flowables.append(Spacer(1, 8))
+
+    # 4. Opening hand, computed rather than simulated.
     hand = statistics["opening_hand"]
-    flowables.append(
-        Paragraph(
-            f"<b>Opening hand</b> &mdash; a {hand['hand_size']}-card hand off a "
-            f"{statistics['library_size']}-card library, on the play",
-            text,
-        )
-    )
+    flowables.append(Paragraph(
+        f"<b>Opening hand</b> &mdash; a {hand['hand_size']}-card hand off a "
+        f"{statistics['library_size']}-card library, on the play", text))
     lands_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{entry['lands']} lands:</b> {round(entry['p'] * 100)}%"
-        for entry in hand["land_counts"]
-    )
-    flowables.append(
-        Paragraph(
-            f"{lands_line} &nbsp;&bull;&nbsp; <b>two to five:</b> "
-            f"{round(hand['keepable'] * 100)}%",
-            text,
-        )
-    )
-    drops_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>T{entry['turn']}:</b> {round(entry['p'] * 100)}%"
-        for entry in hand["land_drops"]
-    )
-    flowables.append(Paragraph(f"Every land drop through &mdash; {drops_line}", text))
+        f"<b>{e['lands']} lands:</b> {round(e['p'] * 100)}%"
+        for e in hand["land_counts"])
+    flowables.append(Paragraph(
+        f"{lands_line} &nbsp;&bull;&nbsp; <b>two to five:</b> "
+        f"{round(hand['keepable'] * 100)}%", text))
+    drops = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>T{e['turn']}:</b> {round(e['p'] * 100)}%" for e in hand["land_drops"])
+    flowables.append(Paragraph(f"Every land drop through &mdash; {drops}", text))
     flowables.append(Spacer(1, 8))
 
     return flowables
