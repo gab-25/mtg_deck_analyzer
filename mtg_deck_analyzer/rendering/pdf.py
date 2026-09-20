@@ -2,6 +2,7 @@
 
 import datetime
 import html
+from itertools import zip_longest
 
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
@@ -171,8 +172,13 @@ _CURVE_BAR_WIDTH = 240
 
 
 def _plain_table(data: list, col_widths: list, style: TableStyle) -> Table:
-    """A Table with the section's shared padding already applied."""
-    table = Table(data, colWidths=col_widths)
+    """A Table with the section's shared padding and alignment already applied.
+
+    Left-aligned rather than Platypus's centered default, so the section's
+    tables line up with each other and with their headings however wide each
+    one is — the way the deck page stacks them.
+    """
+    table = Table(data, colWidths=col_widths, hAlign="LEFT")
     table.setStyle(style)
     return table
 
@@ -214,6 +220,36 @@ _SECTION_TABLE_STYLE = TableStyle(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]
+)
+
+# The roles grid and the baseline rows below it, laid out as the deck page lays
+# them out: two columns of label/count pairs, then a rule, then one row per
+# tracked role with its target range beside the count.
+_ROLE_LABEL_W, _ROLE_COUNT_W = 125, 32
+_ROLES_GRID_STYLE = TableStyle(
+    [
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        # The count sits against its label, as the flex row does on the page.
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("ALIGN", (3, 0), (3, -1), "RIGHT"),
+    ]
+)
+_BASELINE_STYLE = TableStyle(
+    [
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        # The page separates the two blocks with a rule; so does this.
+        ("LINEABOVE", (0, 0), (-1, 0), 0.5, HexColor("#e2e8f0")),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
     ]
 )
 
@@ -305,18 +341,48 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
         )
     flowables.append(Spacer(1, 8))
 
-    # 3. Functional roles, and the deck against the EDH baseline.
+    # 3. Functional roles, and the deck against the EDH baseline. Laid out as
+    #    the deck page lays it out: a two-column grid of counts, a rule, then
+    #    the baseline rows. Printing both as bullet lists put two near-identical
+    #    lines side by side, which read as a duplicate rather than as two blocks.
     flowables.append(Paragraph("<b>Roles</b>", text))
-    role_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{entry['label']}:</b> {entry['count']}" for entry in statistics["roles"]
+    roles = statistics["roles"]
+    grid_rows = []
+    for left, right in zip_longest(roles[::2], roles[1::2]):
+        grid_rows.append(
+            [
+                Paragraph(left["label"], text),
+                Paragraph(str(left["count"]), text),
+                Paragraph(right["label"], text) if right else "",
+                Paragraph(str(right["count"]), text) if right else "",
+            ]
+        )
+    flowables.append(
+        _plain_table(
+            grid_rows,
+            [_ROLE_LABEL_W, _ROLE_COUNT_W, _ROLE_LABEL_W, _ROLE_COUNT_W],
+            _ROLES_GRID_STYLE,
+        )
     )
-    flowables.append(Paragraph(role_line, text))
-    baseline_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{entry['label']}:</b> {entry['count']} (baseline {entry['low']}"
-        f"&ndash;{entry['high']})"
-        for entry in statistics["baseline"]
+
+    baseline_rows = []
+    for entry in statistics["baseline"]:
+        # The page shows the delta only when the deck sits outside the range.
+        delta = entry["delta"]
+        gap = f"{'+' if delta > 0 else ''}{delta}" if delta else ""
+        baseline_rows.append(
+            [
+                Paragraph(entry["label"], text),
+                Paragraph(str(entry["count"]), text),
+                Paragraph(
+                    f"vs {entry['low']}&ndash;{entry['high']}", text
+                ),
+                Paragraph(gap, text),
+            ]
+        )
+    flowables.append(
+        _plain_table(baseline_rows, [_ROLE_LABEL_W, _ROLE_COUNT_W, 60, 40], _BASELINE_STYLE)
     )
-    flowables.append(Paragraph(baseline_line, text))
     flowables.append(Spacer(1, 8))
 
     # 4. Opening hand, computed rather than simulated.

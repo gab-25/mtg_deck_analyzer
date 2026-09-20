@@ -338,6 +338,38 @@ class TestStatisticsSection:
         assert out.exists()
         assert out.stat().st_size > 0
 
+    def _table_rows(self, flowables):
+        """Every section table's cell text, as lists of strings."""
+        rows = []
+        for flowable in flowables:
+            for row in getattr(flowable, "_cellvalues", []):
+                rows.append(
+                    [getattr(cell, "text", "") if cell else "" for cell in row]
+                )
+        return rows
+
+    def test_the_roles_grid_pairs_two_roles_per_row(self):
+        # The deck page lays the six roles out in two columns; so does this.
+        rows = self._table_rows(
+            create_statistics_flowables(self._statistics(), _build_styles())
+        )
+        grid = [r for r in rows if r and r[0] == "Ramp" and len(r) == 4]
+        assert grid, "no roles grid row found"
+        assert grid[0][2] == "Card draw"
+
+    def test_the_baseline_shows_a_delta_only_outside_its_range(self):
+        # Mirrors the page's `{% if not b.ok %}` guard on the delta chip.
+        rows = self._table_rows(
+            create_statistics_flowables(self._statistics(), _build_styles())
+        )
+        baseline = {r[0]: r for r in rows if len(r) == 4 and r[2].startswith("vs ")}
+
+        # 38 lands against a 36-38 baseline: inside, so no delta.
+        assert baseline["Lands"][1] == "38"
+        assert baseline["Lands"][3] == ""
+        # No ramp at all against a 10-12 baseline: outside, so the gap shows.
+        assert baseline["Ramp"][3] == "-10"
+
     def test_generate_pdf_recomputes_when_given_none(self, tmp_path):
         # An export of a deck analyzed before the statistics existed.
         out = tmp_path / "deck.pdf"
