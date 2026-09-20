@@ -252,6 +252,36 @@ class TestStatisticsSection:
         assert "short for" not in text
         assert "&mdash;" in text
 
+    def test_the_short_column_reports_the_shortfall(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+
+        # Two blue pips, no blue sources: a genuine, known shortfall.
+        stats = deck_statistics(
+            [
+                {"quantity": 1, "is_commander": False,
+                 "data": {"name": "Blue Spell", "type_line": "Instant", "cmc": 2.0,
+                          "faces": [{"name": "Blue Spell", "mana_cost": "{U}{U}",
+                                     "type_line": "Instant", "rules_text": ""}]}},
+                {"quantity": 38, "is_commander": False,
+                 "data": {"name": "Forest", "type_line": "Basic Land — Forest",
+                          "cmc": 0.0, "produced_mana": ["G"],
+                          "faces": [{"name": "Forest", "mana_cost": "",
+                                     "type_line": "Basic Land — Forest",
+                                     "rules_text": ""}]}},
+            ]
+        )
+        assert stats["sources_known"] is True
+        blue = next(e for e in stats["fixing"] if e["color"] == "U")
+        assert blue["shortfall"] == 15
+
+        flowables = create_statistics_flowables(stats, _build_styles())
+        fixing_table = next(
+            f for f in flowables if isinstance(f, Table) and "Blue Spell" in _stats_text(f)
+        )
+        text = _stats_text(fixing_table)
+        assert "<b>Short</b>" in text
+        assert "15" in text
+
     def test_the_turn3_role_percentage_is_selected_by_turn_value(self):
         from mtg_deck_analyzer.domain.statistics import deck_statistics
 

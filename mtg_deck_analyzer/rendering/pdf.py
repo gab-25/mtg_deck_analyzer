@@ -263,6 +263,7 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
             Paragraph("<b>Pips</b>", text),
             Paragraph("<b>Sources</b>", text),
             Paragraph("<b>Needed</b>", text),
+            Paragraph("<b>Short</b>", text),
             Paragraph("<b>Hardest cast</b>", text),
         ]
     ]
@@ -276,17 +277,23 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
         # Sources are unknown for a deck analyzed before produced_mana was
         # recorded: a real 0 there is not the same as "the deck has none".
         sources_cell = str(entry["sources"]) if sources_known else "&mdash;"
+        shortfall_cell = (
+            str(entry["shortfall"])
+            if sources_known and entry["shortfall"] is not None
+            else "&mdash;"
+        )
         fixing_rows.append(
             [
                 Paragraph(entry["color"], text),
                 Paragraph(str(entry["pips"]), text),
                 Paragraph(sources_cell, text),
                 Paragraph(str(entry["required"]), text),
+                Paragraph(shortfall_cell, text),
                 Paragraph(demand, text),
             ]
         )
     flowables.append(
-        _plain_table(fixing_rows, [40, 40, 50, 50, 240], _SECTION_TABLE_STYLE)
+        _plain_table(fixing_rows, [35, 35, 45, 45, 45, 215], _SECTION_TABLE_STYLE)
     )
     if not statistics["sources_known"]:
         flowables.append(
