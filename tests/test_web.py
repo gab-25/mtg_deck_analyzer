@@ -53,6 +53,15 @@ def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
             "total_value_eur": 0.10,
             "category_counts": {"Land": 2},
             "statistics": deck_statistics(processed_cards),
+            "bracket": {
+                "bracket": 2,
+                "label": "Core",
+                "signals": {
+                    "game_changers": [],
+                    "mass_land_denial": [],
+                    "extra_turns": [],
+                },
+            },
         },
     }
 
@@ -1748,3 +1757,34 @@ class TestStatisticsPanel:
         assert black["symbol_pct"] == 0
         assert black["production_pct"] > 0
         assert black["used"] is False
+def test_analysis_persists_the_bracket_on_the_deck(monkeypatch):
+    from mtg_deck_analyzer import views
+    from mtg_deck_analyzer.models import Deck
+
+    deck = Deck.objects.create(name="Bracket deck", raw_decklist="1 Forest")
+
+    def fake_analyze(decklist, api_key=None, cache=None, progress=None, fmt=None):
+        return {
+            "processed_cards": [],
+            "deck_analysis": None,
+            "stats": {
+                "commanders": [],
+                "color_identity": [],
+                "total_cards": 0,
+                "total_value_eur": 0.0,
+                "category_counts": {},
+                "statistics": {},
+                "bracket": {"bracket": 3, "label": "Upgraded", "signals": {
+                    "game_changers": ["Rhystic Study"],
+                    "mass_land_denial": [],
+                    "extra_turns": [],
+                }},
+            },
+        }
+
+    monkeypatch.setattr(views, "analyze_decklist", fake_analyze)
+    views._run_analysis(deck.id, "1 Forest", None, "commander")
+
+    deck.refresh_from_db()
+    assert deck.bracket["bracket"] == 3
+    assert deck.bracket["signals"]["game_changers"] == ["Rhystic Study"]

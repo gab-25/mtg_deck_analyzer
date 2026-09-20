@@ -86,6 +86,11 @@ class Deck(models.Model):
     # a blob from before the current shape is skipped by both renderers
     # until ``manage.py recompute_statistics`` refills it.
     statistics = models.JSONField(default=dict)
+    # Estimated Commander Bracket: ``{"bracket": int, "label": str,
+    # "signals": {...}}``, or an empty dict for decks analyzed before the
+    # estimate existed. A minimum estimate read off the list, never a
+    # declaration of how the deck is actually played.
+    bracket = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "is_commander": bool,
     # "data": {...}}]`` where each card's ``image_paths`` are stored as

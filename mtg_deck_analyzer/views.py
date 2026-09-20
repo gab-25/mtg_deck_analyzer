@@ -494,6 +494,7 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt: s
                 total_value_eur=stats["total_value_eur"],
                 category_counts=stats["category_counts"],
                 statistics=stats["statistics"],
+                bracket=stats["bracket"],
                 cards=cards_for_storage(result["processed_cards"]),
                 status=Deck.Status.READY,
                 error=None,
