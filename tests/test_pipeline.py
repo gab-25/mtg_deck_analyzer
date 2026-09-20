@@ -175,3 +175,11 @@ def test_the_pipeline_returns_deck_statistics(fetched):
     assert stats["statistics"]["library_size"] == 99
     assert stats["statistics"]["land_count"] == 39
     assert len(stats["statistics"]["curve"]) == 8
+
+
+def test_stats_carry_the_bracket_verdict(fetched):
+    bracket = _analyze(_decklist())["stats"]["bracket"]
+
+    assert bracket["bracket"] == 2
+    assert bracket["label"] == "Core"
+    assert bracket["signals"]["game_changers"] == []

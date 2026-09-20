@@ -7,6 +7,7 @@ pipeline behind a single function so the workflow lives in exactly one place.
 import os
 
 from .caching.file_cache import FileCardCache
+from .domain.bracket import estimate_bracket
 from .domain.cards import compute_statistics
 from .domain.commander import check_deck, commander_names, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS
@@ -103,18 +104,26 @@ def analyze_decklist(
     commanders = commander_names(processed_cards)
     deck_text_repr = _deck_text(deck_cards)
 
+    total_cards, total_price, category_counts = compute_statistics(
+        processed_cards
+    )
+    # Computed before the analysis because the estimate is an *input* to the
+    # prompt: the model comments on the deck at that power level instead of
+    # guessing the level itself.
+    bracket = estimate_bracket(processed_cards)
+
     deck_analysis = None
     if not skip_analysis:
         if api_key:
             deck_analysis = analyze_deck_list(
-                deck_text_repr, api_key=api_key, commanders=commanders, fmt=fmt
+                deck_text_repr,
+                api_key=api_key,
+                commanders=commanders,
+                fmt=fmt,
+                bracket=bracket,
             )
         else:
             log_analysis_unavailable()
-
-    total_cards, total_price, category_counts = compute_statistics(
-        processed_cards
-    )
 
     return {
         "processed_cards": processed_cards,
@@ -126,6 +135,7 @@ def analyze_decklist(
             "total_value_eur": total_price,
             "category_counts": category_counts,
             "statistics": deck_statistics(processed_cards),
+            "bracket": bracket,
         },
     }
 
