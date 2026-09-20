@@ -22,7 +22,7 @@ from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
 from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
-from .domain.statistics import curve_bars, deck_statistics
+from .domain.statistics import STATISTICS_SCHEMA, curve_bars, deck_statistics
 from .domain.storage import (
     cards_for_pdf,
     cards_for_storage,
@@ -139,19 +139,21 @@ def _statistics_panel(deck) -> dict | None:
     """View-model for the Statistics panel, or None when there is nothing to show.
 
     Uses the statistics stored at analysis time; a deck analyzed before they
-    existed is recomputed from its stored cards, so the panel doesn't simply
-    vanish for it. The one thing that cannot be recovered that way is
-    ``produced_mana``, so ``sources_known`` tells the template to ask for a
-    re-analysis rather than report zero sources.
+    existed, or before the current schema, is recomputed from its stored cards
+    so the panel doesn't simply vanish for it or blow up on missing keys.
     """
-    stats = deck.statistics or deck_statistics(deck.cards or [])
+    stored = deck.statistics or {}
+    # A deck analyzed before this shape existed carries a blob that is not
+    # empty but has the wrong keys; recompute rather than read it.
+    if stored.get("schema") != STATISTICS_SCHEMA:
+        stored = deck_statistics(deck.cards or [])
+    stats = stored
     if not stats.get("library_size"):
         return None
 
     return {
         "library_size": stats["library_size"],
         "land_count": stats["land_count"],
-        "sources_known": stats["sources_known"],
         "curve": curve_bars(stats["curve"]),
         "opening_hand": _opening_hand_rows(stats["opening_hand"]),
     }

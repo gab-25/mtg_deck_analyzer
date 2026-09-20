@@ -2,7 +2,11 @@
 
 import pytest
 
-from mtg_deck_analyzer.domain.statistics import curve_bars, deck_statistics
+from mtg_deck_analyzer.domain.statistics import (
+    STATISTICS_SCHEMA,
+    curve_bars,
+    deck_statistics,
+)
 
 
 def _card(name, type_line, *, mana_cost="", text="", cmc=0.0, produced=None):
@@ -37,16 +41,55 @@ def _deck():
 
 
 class TestShape:
+    def test_it_carries_its_schema_version(self):
+        assert deck_statistics(_deck())["schema"] == STATISTICS_SCHEMA
+
+    def test_the_top_level_keys_are_the_contract(self):
+        assert set(deck_statistics(_deck())) == {
+            "schema", "library_size", "land_count", "curve", "mana_values",
+            "colors", "opening_hand",
+        }
+
+    def test_an_empty_deck_does_not_explode(self):
+        stats = deck_statistics([])
+        assert stats["library_size"] == 0
+        assert stats["mana_values"]["total"] == 0
+
+
+class TestLibraryAndLands:
     def test_the_library_excludes_the_commander(self):
         assert deck_statistics(_deck())["library_size"] == 99
 
     def test_lands_are_counted(self):
         assert deck_statistics(_deck())["land_count"] == 38
 
-    def test_an_empty_deck_does_not_explode(self):
-        stats = deck_statistics([])
-        assert stats["library_size"] == 0
-        assert stats["sources"] == {c: 0 for c in "WUBRG"}
+
+class TestColorsBlock:
+    def test_every_color_is_present_in_wubrg_order_then_colorless(self):
+        keys = [c["key"] for c in deck_statistics(_deck())["colors"]]
+        assert keys == ["W", "U", "B", "R", "G", "C"]
+
+    def test_colorless_has_no_card_or_symbol_share(self):
+        # Colourless is a production column only: it has no colour identity
+        # and no coloured pips, so those two figures stay at zero.
+        colorless = deck_statistics(_deck())["colors"][-1]
+        assert colorless["card_pct"] == 0
+        assert colorless["symbol_pct"] == 0
+
+    def test_a_colors_curve_has_one_entry_per_bucket(self):
+        for entry in deck_statistics(_deck())["colors"]:
+            assert len(entry["curve"]) == 8
+
+    def test_green_gets_its_share_of_the_symbols(self):
+        # 52 of the deck's 62 colored pips are green (commander + Grizzly
+        # Bears); deck_pips must actually be wired in for this to be nonzero.
+        green = next(c for c in deck_statistics(_deck())["colors"] if c["key"] == "G")
+        assert green["symbol_pct"] == round(52 / 62 * 100)
+
+    def test_green_lands_cover_the_whole_mana_base(self):
+        green = next(c for c in deck_statistics(_deck())["colors"] if c["key"] == "G")
+        assert green["production_pct"] == 100
+        assert green["lands_pct"] == 100
 
 
 class TestCurve:
@@ -58,29 +101,18 @@ class TestCurve:
 
     def test_lands_stay_off_the_curve(self):
         curve = deck_statistics(_deck())["curve"]
-        assert curve[0]["count"] == 0
-        assert curve[2]["count"] == 51
-        assert curve[3]["count"] == 10  # 10 Divination; the commander is excluded
-
-
-class TestSourcesKnown:
-    def test_a_freshly_analyzed_deck_knows_its_sources(self):
-        assert deck_statistics(_deck())["sources_known"] is True
-
-    def test_a_deck_stored_before_produced_mana_does_not(self):
-        old = [{"quantity": 38, "is_commander": False,
-                "data": _card("Forest", "Basic Land — Forest")}]
-        stats = deck_statistics(old)
-        assert stats["sources_known"] is False
-        assert stats["sources"]["G"] == 0
+        assert curve[0]["permanents"] == 0
+        assert curve[0]["spells"] == 0
+        assert curve[2]["permanents"] == 51  # 51 Grizzly Bears, a creature
+        assert curve[3]["spells"] == 10  # 10 Divination; the commander is excluded
 
 
 class TestRemovedBlocks:
-    """Fixing and role tagging are gone; the panel no longer reports them."""
+    """Fixing, role tagging and the old top-level sources/pips figures are gone."""
 
-    def test_the_statistics_carry_no_fixing_or_roles(self):
+    def test_the_statistics_carry_no_fixing_roles_or_legacy_source_keys(self):
         stats = deck_statistics(_deck())
-        for gone in ("fixing", "roles", "baseline"):
+        for gone in ("fixing", "roles", "baseline", "pips", "sources", "sources_known"):
             assert gone not in stats
 
     def test_the_opening_hand_carries_no_role_odds(self):
@@ -110,10 +142,13 @@ class TestOpeningHand:
 
 class TestCurveBars:
     def test_the_tallest_bucket_is_full_height(self):
-        bars = curve_bars([{"label": "1", "count": 4}, {"label": "2", "count": 8}])
+        bars = curve_bars([
+            {"label": "1", "permanents": 4, "spells": 0},
+            {"label": "2", "permanents": 5, "spells": 3},
+        ])
         assert bars[1]["pct"] == 100
         assert bars[0]["pct"] == 50
 
     def test_an_empty_curve_has_no_division_by_zero(self):
-        bars = curve_bars([{"label": "1", "count": 0}])
+        bars = curve_bars([{"label": "1", "permanents": 0, "spells": 0}])
         assert bars[0]["pct"] == 0

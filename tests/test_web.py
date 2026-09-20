@@ -1564,17 +1564,21 @@ class TestStatisticsPanel:
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
-        # Analyzed before the panel existed: neither stored statistics nor
-        # produced_mana on the cards. The panel is recomputed anyway, and says
-        # the sources are the one thing it cannot recover.
-        cards = deck.cards
-        for item in cards:
-            item["data"].pop("produced_mana", None)
-        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=cards)
+        # Analyzed before the panel existed: no stored statistics blob. The
+        # panel is recomputed from the stored cards instead.
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=deck.cards)
 
         panel = client.get(f"/decks/{deck.id}").context["statistics"]
         assert panel["curve"]
-        assert panel["sources_known"] is False
+
+    def test_a_deck_with_a_stale_statistics_blob_is_recomputed(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        Deck.objects.filter(pk=deck.id).update(statistics={"schema": 1,
+                                                           "curve": "nonsense"})
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+        assert panel["curve"][0]["label"] == "0"
 
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck

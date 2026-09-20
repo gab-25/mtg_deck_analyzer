@@ -231,7 +231,7 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
         [
             Paragraph(entry["label"], text),
             _curve_bar(entry["pct"]),
-            Paragraph(str(entry["count"]), text),
+            Paragraph(str(entry["total"]), text),
         ]
         for entry in curve_bars(statistics["curve"])
     ]
