@@ -10,6 +10,7 @@ from mtg_deck_analyzer.rendering.pdf import (
     _build_styles,
     create_no_image_placeholder,
     create_stats_table,
+    create_statistics_flowables,
     generate_pdf,
 )
 
@@ -189,6 +190,54 @@ class TestGeneratePdfEndToEnd:
         out = tmp_path / "deck.pdf"
         generate_pdf("No Analysis Deck", None, cards, str(out))
         assert out.read_bytes().startswith(b"%PDF")
+
+
+class TestStatisticsSection:
+    def _statistics(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+
+        return deck_statistics(
+            [
+                {"quantity": 38, "is_commander": False,
+                 "data": {"name": "Forest", "type_line": "Basic Land — Forest",
+                          "cmc": 0.0, "produced_mana": ["G"],
+                          "faces": [{"name": "Forest", "mana_cost": "",
+                                     "type_line": "Basic Land — Forest",
+                                     "rules_text": "{T}: Add {G}."}]}},
+                {"quantity": 61, "is_commander": False,
+                 "data": {"name": "Grizzly Bears", "type_line": "Creature — Bear",
+                          "cmc": 2.0, "produced_mana": [],
+                          "faces": [{"name": "Grizzly Bears", "mana_cost": "{1}{G}",
+                                     "type_line": "Creature — Bear",
+                                     "rules_text": ""}]}},
+            ]
+        )
+
+    def test_the_section_is_built_from_the_statistics(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        assert flowables
+        assert any(isinstance(f, Table) for f in flowables)
+
+    def test_an_empty_deck_yields_no_section(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+
+        assert create_statistics_flowables(deck_statistics([]), _build_styles()) == []
+
+    def test_generate_pdf_includes_the_section(self, tmp_path):
+        out = tmp_path / "deck.pdf"
+        generate_pdf(
+            "Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)], str(out),
+            statistics=self._statistics(),
+        )
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_generate_pdf_recomputes_when_given_none(self, tmp_path):
+        # An export of a deck analyzed before the statistics existed.
+        out = tmp_path / "deck.pdf"
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(out))
+        assert out.exists()
 
 
 def _make_png(path):

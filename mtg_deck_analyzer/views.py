@@ -731,6 +731,7 @@ def deck_pdf(request, deck):
         tmp_path,
         commanders=deck.commanders,
         fmt=deck.format,
+        statistics=deck.statistics or None,
     )
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"

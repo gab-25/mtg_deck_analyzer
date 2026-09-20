@@ -21,6 +21,7 @@ from reportlab.platypus import (
 
 from ..domain.cards import classify_card, compute_statistics
 from ..domain.constants import CATEGORY_ORDER, DEFAULT_FORMAT, FORMATS
+from ..domain.statistics import curve_bars, deck_statistics
 from ..domain.text_utils import markdown_to_flowables
 
 _CATEGORY_LABELS = {
@@ -163,6 +164,171 @@ def create_stats_table(
     )
 
     return stats_table
+
+
+# The widest a curve bar gets, in points: the tallest bucket fills it.
+_CURVE_BAR_WIDTH = 240
+
+
+def _plain_table(data: list, col_widths: list, style: TableStyle) -> Table:
+    """A Table with the section's shared padding already applied."""
+    table = Table(data, colWidths=col_widths)
+    table.setStyle(style)
+    return table
+
+
+def _curve_bar(pct: int) -> Table:
+    """One horizontal bar, as wide as its bucket is tall."""
+    bar = Table([[""]], colWidths=[max(1, round(_CURVE_BAR_WIDTH * pct / 100))],
+                rowHeights=[7])
+    bar.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), HexColor("#4a5568")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    return bar
+
+
+_SECTION_TABLE_STYLE = TableStyle(
+    [
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]
+)
+
+
+def create_statistics_flowables(statistics: dict, styles: dict) -> list:
+    """The "Deck Statistics" section: curve, fixing, roles and opening hand.
+
+    The same numbers the deck page shows, laid out with the flowables already
+    used elsewhere in this file — the bars are tables with a colored background
+    as wide as the value, so no charting library is needed. Returns an empty
+    list for a deck with no cards, so the caller can simply extend with it.
+    """
+    if not statistics.get("library_size"):
+        return []
+
+    text = styles["body"]
+    flowables = [Paragraph("Deck Statistics", styles["h2"]), Spacer(1, 4)]
+
+    # 1. Mana curve, lands excluded.
+    flowables.append(Paragraph("<b>Mana curve</b> (non-lands)", text))
+    curve_rows = [
+        [
+            Paragraph(entry["label"], text),
+            _curve_bar(entry["pct"]),
+            Paragraph(str(entry["count"]), text),
+        ]
+        for entry in curve_bars(statistics["curve"])
+    ]
+    flowables.append(
+        _plain_table(curve_rows, [22, _CURVE_BAR_WIDTH + 6, 30], _SECTION_TABLE_STYLE)
+    )
+    flowables.append(Spacer(1, 8))
+
+    # 2. Colored pips against colored sources, and what the deck's hardest
+    #    cast in each color asks for.
+    flowables.append(
+        Paragraph(
+            "<b>Color fixing</b> &mdash; sources needed to cast the most "
+            "demanding card of each color on curve, 90% of the time",
+            text,
+        )
+    )
+    fixing_rows = [
+        [
+            Paragraph("<b>Color</b>", text),
+            Paragraph("<b>Pips</b>", text),
+            Paragraph("<b>Sources</b>", text),
+            Paragraph("<b>Needed</b>", text),
+            Paragraph("<b>Hardest cast</b>", text),
+        ]
+    ]
+    for entry in statistics["fixing"]:
+        demand = (
+            f"{html.escape(entry['demand_card'])} "
+            f"({entry['demand_pips']} pips, turn {entry['demand_turn']})"
+            if entry["demand_card"]
+            else "&mdash;"
+        )
+        fixing_rows.append(
+            [
+                Paragraph(entry["color"], text),
+                Paragraph(str(entry["pips"]), text),
+                Paragraph(str(entry["sources"]), text),
+                Paragraph(str(entry["required"]), text),
+                Paragraph(demand, text),
+            ]
+        )
+    flowables.append(
+        _plain_table(fixing_rows, [40, 40, 50, 50, 240], _SECTION_TABLE_STYLE)
+    )
+    if not statistics["sources_known"]:
+        flowables.append(
+            Paragraph(
+                "<i>Analyzed before mana sources were recorded; re-analyze the "
+                "deck to see them.</i>",
+                text,
+            )
+        )
+    flowables.append(Spacer(1, 8))
+
+    # 3. Functional roles, and the deck against the EDH baseline.
+    flowables.append(Paragraph("<b>Roles</b>", text))
+    role_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>{entry['label']}:</b> {entry['count']}" for entry in statistics["roles"]
+    )
+    flowables.append(Paragraph(role_line, text))
+    baseline_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>{entry['label']}:</b> {entry['count']} (baseline {entry['low']}"
+        f"&ndash;{entry['high']})"
+        for entry in statistics["baseline"]
+    )
+    flowables.append(Paragraph(baseline_line, text))
+    flowables.append(Spacer(1, 8))
+
+    # 4. Opening hand, computed rather than simulated.
+    hand = statistics["opening_hand"]
+    flowables.append(
+        Paragraph(
+            f"<b>Opening hand</b> &mdash; a {hand['hand_size']}-card hand off a "
+            f"{statistics['library_size']}-card library, on the play",
+            text,
+        )
+    )
+    lands_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>{entry['lands']} lands:</b> {round(entry['p'] * 100)}%"
+        for entry in hand["land_counts"]
+    )
+    flowables.append(
+        Paragraph(
+            f"{lands_line} &nbsp;&bull;&nbsp; <b>two to five:</b> "
+            f"{round(hand['keepable'] * 100)}%",
+            text,
+        )
+    )
+    drops_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>T{entry['turn']}:</b> {round(entry['p'] * 100)}%"
+        for entry in hand["land_drops"]
+    )
+    flowables.append(Paragraph(f"Every land drop through &mdash; {drops_line}", text))
+    roles_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>{entry['label']}:</b> {round(entry['odds'][1]['p'] * 100)}%"
+        for entry in hand["roles"]
+    )
+    flowables.append(Paragraph(f"At least one by turn 3 &mdash; {roles_line}", text))
+    flowables.append(Spacer(1, 8))
+
+    return flowables
 
 
 def _build_styles():
@@ -513,6 +679,7 @@ def generate_pdf(
     output_path: str,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
+    statistics: dict = None,
 ):
     """Generates the formatted PDF using the ReportLab Platypus layout."""
     doc = SimpleDocTemplate(
@@ -547,6 +714,12 @@ def generate_pdf(
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))
+
+    # 1.2 Statistics section. Stored with the deck when it was analyzed;
+    # recomputed here for a deck exported from before they existed.
+    if statistics is None:
+        statistics = deck_statistics(processed_cards)
+    story_flowables.extend(create_statistics_flowables(statistics, styles))
 
     # 2. AI analysis section.
     if deck_analysis:
