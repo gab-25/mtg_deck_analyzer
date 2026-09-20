@@ -252,7 +252,7 @@ def _statistics_panel(deck) -> dict | None:
             {**{k: v for k, v in entry.items() if k != "curve"},
              "name": COLOR_FULL_NAMES[entry["key"]],
              "hex": COLOR_HEX[entry["key"]],
-             "used": entry["card_pct"] > 0 or entry["production_pct"] > 0,
+             "used": entry["card_pct"] > 0 or entry["symbol_pct"] > 0,
              "sparkline": _sparkline(entry["curve"])}
             for entry in stored["colors"]
         ],

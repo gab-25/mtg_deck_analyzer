@@ -1643,3 +1643,32 @@ class TestStatisticsPanel:
         response = client.get(f"/decks/{deck.id}")
         assert response.context["statistics"]["sources_known"] is False
         assert "re-analyze the deck to see them" in response.content.decode()
+
+    def test_a_color_is_not_used_merely_because_a_rainbow_land_produces_it(self):
+        # A rainbow land can make a colour "produced" without the deck ever
+        # asking for it: production alone must not light up a colour column.
+        from mtg_deck_analyzer import views
+        from mtg_deck_analyzer.models import Deck
+
+        cards = [
+            {"quantity": 1, "is_commander": True,
+             "data": {"name": "Cmdr", "type_line": "Legendary Creature — Human",
+                      "cmc": 1.0, "color_identity": ["W"],
+                      "faces": [{"name": "Cmdr", "mana_cost": "{W}",
+                                 "type_line": "Legendary Creature — Human",
+                                 "rules_text": ""}]}},
+            {"quantity": 1, "is_commander": False,
+             "data": {"name": "Command Tower", "type_line": "Land",
+                      "cmc": 0.0, "produced_mana": ["W", "U", "B", "R", "G"],
+                      "faces": [{"name": "Command Tower", "mana_cost": "",
+                                 "type_line": "Land", "rules_text": ""}]}},
+        ]
+        deck = Deck(cards=cards, statistics={})
+
+        panel = views._statistics_panel(deck)
+
+        black = next(c for c in panel["colors"] if c["key"] == "B")
+        assert black["card_pct"] == 0
+        assert black["symbol_pct"] == 0
+        assert black["production_pct"] > 0
+        assert black["used"] is False

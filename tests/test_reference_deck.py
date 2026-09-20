@@ -57,6 +57,16 @@ class TestColors:
         # The signature that confirmed what the sparkline plots.
         assert self._colors()["U"]["curve"] == [1, 9, 6, 11, 7, 2, 0, 1]
 
+    @pytest.mark.parametrize("color", ["B", "G"])
+    def test_black_and_green_touch_no_cards_despite_producing_mana(self, color):
+        # This deck is Jeskai: black and green have a nonzero production_pct
+        # (rainbow lands can tap for them) but the deck plays no black or
+        # green cards and asks for no black or green pips. A colour column
+        # should not read as "used" on production alone.
+        entry = self._colors()[color]
+        assert entry["card_pct"] == 0
+        assert entry["symbol_pct"] == 0
+
 
 class TestCurve:
     def test_the_curve_totals_match_the_published_chart(self):
