@@ -252,6 +252,53 @@ class TestStatisticsSection:
         assert "short for" not in text
         assert "&mdash;" in text
 
+    def test_the_turn3_role_percentage_is_selected_by_turn_value(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+
+        # A card draw role with distinguishable odds per turn, so a wrong
+        # position (vs. a wrong value) would actually be caught.
+        stats = deck_statistics(
+            [
+                {"quantity": 38, "is_commander": False,
+                 "data": {"name": "Forest", "type_line": "Basic Land — Forest",
+                          "cmc": 0.0, "produced_mana": ["G"],
+                          "faces": [{"name": "Forest", "mana_cost": "",
+                                     "type_line": "Basic Land — Forest",
+                                     "rules_text": "{T}: Add {G}."}]}},
+                {"quantity": 12, "is_commander": False,
+                 "data": {"name": "Cantrip", "type_line": "Sorcery", "cmc": 1.0,
+                          "faces": [{"name": "Cantrip", "mana_cost": "{U}",
+                                     "type_line": "Sorcery",
+                                     "rules_text": "Draw a card."}]}},
+                {"quantity": 49, "is_commander": False,
+                 "data": {"name": "Grizzly Bears", "type_line": "Creature — Bear",
+                          "cmc": 2.0,
+                          "faces": [{"name": "Grizzly Bears", "mana_cost": "{1}{G}",
+                                     "type_line": "Creature — Bear",
+                                     "rules_text": ""}]}},
+            ]
+        )
+        # Reorder each role's odds so turn 3 is not at index 1, proving the
+        # "At least one by turn 3" line is looked up by turn, not position.
+        stats = dict(stats)
+        stats["opening_hand"] = dict(stats["opening_hand"])
+        order = {1: 0, 5: 1, 3: 2}
+        reordered_roles = [
+            {**role, "odds": sorted(role["odds"], key=lambda o: order[o["turn"]])}
+            for role in stats["opening_hand"]["roles"]
+        ]
+        stats["opening_hand"]["roles"] = reordered_roles
+
+        flowables = create_statistics_flowables(stats, _build_styles())
+        line = next(
+            f for f in flowables
+            if hasattr(f, "text") and "At least one by turn" in f.text
+        )
+
+        for role in reordered_roles:
+            turn3 = next(o for o in role["odds"] if o["turn"] == 3)
+            assert f"{role['label']}:</b> {round(turn3['p'] * 100)}%" in line.text
+
     def test_generate_pdf_includes_the_section(self, tmp_path):
         out = tmp_path / "deck.pdf"
         generate_pdf(

@@ -1569,6 +1569,29 @@ class TestStatisticsPanel:
         assert isinstance(keepable, int)
         assert 0 <= keepable <= 100
 
+    def test_the_turn3_odds_are_selected_by_turn_value_not_position(self, client):
+        """Reorders each role's odds so turn 3 is not at index 1, proving the
+        "by turn 3" figure is looked up by turn rather than by position —
+        the panel would otherwise silently break if ROLE_TURNS were reordered.
+        """
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        stats = dict(deck.statistics)
+        stats["opening_hand"] = dict(stats["opening_hand"])
+        order = {1: 0, 5: 1, 3: 2}  # turn 3 now at index 2, not 1
+        reordered_roles = [
+            {**role, "odds": sorted(role["odds"], key=lambda o: order[o["turn"]])}
+            for role in stats["opening_hand"]["roles"]
+        ]
+        stats["opening_hand"]["roles"] = reordered_roles
+        Deck.objects.filter(pk=deck.id).update(statistics=stats)
+
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+        for row, original in zip(panel["opening_hand"]["roles"], reordered_roles):
+            turn3 = next(o for o in original["odds"] if o["turn"] == 3)
+            assert row["turn3_pct"] == round(turn3["p"] * 100)
+
     def test_a_freshly_analyzed_deck_reports_its_sources(self, client):
         deck = self._deck(client)
         panel = client.get(f"/decks/{deck.id}").context["statistics"]

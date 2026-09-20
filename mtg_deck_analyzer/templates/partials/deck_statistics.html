@@ -120,7 +120,7 @@ lays them out.
                 {% for r in statistics.opening_hand.roles %}
                 <div class="flex justify-between text-[13px]">
                     <span class="text-txt2">{{ r.label }} by turn 3</span>
-                    <span class="font-mono2 font-bold text-[12px] text-txt3">{{ r.odds.1.pct }}%</span>
+                    <span class="font-mono2 font-bold text-[12px] text-txt3">{{ r.turn3_pct }}%</span>
                 </div>
                 {% endfor %}
             </div>

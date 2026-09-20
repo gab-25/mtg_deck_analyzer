@@ -165,6 +165,16 @@ def _baseline_rows(baseline: list) -> list:
     ]
 
 
+# The turn the panel's "by turn N" role odds line reports, chosen by value so
+# a reorder of statistics.ROLE_TURNS can't silently point it at a different turn.
+ROLE_ODDS_TURN = 3
+
+
+def _turn_pct(odds: list, turn: int) -> int:
+    """The percentage for the entry whose ``turn`` matches, looked up by value."""
+    return next(_pct(entry["p"]) for entry in odds if entry["turn"] == turn)
+
+
 def _opening_hand_rows(opening_hand: dict) -> dict:
     """The opening-hand block with every probability turned into a percentage."""
     return {
@@ -187,6 +197,7 @@ def _opening_hand_rows(opening_hand: dict) -> dict:
                     {"turn": odd["turn"], "pct": _pct(odd["p"])}
                     for odd in entry["odds"]
                 ],
+                "turn3_pct": _turn_pct(entry["odds"], ROLE_ODDS_TURN),
             }
             for entry in opening_hand["roles"]
         ],

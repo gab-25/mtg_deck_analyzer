@@ -195,6 +195,18 @@ def _curve_bar(pct: int) -> Table:
     return bar
 
 
+# The turn the "At least one by turn N" role-odds line reports.
+_ROLE_ODDS_TURN = 3
+
+
+def _p_at_turn(odds: list, turn: int) -> float:
+    """The probability for the entry whose ``turn`` matches, looked up by value
+    rather than position — statistics.ROLE_TURNS is not guaranteed to keep 3
+    at a fixed index.
+    """
+    return next(entry["p"] for entry in odds if entry["turn"] == turn)
+
+
 _SECTION_TABLE_STYLE = TableStyle(
     [
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -326,10 +338,13 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     )
     flowables.append(Paragraph(f"Every land drop through &mdash; {drops_line}", text))
     roles_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{entry['label']}:</b> {round(entry['odds'][1]['p'] * 100)}%"
+        f"<b>{entry['label']}:</b> "
+        f"{round(_p_at_turn(entry['odds'], _ROLE_ODDS_TURN) * 100)}%"
         for entry in hand["roles"]
     )
-    flowables.append(Paragraph(f"At least one by turn 3 &mdash; {roles_line}", text))
+    flowables.append(
+        Paragraph(f"At least one by turn {_ROLE_ODDS_TURN} &mdash; {roles_line}", text)
+    )
     flowables.append(Spacer(1, 8))
 
     return flowables
