@@ -5,9 +5,7 @@ import pytest
 from mtg_deck_analyzer.domain.mana import (
     card_pips,
     deck_pips,
-    deck_sources,
     mana_curve,
-    produced_colors,
 )
 
 
@@ -79,53 +77,6 @@ class TestDeckPips:
         deck = [_item(_card("{W}{U}"), is_commander=True)]
         assert deck_pips(deck)["W"] == 1
         assert deck_pips(deck)["U"] == 1
-
-
-class TestProducedColors:
-    def test_a_land_taps_for_what_it_produces(self):
-        card = _card(type_line="Land", produced=["W", "U"])
-        assert produced_colors(card) == ["W", "U"]
-
-    def test_colorless_production_is_not_a_color(self):
-        card = _card(type_line="Artifact", produced=["C"])
-        assert produced_colors(card) == []
-
-    def test_a_mana_dork_is_a_source(self):
-        card = _card(type_line="Creature — Elf Druid", produced=["G"])
-        assert produced_colors(card) == ["G"]
-
-    def test_a_one_shot_ritual_is_not_a_source(self):
-        # Dark Ritual makes mana but never sits on the battlefield.
-        card = _card(type_line="Instant", produced=["B"])
-        assert produced_colors(card) == []
-
-    def test_a_modal_card_with_a_land_back_is_a_source(self):
-        # Agadeem's Awakening // Agadeem, the Undercrypt.
-        card = {
-            "type_line": "Sorcery // Land",
-            "produced_mana": ["B"],
-            "faces": [{"type_line": "Sorcery"}, {"type_line": "Land"}],
-        }
-        assert produced_colors(card) == ["B"]
-
-    def test_results_are_in_wubrg_order(self):
-        card = _card(type_line="Land", produced=["G", "W", "B"])
-        assert produced_colors(card) == ["W", "B", "G"]
-
-    def test_a_card_stored_before_produced_mana_has_no_sources(self):
-        assert produced_colors(_card(type_line="Land")) == []
-
-
-class TestDeckSources:
-    def test_sources_are_weighted_by_quantity(self):
-        deck = [_item(_card(type_line="Basic Land — Island", produced=["U"]), 10)]
-        assert deck_sources(deck)["U"] == 10
-
-    def test_the_commander_is_not_a_source(self):
-        # It is never in the library, so it can never be drawn as fixing.
-        deck = [_item(_card(type_line="Legendary Creature — Elf",
-                            produced=["G"]), is_commander=True)]
-        assert deck_sources(deck)["G"] == 0
 
 
 class TestManaCurve:

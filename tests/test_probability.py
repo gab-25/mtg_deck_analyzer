@@ -2,7 +2,7 @@
 
 import pytest
 
-from mtg_deck_analyzer.domain.probability import at_least, exactly, min_successes_for
+from mtg_deck_analyzer.domain.probability import at_least, exactly
 
 
 class TestExactly:
@@ -44,22 +44,3 @@ class TestAtLeast:
     def test_drawing_more_than_the_library_is_clamped(self):
         # Ten cards drawn from a five-card library: every card is seen.
         assert at_least(5, 2, 10, 2) == 1.0
-
-
-class TestMinSuccessesFor:
-    def test_karsten_style_single_pip_on_turn_one(self):
-        # 99-card library, opening seven, 90% confidence.
-        assert min_successes_for(99, 7, 1, 0.90) == 27
-
-    def test_karsten_style_double_pip_on_turn_two(self):
-        assert min_successes_for(99, 8, 2, 0.90) == 40
-
-    def test_more_draws_lower_the_requirement(self):
-        assert min_successes_for(99, 9, 1, 0.90) < min_successes_for(99, 7, 1, 0.90)
-
-    def test_zero_required_needs_nothing(self):
-        assert min_successes_for(99, 7, 0, 0.90) == 0
-
-    def test_unreachable_target_is_none(self):
-        # Two cards must show up in a single draw: no copy count can do it.
-        assert min_successes_for(99, 1, 2, 0.90) is None

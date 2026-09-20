@@ -17,10 +17,6 @@ _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
 CURVE_BUCKETS = 8
 CURVE_LABELS = ("0", "1", "2", "3", "4", "5", "6", "7+")
 
-# Permanent types that can sit on the battlefield and be tapped for mana. An
-# instant or sorcery that makes mana (Dark Ritual) is a one-shot, not a source.
-_SOURCE_TYPES = ("land", "artifact", "creature", "enchantment", "planeswalker")
-
 
 def _empty_counts() -> dict:
     return {color: 0 for color in WUBRG}
@@ -49,28 +45,6 @@ def _pips_in_cost(mana_cost: str) -> dict:
     return pips
 
 
-def _face_mana_value(mana_cost: str) -> int:
-    """The mana value a single face's own mana cost contributes.
-
-    Per the comprehensive rules: a numeric symbol contributes its number
-    (``{3}`` -> 3); ``{X}`` contributes 0; a monocolor hybrid contributes its
-    number (``{2/W}`` -> 2); every other symbol — colored, two-color hybrid or
-    Phyrexian (``{W}``, ``{W/U}``, ``{W/P}``) — contributes 1.
-    """
-    total = 0
-    for symbol in _MANA_SYMBOL_RE.findall(mana_cost or ""):
-        if symbol.isdigit():
-            total += int(symbol)
-        elif symbol.upper() == "X":
-            continue
-        elif "/" in symbol:
-            numeric_half = next((part for part in symbol.split("/") if part.isdigit()), None)
-            total += int(numeric_half) if numeric_half is not None else 1
-        else:
-            total += 1
-    return total
-
-
 def card_pips(card_data: dict) -> dict:
     """Colored pips a card's mana costs ask for, per WUBRG letter.
 
@@ -97,42 +71,6 @@ def deck_pips(processed_cards: list) -> dict:
     for item in processed_cards:
         for letter, count in card_pips(item["data"]).items():
             totals[letter] += count * item["quantity"]
-    return totals
-
-
-def produced_colors(card_data: dict) -> list:
-    """WUBRG letters a card can be tapped for, in canonical order.
-
-    Empty when the card is not a colored mana source: it produces nothing, it
-    produces only colorless, or it makes mana without ever sitting on the
-    battlefield. Decks analyzed before ``produced_mana`` was stored carry no
-    such field and report no sources until they are re-analyzed.
-    """
-    produced = card_data.get("produced_mana") or []
-    if not produced:
-        return []
-    # Any face being a permanent is enough: a modal card with a land back
-    # (Agadeem's Awakening) is a real source even though its front is a spell.
-    if not any(
-        source_type in line for line in _type_lines(card_data)
-        for source_type in _SOURCE_TYPES
-    ):
-        return []
-    return [color for color in WUBRG if color in produced]
-
-
-def deck_sources(processed_cards: list) -> dict:
-    """Colored sources the deck's *library* offers, per WUBRG letter.
-
-    The commander is excluded: it is never drawn, so it can never be the fixing
-    that makes a spell castable.
-    """
-    totals = _empty_counts()
-    for item in processed_cards:
-        if item.get("is_commander"):
-            continue
-        for letter in produced_colors(item["data"]):
-            totals[letter] += item["quantity"]
     return totals
 
 
