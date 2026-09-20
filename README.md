@@ -19,6 +19,11 @@ See [Web Service](#web-service) to get it running.
   - Estimated total monetary value based on **Cardmarket** prices (in Euros).
   - Average Mana Value (CMC) computed excluding lands.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
+- **Deck statistics**: A `Statistics` panel on the deck page, and a matching section in the PDF, computed from the cached Scryfall data alone — no extra API call, no LLM, no new dependency. Five blocks: the **mana curve** (lands excluded, 7+ merged); the **colored pips** the deck's costs ask for against the **colored sources** its permanents can tap for; a **color-fixing verdict**; the **functional role** each card plays; and **opening-hand probabilities**.
+  - The fixing verdict answers Frank Karsten's question — *how many sources make this castable on curve?* — but computes it rather than transcribing his tables, which are printed for 60-card decks: the fewest sources that put the required pips among the cards seen by that turn, 90% of the time, against this deck's own library. Per color it reports the deck's **hardest cast** and names the card driving it, because "27 short for Counterspell — 2 pips on turn 2" is actionable where a bare ratio is not. Being a strict 90% threshold with no mulligan modelling, it asks for more than the published tables do, and the panel says so.
+  - Role tagging matches oracle text against one readable pattern registry (`domain/roles.py`) — ramp, card draw, targeted removal, board wipes, tutors, protection and interaction — and compares the totals against the common EDH baseline. Deliberately heuristic and deliberately **not** a model call: it has to be deterministic, instant and storable with the deck. A card can hold several roles at once, so the counts overlap by design.
+  - The opening-hand block is exact hypergeometric arithmetic, not a simulation: the odds of 2/3/4/5 lands in seven, of hitting every land drop through turn N, and of having drawn at least one card of each role by a given turn.
+  - Statistics are derived data, so they are computed once during the analysis and stored on the deck in a single `statistics` JSON field. A deck analyzed before the panel existed does not lose it: the page and the PDF both recompute from the stored cards. The one thing that cannot be recovered that way is which lands tap for which color, so those decks are asked to re-analyze rather than being told they have no sources.
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
 - **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
@@ -58,6 +63,10 @@ mtg_deck_analyzer/
 │   ├── changelog.py   #   Differences between two decklists (+1 / -1 entries)
 │   ├── commander.py   #   Commander format rules (color identity, legality, ban list)
 │   ├── cards.py       #   Card classification and aggregate statistics
+│   ├── probability.py #   Hypergeometric primitives (no Magic concepts)
+│   ├── mana.py        #   Pips, colored sources, curve, color-fixing verdict
+│   ├── roles.py       #   Functional tagging registry (ramp, draw, removal, ...)
+│   ├── statistics.py  #   Assembles the stored statistics panel
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
 ├── integrations/      # External service clients
