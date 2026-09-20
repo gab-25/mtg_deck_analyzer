@@ -159,3 +159,42 @@ OPENING_HAND_SIZE = 7
 def cards_seen(turn: int) -> int:
     """Cards seen by ``turn`` on the play: the opening seven, plus one a turn."""
     return OPENING_HAND_SIZE + max(0, turn - 1)
+
+
+def is_land_card(card_data: dict) -> bool:
+    """Whether any of a card's faces is a land.
+
+    Deliberately different from :func:`~.cards.classify_card`, which reads the
+    front face only and decides what the card is *cast as*. Here the question
+    is what the card can be tapped for, so a modal card with a land back
+    (Sink into Stupor, Hydroelectric Specimen) counts — which is also how
+    Moxfield reaches the land count its mana figures are built on.
+    """
+    return any("land" in line for line in _type_lines(card_data))
+
+
+def land_production(processed_cards: list) -> dict:
+    """How many lands the deck plays, and what they can be tapped for.
+
+    ``symbol_slots`` counts one slot per color per land: a Command Tower fills
+    five, an Island one, a land with no mana ability none. It is the
+    denominator behind "N% of symbols on lands"; ``lands`` is the denominator
+    behind "N% mana production".
+    """
+    lands = 0
+    slots = 0
+    by_color = {color: 0 for color in list(WUBRG) + ["C"]}
+
+    for item in processed_cards:
+        data = item["data"]
+        if not is_land_card(data):
+            continue
+        quantity = item["quantity"]
+        lands += quantity
+        produced = data.get("produced_mana") or []
+        for color in by_color:
+            if color in produced:
+                by_color[color] += quantity
+                slots += quantity
+
+    return {"lands": lands, "symbol_slots": slots, "by_color": by_color}

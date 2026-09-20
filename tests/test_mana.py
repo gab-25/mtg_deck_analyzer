@@ -162,3 +162,76 @@ class TestCardsSeen:
 
     def test_turn_zero_is_still_the_opening_hand(self):
         assert cards_seen(0) == 7
+
+
+from mtg_deck_analyzer.domain.mana import is_land_card, land_production
+
+
+class TestIsLandCard:
+    def test_a_plain_land_is_a_land(self):
+        assert is_land_card({"type_line": "Basic Land — Island",
+                             "faces": [{"type_line": "Basic Land — Island"}]})
+
+    def test_a_spell_with_a_land_back_is_a_land_here(self):
+        # Sink into Stupor // Soporific Springs: counted as a land for the
+        # mana block, even though classify_card files it as an Instant.
+        card = {"type_line": "Instant // Land",
+                "faces": [{"type_line": "Instant"}, {"type_line": "Land"}]}
+        assert is_land_card(card)
+
+    def test_a_creature_with_a_land_back_is_a_land_here(self):
+        card = {"type_line": "Creature — Weird // Land",
+                "faces": [{"type_line": "Creature — Weird"}, {"type_line": "Land"}]}
+        assert is_land_card(card)
+
+    def test_a_mana_rock_is_not_a_land(self):
+        assert not is_land_card({"type_line": "Artifact",
+                                 "faces": [{"type_line": "Artifact"}]})
+
+
+class TestLandProduction:
+    def _land(self, name, produced, type_line="Land"):
+        return {"name": name, "type_line": type_line, "produced_mana": produced,
+                "faces": [{"type_line": type_line}]}
+
+    def _item(self, data, quantity=1):
+        return {"quantity": quantity, "is_commander": False, "data": data}
+
+    def test_counts_lands_and_their_color_slots(self):
+        deck = [
+            self._item(self._land("Island", ["U"]), 10),
+            self._item(self._land("Command Tower", ["W", "U", "B", "R", "G"])),
+        ]
+        out = land_production(deck)
+        assert out["lands"] == 11
+        # Ten one-colour lands plus one that fills five slots.
+        assert out["symbol_slots"] == 15
+        assert out["by_color"]["U"] == 11
+        assert out["by_color"]["G"] == 1
+
+    def test_a_colorless_land_fills_a_colorless_slot(self):
+        deck = [self._item(self._land("Wastes", ["C"]))]
+        out = land_production(deck)
+        assert out["symbol_slots"] == 1
+        assert out["by_color"]["C"] == 1
+
+    def test_a_land_that_produces_nothing_adds_no_slot(self):
+        deck = [self._item(self._land("Maze of Ith", []))]
+        out = land_production(deck)
+        assert out["lands"] == 1
+        assert out["symbol_slots"] == 0
+
+    def test_a_mana_rock_is_not_counted(self):
+        rock = {"name": "Sol Ring", "type_line": "Artifact",
+                "produced_mana": ["C"], "faces": [{"type_line": "Artifact"}]}
+        out = land_production([self._item(rock)])
+        assert out["lands"] == 0
+        assert out["by_color"]["C"] == 0
+
+    def test_a_spell_with_a_land_back_counts_as_a_land(self):
+        card = {"name": "Sink into Stupor", "type_line": "Instant // Land",
+                "produced_mana": ["U"],
+                "faces": [{"type_line": "Instant"}, {"type_line": "Land"}]}
+        out = land_production([self._item(card)])
+        assert out["lands"] == 1
+        assert out["by_color"]["U"] == 1
