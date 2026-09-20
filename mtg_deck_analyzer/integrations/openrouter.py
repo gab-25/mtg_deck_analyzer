@@ -73,19 +73,22 @@ def analyze_deck_list(
     if bracket:
         signals = bracket.get("signals", {})
 
-        def _signal(names: list, singular: str, none_text: str) -> str:
+        def _signal(names: list, singular: str, plural: str, none_text: str) -> str:
             if not names:
                 return none_text
-            return f"{len(names)} {singular} ({', '.join(names)})"
+            noun = singular if len(names) == 1 else plural
+            return f"{len(names)} {noun} ({', '.join(names)})"
 
         detail = "; ".join(
             (
                 _signal(signals.get("game_changers") or [],
-                        "Game Changers", "no Game Changers"),
+                        "Game Changer", "Game Changers", "no Game Changers"),
                 _signal(signals.get("mass_land_denial") or [],
-                        "mass land denial cards", "no mass land denial"),
+                        "mass land denial card", "mass land denial cards",
+                        "no mass land denial"),
                 _signal(signals.get("extra_turns") or [],
-                        "extra-turn cards", "no extra-turn cards"),
+                        "extra-turn card", "extra-turn cards",
+                        "no extra-turn cards"),
             )
         )
         bracket_lines = (

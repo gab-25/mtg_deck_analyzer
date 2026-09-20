@@ -187,3 +187,43 @@ def test_prompt_is_unchanged_when_no_bracket_is_given(posted):
     openrouter.analyze_deck_list("1 Forest", api_key="k")
     prompt = posted.call["json"]["messages"][0]["content"]
     assert "Bracket" not in prompt
+
+
+def test_prompt_uses_singular_wording_for_a_single_signal_card(posted):
+    openrouter.analyze_deck_list(
+        "1 Rhystic Study",
+        api_key="k",
+        bracket={
+            "bracket": 3,
+            "label": "Upgraded",
+            "signals": {
+                "game_changers": ["Rhystic Study"],
+                "mass_land_denial": ["Armageddon"],
+                "extra_turns": ["Time Warp"],
+            },
+        },
+    )
+    prompt = posted.call["json"]["messages"][0]["content"]
+    assert "1 Game Changer (Rhystic Study)" in prompt
+    assert "1 mass land denial card (Armageddon)" in prompt
+    assert "1 extra-turn card (Time Warp)" in prompt
+
+
+def test_prompt_uses_plural_wording_for_multiple_signal_cards(posted):
+    openrouter.analyze_deck_list(
+        "2 Rhystic Study\n1 Smothering Tithe",
+        api_key="k",
+        bracket={
+            "bracket": 3,
+            "label": "Upgraded",
+            "signals": {
+                "game_changers": ["Rhystic Study", "Smothering Tithe"],
+                "mass_land_denial": ["Armageddon", "Iona"],
+                "extra_turns": ["Time Warp", "Extra Turn"],
+            },
+        },
+    )
+    prompt = posted.call["json"]["messages"][0]["content"]
+    assert "2 Game Changers (Rhystic Study, Smothering Tithe)" in prompt
+    assert "2 mass land denial cards (Armageddon, Iona)" in prompt
+    assert "2 extra-turn cards (Time Warp, Extra Turn)" in prompt
