@@ -42,9 +42,11 @@
                 </div>
             </nav>
             {% else %}
-            {# Anonymous visitors only reach this via an unlisted deck link: the
-               brand mark stays as non-interactive text, since every other nav
-               control (library, new deck) leads somewhere behind login. #}
+            {% comment %}
+            Anonymous visitors only reach this via an unlisted deck link: the
+            brand mark stays as non-interactive text, since every other nav
+            control (library, new deck) leads somewhere behind login.
+            {% endcomment %}
             <span class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
                 <span class="brand-name">MTG DECK ANALYZER</span>

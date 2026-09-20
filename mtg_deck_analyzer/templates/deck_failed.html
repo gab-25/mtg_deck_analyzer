@@ -20,9 +20,11 @@
             We couldn’t finish analyzing <span class="text-txt font-medium">{{ deck.name }}</span>.
         </p>
         {% if deck.error %}
-        {# The reason can span several lines (one per Commander rule broken): keep
-           the line breaks and top-align them. Both override .alert's own flex
-           rules, which are unlayered and would beat the equivalent utilities. #}
+        {% comment %}
+        The reason can span several lines (one per Commander rule broken): keep
+        the line breaks and top-align them. Both override .alert's own flex
+        rules, which are unlayered and would beat the equivalent utilities.
+        {% endcomment %}
         <div class="alert alert-error text-left mb-[18px]"
             style="align-items:flex-start;white-space:pre-line">{{ deck.error }}</div>
         {% endif %}
