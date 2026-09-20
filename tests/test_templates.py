@@ -133,3 +133,13 @@ def test_the_collapsed_deck_sidebar_is_pulled_above_the_card_list():
         "narrow screen it renders after the whole card list; give it an "
         "order that puts it first."
     )
+def test_deck_page_renders_the_bracket_panel():
+    source = (TEMPLATES / "deck.html").read_text()
+    # Guarded, so a deck analyzed before the estimate existed shows no panel.
+    assert "{% if deck.bracket.bracket %}" in source
+    assert "deck.bracket.label" in source
+    assert "deck.bracket.signals.game_changers" in source
+    assert "deck.bracket.signals.mass_land_denial" in source
+    assert "deck.bracket.signals.extra_turns" in source
+    # The verdict must present itself as a floor, not as a measurement.
+    assert "Minimum estimate" in source
