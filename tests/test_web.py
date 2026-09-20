@@ -1591,6 +1591,63 @@ class TestStatisticsPanel:
         assert panel["curve"]
         assert panel["sources_known"] is False
 
+    def test_unknown_sources_do_not_render_a_false_shortfall_claim(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # A deck analyzed before produced_mana existed, with a real colored
+        # pip demand: nothing carries produced_mana, so sources are unknown.
+        cards = [
+            {
+                "quantity": 1,
+                "is_commander": False,
+                "data": {
+                    "name": "Blue Spell",
+                    "type_line": "Instant",
+                    "cmc": 1.0,
+                    "price_eur": 0.0,
+                    "image_paths": [],
+                    "faces": [
+                        {
+                            "name": "Blue Spell",
+                            "mana_cost": "{U}",
+                            "type_line": "Instant",
+                            "rules_text": "",
+                        }
+                    ],
+                },
+            },
+            {
+                "quantity": 38,
+                "is_commander": False,
+                "data": {
+                    "name": "Forest",
+                    "type_line": "Basic Land — Forest",
+                    "cmc": 0.0,
+                    "price_eur": 0.0,
+                    "image_paths": [],
+                    "faces": [
+                        {
+                            "name": "Forest",
+                            "mana_cost": "",
+                            "type_line": "Basic Land — Forest",
+                            "rules_text": "",
+                        }
+                    ],
+                },
+            },
+        ]
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=cards)
+
+        response = client.get(f"/decks/{deck.id}")
+        body = response.content.decode()
+        panel = response.context["statistics"]
+
+        assert panel["sources_known"] is False
+        blue = next(row for row in panel["fixing"] if row["color"] == "U")
+        assert blue["required"] > 0
+        assert "short for" not in body
+
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 

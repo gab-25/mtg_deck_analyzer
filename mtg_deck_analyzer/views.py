@@ -129,8 +129,13 @@ def _pct(probability: float) -> int:
     return round(probability * 100)
 
 
-def _fixing_rows(fixing: list) -> list:
-    """Color-fixing entries, with the color's name and how far the deck gets."""
+def _fixing_rows(fixing: list, sources_known: bool) -> list:
+    """Color-fixing entries, with the color's name and how far the deck gets.
+
+    ``sources_known`` is false for a deck analyzed before ``produced_mana``
+    was recorded: its sources are genuinely 0, not "the deck has none", so the
+    template must not render a source count or a shortfall verdict for it.
+    """
     rows = []
     for entry in fixing:
         required = entry["required"]
@@ -139,6 +144,7 @@ def _fixing_rows(fixing: list) -> list:
                 **entry,
                 "name": COLOR_NAMES[entry["color"]],
                 "hex": COLOR_HEX[entry["color"]],
+                "sources_known": sources_known,
                 # Nothing required means nothing to fall short of.
                 "pct": (
                     min(100, round(entry["sources"] / required * 100))
@@ -205,7 +211,7 @@ def _statistics_panel(deck) -> dict | None:
         "land_count": stats["land_count"],
         "sources_known": stats["sources_known"],
         "curve": curve_bars(stats["curve"]),
-        "fixing": _fixing_rows(stats["fixing"]),
+        "fixing": _fixing_rows(stats["fixing"], stats["sources_known"]),
         "roles": stats["roles"],
         "baseline": _baseline_rows(stats["baseline"]),
         "opening_hand": _opening_hand_rows(stats["opening_hand"]),

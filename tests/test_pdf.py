@@ -223,6 +223,35 @@ class TestStatisticsSection:
 
         assert create_statistics_flowables(deck_statistics([]), _build_styles()) == []
 
+    def test_unknown_sources_do_not_render_a_false_shortfall_claim(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+
+        # No card carries produced_mana, so the deck's sources are unknown —
+        # not a genuine zero.
+        stats = deck_statistics(
+            [
+                {"quantity": 1, "is_commander": False,
+                 "data": {"name": "Blue Spell", "type_line": "Instant", "cmc": 1.0,
+                          "faces": [{"name": "Blue Spell", "mana_cost": "{U}",
+                                     "type_line": "Instant", "rules_text": ""}]}},
+                {"quantity": 38, "is_commander": False,
+                 "data": {"name": "Forest", "type_line": "Basic Land — Forest",
+                          "cmc": 0.0,
+                          "faces": [{"name": "Forest", "mana_cost": "",
+                                     "type_line": "Basic Land — Forest",
+                                     "rules_text": ""}]}},
+            ]
+        )
+        assert stats["sources_known"] is False
+
+        flowables = create_statistics_flowables(stats, _build_styles())
+        fixing_table = next(
+            f for f in flowables if isinstance(f, Table) and "Blue Spell" in _stats_text(f)
+        )
+        text = _stats_text(fixing_table)
+        assert "short for" not in text
+        assert "&mdash;" in text
+
     def test_generate_pdf_includes_the_section(self, tmp_path):
         out = tmp_path / "deck.pdf"
         generate_pdf(

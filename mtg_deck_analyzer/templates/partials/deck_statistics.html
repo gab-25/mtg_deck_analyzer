@@ -48,8 +48,8 @@ lays them out.
                             <span class="text-txt2">{{ f.name }}</span>
                             <span class="font-mono2 text-[11.5px] text-txt3">{{ f.pips }} pips</span>
                         </span>
-                        <span class="font-mono2 font-bold text-[12px] {% if f.ok %}text-txt2{% else %}text-gold{% endif %}">
-                            {{ f.sources }} / {{ f.required }}
+                        <span class="font-mono2 font-bold text-[12px] {% if not f.sources_known or f.ok %}text-txt2{% else %}text-gold{% endif %}">
+                            {% if f.sources_known %}{{ f.sources }}{% else %}—{% endif %} / {{ f.required }}
                         </span>
                     </div>
                     <div class="h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
@@ -57,8 +57,7 @@ lays them out.
                     </div>
                     {% if f.demand_card %}
                     <div class="mt-1.5 text-[11.5px] text-txt3 font-light">
-                        {% if f.ok %}Enough for{% else %}{{ f.shortfall }} short for{% endif %}
-                        {{ f.demand_card }} — {{ f.demand_pips }} pip{{ f.demand_pips|pluralize }} on turn {{ f.demand_turn }}.
+                        {% if f.sources_known %}{% if f.ok %}Enough for{% else %}{{ f.shortfall }} short for{% endif %} {% endif %}{{ f.demand_card }} — {{ f.demand_pips }} pip{{ f.demand_pips|pluralize }} on turn {{ f.demand_turn }}.
                     </div>
                     {% endif %}
                 </div>

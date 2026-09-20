@@ -244,6 +244,7 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
             text,
         )
     )
+    sources_known = statistics["sources_known"]
     fixing_rows = [
         [
             Paragraph("<b>Color</b>", text),
@@ -260,11 +261,14 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
             if entry["demand_card"]
             else "&mdash;"
         )
+        # Sources are unknown for a deck analyzed before produced_mana was
+        # recorded: a real 0 there is not the same as "the deck has none".
+        sources_cell = str(entry["sources"]) if sources_known else "&mdash;"
         fixing_rows.append(
             [
                 Paragraph(entry["color"], text),
                 Paragraph(str(entry["pips"]), text),
-                Paragraph(str(entry["sources"]), text),
+                Paragraph(sources_cell, text),
                 Paragraph(str(entry["required"]), text),
                 Paragraph(demand, text),
             ]
