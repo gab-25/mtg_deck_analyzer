@@ -148,3 +148,102 @@ class TestManaCurve:
             "faces": [{"type_line": "Instant"}, {"type_line": "Land"}],
         }
         assert mana_curve([_item(card)])[3] == 1
+
+
+from mtg_deck_analyzer.domain.mana import cards_seen, color_fixing, sources_required
+
+
+class TestCardsSeen:
+    def test_turn_one_is_the_opening_hand(self):
+        assert cards_seen(1) == 7
+
+    def test_one_more_card_per_turn_on_the_play(self):
+        assert cards_seen(4) == 10
+
+    def test_turn_zero_is_still_the_opening_hand(self):
+        assert cards_seen(0) == 7
+
+
+class TestSourcesRequired:
+    def test_single_pip_on_turn_one(self):
+        assert sources_required(1, 1, 99) == 27
+
+    def test_double_pip_on_turn_two(self):
+        assert sources_required(2, 2, 99) == 40
+
+    def test_a_later_turn_asks_for_less(self):
+        assert sources_required(1, 5, 99) < sources_required(1, 1, 99)
+
+    def test_no_pips_needs_nothing(self):
+        assert sources_required(0, 3, 99) == 0
+
+
+class TestColorFixing:
+    def _deck(self, *cards):
+        return [{"quantity": 1, "is_commander": False, "data": c} for c in cards]
+
+    def test_a_colorless_deck_reports_nothing(self):
+        deck = self._deck(_card("{2}", type_line="Artifact", cmc=2.0))
+        assert color_fixing(deck, 99) == []
+
+    def test_the_hardest_cast_drives_the_requirement(self):
+        # A {U}{U} two-drop is harder to cast on curve than a {U} five-drop.
+        deck = self._deck(
+            _card("{U}{U}", type_line="Instant", cmc=2.0),
+            _card("{4}{U}", type_line="Sorcery", cmc=5.0),
+        )
+        blue = color_fixing(deck, 99)[0]
+        assert blue["color"] == "U"
+        assert blue["demand_pips"] == 2
+        assert blue["demand_turn"] == 2
+        assert blue["required"] == 40
+
+    def test_the_demanding_card_is_named(self):
+        card = _card("{B}{B}{B}", type_line="Sorcery", cmc=3.0)
+        card["name"] = "Sign in Blood"
+        black = color_fixing(self._deck(card), 99)[0]
+        assert black["demand_card"] == "Sign in Blood"
+
+    def test_pips_and_sources_are_reported_side_by_side(self):
+        deck = self._deck(
+            _card("{U}{U}", type_line="Instant", cmc=2.0),
+            _card(type_line="Basic Land — Island", produced=["U"]),
+        )
+        blue = color_fixing(deck, 99)[0]
+        assert blue["pips"] == 2
+        assert blue["sources"] == 1
+
+    def test_the_shortfall_is_the_gap_to_close(self):
+        deck = self._deck(_card("{U}", type_line="Instant", cmc=1.0))
+        blue = color_fixing(deck, 99)[0]
+        assert blue["shortfall"] == blue["required"]
+
+    def test_enough_sources_leave_no_shortfall(self):
+        deck = self._deck(_card("{U}", type_line="Instant", cmc=1.0)) + [
+            {"quantity": 40, "is_commander": False,
+             "data": _card(type_line="Basic Land — Island", produced=["U"])}
+        ]
+        blue = color_fixing(deck, 99)[0]
+        assert blue["sources"] == 40
+        assert blue["shortfall"] == 0
+
+    def test_a_color_with_only_sources_is_still_reported(self):
+        # An off-color land with no spell asking for it: worth seeing.
+        deck = self._deck(_card(type_line="Land", produced=["R"]))
+        red = color_fixing(deck, 99)[0]
+        assert red["color"] == "R"
+        assert red["pips"] == 0
+        assert red["required"] == 0
+
+    def test_colors_come_back_in_wubrg_order(self):
+        deck = self._deck(
+            _card("{G}", type_line="Instant", cmc=1.0),
+            _card("{W}", type_line="Instant", cmc=1.0),
+        )
+        assert [entry["color"] for entry in color_fixing(deck, 99)] == ["W", "G"]
+
+    def test_the_commander_counts_as_a_requirement(self):
+        deck = [{"quantity": 1, "is_commander": True,
+                 "data": _card("{W}{U}{B}{R}{G}",
+                               type_line="Legendary Creature — Angel", cmc=5.0)}]
+        assert len(color_fixing(deck, 99)) == 5

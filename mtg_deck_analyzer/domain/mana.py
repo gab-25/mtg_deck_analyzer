@@ -10,6 +10,7 @@ import re
 
 from .cards import classify_card
 from .commander import WUBRG
+from .probability import min_successes_for
 
 _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
 
@@ -115,3 +116,90 @@ def mana_curve(processed_cards: list) -> list:
         value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
         buckets[value] += item["quantity"]
     return buckets
+
+
+# The opening hand, and the confidence the color-fixing verdict is held to.
+OPENING_HAND_SIZE = 7
+FIXING_CONFIDENCE = 0.90
+
+
+def cards_seen(turn: int) -> int:
+    """Cards seen by ``turn`` on the play: the opening seven, plus one a turn."""
+    return OPENING_HAND_SIZE + max(0, turn - 1)
+
+
+def sources_required(pips: int, turn: int, library_size: int) -> int | None:
+    """Sources needed to have ``pips`` of them in hand by ``turn``.
+
+    This is Karsten's question — "how many sources does this card need to be
+    castable on curve?" — answered against *this* deck's library instead of a
+    table printed for 60-card decks: the fewest sources that put ``pips`` of
+    them among the cards seen by then, :data:`FIXING_CONFIDENCE` of the time.
+
+    A strict threshold, and stricter than the published tables, which also
+    model the London mulligan and fetchlands. ``None`` when no count reaches
+    it, which only happens on a library too small to hold the requirement.
+    """
+    return min_successes_for(
+        library_size, cards_seen(turn), pips, FIXING_CONFIDENCE
+    )
+
+
+def _hardest_cast(processed_cards: list, color: str, library_size: int) -> dict:
+    """The card that asks the most of ``color``, and what it asks for.
+
+    "Most" is measured in sources required, not in pips: a triple-pip seven-drop
+    has four extra turns to find its mana, and is an easier cast than a
+    double-pip two-drop.
+    """
+    hardest = {"demand_card": "", "demand_pips": 0, "demand_turn": 0, "required": 0}
+    for item in processed_cards:
+        pips = card_pips(item["data"])[color]
+        if not pips:
+            continue
+        # A card cannot be cast before the turn its mana value allows.
+        turn = max(1, int(item["data"].get("cmc", 0) or 0))
+        required = sources_required(pips, turn, library_size)
+        # An unreachable requirement outranks every reachable one.
+        if required is None or hardest["required"] is None:
+            better = required is None
+        else:
+            better = required > hardest["required"]
+        if better:
+            hardest = {
+                "demand_card": item["data"].get("name", ""),
+                "demand_pips": pips,
+                "demand_turn": turn,
+                "required": required,
+            }
+    return hardest
+
+
+def color_fixing(processed_cards: list, library_size: int) -> list:
+    """Per color: pips asked for, sources offered and the gap between them.
+
+    One entry per color the deck touches at all, in WUBRG order. ``shortfall``
+    is how many sources are missing (0 when the deck is fine, ``None`` when the
+    requirement cannot be met at all).
+    """
+    pips = deck_pips(processed_cards)
+    sources = deck_sources(processed_cards)
+
+    entries = []
+    for color in WUBRG:
+        if not pips[color] and not sources[color]:
+            continue
+        hardest = _hardest_cast(processed_cards, color, library_size)
+        required = hardest["required"]
+        entries.append(
+            {
+                "color": color,
+                "pips": pips[color],
+                "sources": sources[color],
+                "shortfall": (
+                    None if required is None else max(0, required - sources[color])
+                ),
+                **hardest,
+            }
+        )
+    return entries
