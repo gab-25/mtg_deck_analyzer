@@ -1626,3 +1626,20 @@ class TestStatisticsPanel:
         response = client.get(f"/decks/{deck.id}/pdf")
         assert response.status_code == 200
         assert response["content-type"] == "application/pdf"
+
+    def test_a_legacy_deck_does_not_report_zero_percent_production(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Simulates a deck analyzed before produced_mana was carried through:
+        # none of its cards carry the key.
+        stripped = [
+            {**item, "data": {k: v for k, v in item["data"].items()
+                              if k != "produced_mana"}}
+            for item in deck.cards
+        ]
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=stripped)
+
+        response = client.get(f"/decks/{deck.id}")
+        assert response.context["statistics"]["sources_known"] is False
+        assert "re-analyze the deck to see them" in response.content.decode()

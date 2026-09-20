@@ -134,6 +134,12 @@ def deck_statistics(processed_cards: list) -> dict:
         "schema": STATISTICS_SCHEMA,
         "library_size": library_size,
         "land_count": land_count,
+        # Decks analyzed before produced_mana was carried through cannot report
+        # what their lands tap for; saying "0%" would read as a broken mana base
+        # rather than as missing data.
+        "sources_known": any(
+            "produced_mana" in item["data"] for item in processed_cards
+        ),
         "curve": [
             {"label": label, **bucket}
             for label, bucket in zip(CURVE_LABELS, mana_curve(processed_cards))

@@ -46,8 +46,8 @@ class TestShape:
 
     def test_the_top_level_keys_are_the_contract(self):
         assert set(deck_statistics(_deck())) == {
-            "schema", "library_size", "land_count", "curve", "mana_values",
-            "colors", "opening_hand",
+            "schema", "library_size", "land_count", "sources_known", "curve",
+            "mana_values", "colors", "opening_hand",
         }
 
     def test_an_empty_deck_does_not_explode(self):
@@ -92,6 +92,32 @@ class TestColorsBlock:
         assert green["lands_pct"] == 100
 
 
+class TestSourcesKnown:
+    def _legacy_deck(self):
+        """A deck analyzed before produced_mana was carried through.
+
+        None of its cards carry the key at all, which is exactly what a deck
+        analyzed before that field was stored looks like.
+        """
+        return [
+            {"quantity": 1, "is_commander": True,
+             "data": _card("Commander", "Legendary Creature — Elf",
+                           mana_cost="{2}{G}", cmc=3.0)},
+            {"quantity": 38, "is_commander": False,
+             "data": _card("Forest", "Basic Land — Forest",
+                           text="{T}: Add {G}.")},
+            {"quantity": 61, "is_commander": False,
+             "data": _card("Grizzly Bears", "Creature — Bear",
+                           mana_cost="{1}{G}", cmc=2.0)},
+        ]
+
+    def test_it_is_false_when_no_card_carries_produced_mana(self):
+        assert deck_statistics(self._legacy_deck())["sources_known"] is False
+
+    def test_it_is_true_once_at_least_one_card_carries_it(self):
+        assert deck_statistics(_deck())["sources_known"] is True
+
+
 class TestCurve:
     def test_the_curve_has_one_entry_per_bucket(self):
         curve = deck_statistics(_deck())["curve"]
@@ -112,7 +138,7 @@ class TestRemovedBlocks:
 
     def test_the_statistics_carry_no_fixing_roles_or_legacy_source_keys(self):
         stats = deck_statistics(_deck())
-        for gone in ("fixing", "roles", "baseline", "pips", "sources", "sources_known"):
+        for gone in ("fixing", "roles", "baseline", "pips", "sources"):
             assert gone not in stats
 
     def test_the_opening_hand_carries_no_role_odds(self):

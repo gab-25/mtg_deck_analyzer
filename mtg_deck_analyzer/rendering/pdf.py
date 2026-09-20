@@ -257,16 +257,23 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
 
     # 3. One row per colour.
     flowables.append(Paragraph("<b>Colors</b>", text))
+    sources_known = statistics["sources_known"]
     rows = [[Paragraph(f"<b>{h}</b>", text) for h in
              ("Color", "Cards", "Symbols", "Production", "On lands")]]
     for entry in statistics["colors"]:
+        production = f"{entry['production_pct']}%" if sources_known else "-"
+        on_lands = f"{entry['lands_pct']}%" if sources_known else "-"
         rows.append([Paragraph(entry["key"], text),
                      Paragraph(f"{entry['card_pct']}%", text),
                      Paragraph(f"{entry['symbol_pct']}%", text),
-                     Paragraph(f"{entry['production_pct']}%", text),
-                     Paragraph(f"{entry['lands_pct']}%", text)])
+                     Paragraph(production, text),
+                     Paragraph(on_lands, text)])
     flowables.append(_plain_table(rows, [45, 50, 55, 65, 55],
                                   _SECTION_TABLE_STYLE))
+    if not sources_known:
+        flowables.append(Paragraph(
+            "Analyzed before mana sources were recorded; re-analyze the deck "
+            "to see them.", text))
     flowables.append(Spacer(1, 8))
 
     # 4. Opening hand, computed rather than simulated.

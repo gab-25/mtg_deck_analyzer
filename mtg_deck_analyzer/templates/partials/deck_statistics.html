@@ -54,15 +54,22 @@ SVG coordinate is precomputed in the view; this file only places them.
                     {% for b in c.sparkline.bars %}<rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" fill="{{ c.hex }}" />{% endfor %}
                 </svg>
                 <div class="mt-2.5 text-[11px] text-txt3">{{ c.name }} production</div>
+                {% if statistics.sources_known %}
                 <div class="mt-1.5 h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
                     <div class="h-full rounded-full" style="background:{{ c.hex }};width:{{ c.production_pct }}%"></div>
                 </div>
                 <div class="mt-1.5 font-mono2 text-[11px] text-txt3">{{ c.production_pct }}%</div>
                 <div class="text-[11px] text-txt3">{{ c.lands_pct }}% on lands</div>
+                {% else %}
+                <div class="mt-1.5 font-mono2 text-[11px] text-txt3">&mdash;</div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
         <div class="text-center text-[11px] text-txt3">The percentages will not add up to 100% if you have multi-color cards</div>
+        {% if not statistics.sources_known %}
+        <div class="text-center text-[11px] text-txt3">Analyzed before mana sources were recorded; re-analyze the deck to see them.</div>
+        {% endif %}
 
         <div>
             <div class="mb-1.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Opening hand</div>

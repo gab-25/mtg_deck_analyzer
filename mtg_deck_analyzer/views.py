@@ -239,6 +239,7 @@ def _statistics_panel(deck) -> dict | None:
     return {
         "library_size": stored["library_size"],
         "land_count": stored["land_count"],
+        "sources_known": stored["sources_known"],
         "curve_chart": _curve_chart(stored["curve"]),
         "mana_values": {
             "total": mv["total"],
