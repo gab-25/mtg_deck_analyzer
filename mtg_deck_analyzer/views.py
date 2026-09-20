@@ -60,6 +60,9 @@ COLOR_HEX = {
     "G": "#4c9e6a",
     "C": "#b7b0a8",
 }
+# Full colour names, for the column headings in the statistics panel.
+COLOR_FULL_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red",
+                    "G": "Green", "C": "Colorless"}
 TYPE_HEX = {
     "Creature": "#8fd08f",
     "Instant": "#7fb6e0",
@@ -135,27 +138,114 @@ def _opening_hand_rows(opening_hand: dict) -> dict:
     }
 
 
-def _statistics_panel(deck) -> dict | None:
-    """View-model for the Statistics panel, or None when there is nothing to show.
+# Chart box in SVG user units. The viewBox scales to whatever width the panel
+# gives it, so these are proportions rather than pixels.
+_CHART = {"w": 560, "h": 240, "left": 38, "bottom": 34, "top": 12}
 
-    Uses the statistics stored at analysis time; a deck analyzed before they
-    existed, or before the current schema, is recomputed from its stored cards
-    so the panel doesn't simply vanish for it or blow up on missing keys.
+
+def _y_ticks(peak: int) -> list:
+    """Round tick values covering 0..peak, at a step that stays readable."""
+    step = 10 if peak > 20 else (5 if peak > 5 else 1)
+    top = max(step, -(-peak // step) * step)
+    return list(range(0, top + step, step))
+
+
+def _curve_chart(curve: list) -> dict:
+    """Ready-to-draw geometry for the stacked curve.
+
+    Computed here because a Django template cannot do arithmetic, and drawn as
+    SVG because the project's stylesheet is a committed Tailwind build with no
+    build step — a class it does not already carry silently does nothing.
     """
-    stored = deck.statistics or {}
-    # A deck analyzed before this shape existed carries a blob that is not
-    # empty but has the wrong keys; recompute rather than read it.
-    if stored.get("schema") != STATISTICS_SCHEMA:
-        stored = deck_statistics(deck.cards or [])
-    stats = stored
-    if not stats.get("library_size"):
-        return None
+    bars = curve_bars(curve)
+    ticks = _y_ticks(max((b["total"] for b in bars), default=0))
+    top_value = ticks[-1]
+
+    plot_h = _CHART["h"] - _CHART["bottom"] - _CHART["top"]
+    plot_w = _CHART["w"] - _CHART["left"]
+    slot = plot_w / len(bars)
+    bar_w = slot * 0.62
+
+    def y_of(value: float) -> float:
+        return _CHART["top"] + plot_h * (1 - value / top_value)
+
+    out = []
+    for index, bar in enumerate(bars):
+        x = _CHART["left"] + slot * index + (slot - bar_w) / 2
+        perm_h = plot_h * bar["permanents"] / top_value
+        spell_h = plot_h * bar["spells"] / top_value
+        out.append({
+            "label": bar["label"],
+            "total": bar["total"],
+            "x": round(x, 2),
+            "width": round(bar_w, 2),
+            "label_x": round(x + bar_w / 2, 2),
+            # Permanents sit on the axis, spells stack on top of them.
+            "permanents": {"y": round(y_of(bar["permanents"]), 2),
+                           "height": round(perm_h, 2)},
+            "spells": {"y": round(y_of(bar["total"]), 2),
+                       "height": round(spell_h, 2)},
+        })
 
     return {
-        "library_size": stats["library_size"],
-        "land_count": stats["land_count"],
-        "curve": curve_bars(stats["curve"]),
-        "opening_hand": _opening_hand_rows(stats["opening_hand"]),
+        "width": _CHART["w"], "height": _CHART["h"],
+        "baseline": round(y_of(0), 2),
+        "axis_x": _CHART["left"],
+        "label_y": round(y_of(0) + 16, 2),
+        "bars": out,
+        "gridlines": [{"value": t, "y": round(y_of(t), 2)} for t in ticks],
+    }
+
+
+def _sparkline(values: list) -> dict:
+    """A small bar chart for one colour's curve, same idea as _curve_chart."""
+    peak = max(values, default=0) or 1
+    width, height, gap = 56, 18, 1.0
+    slot = width / len(values)
+    return {
+        "width": width, "height": height,
+        "bars": [
+            {"x": round(slot * i, 2), "width": round(slot - gap, 2),
+             "y": round(height * (1 - v / peak), 2),
+             "height": round(height * v / peak, 2)}
+            for i, v in enumerate(values)
+        ],
+    }
+
+
+def _statistics_panel(deck) -> dict | None:
+    """View-model for the Statistics panel, or None when there is nothing yet.
+
+    A deck analyzed before the current shape carries a blob that is not empty
+    but has the wrong keys, so it is recomputed rather than read.
+    """
+    stored = deck.statistics or {}
+    if stored.get("schema") != STATISTICS_SCHEMA:
+        stored = deck_statistics(deck.cards or [])
+    if not stored.get("library_size"):
+        return None
+
+    mv = stored["mana_values"]
+    return {
+        "library_size": stored["library_size"],
+        "land_count": stored["land_count"],
+        "curve_chart": _curve_chart(stored["curve"]),
+        "mana_values": {
+            "total": mv["total"],
+            "average": f"{mv['average']:.2f}",
+            "average_without_lands": f"{mv['average_without_lands']:.2f}",
+            "median": f"{mv['median']:g}",
+            "median_without_lands": f"{mv['median_without_lands']:g}",
+        },
+        "colors": [
+            {**entry,
+             "name": COLOR_FULL_NAMES[entry["key"]],
+             "hex": COLOR_HEX[entry["key"]],
+             "used": entry["card_pct"] > 0 or entry["production_pct"] > 0,
+             "sparkline": _sparkline(entry["curve"])}
+            for entry in stored["colors"]
+        ],
+        "opening_hand": _opening_hand_rows(stored["opening_hand"]),
     }
 
 

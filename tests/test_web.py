@@ -1569,7 +1569,7 @@ class TestStatisticsPanel:
         Deck.objects.filter(pk=deck.id).update(statistics={}, cards=deck.cards)
 
         panel = client.get(f"/decks/{deck.id}").context["statistics"]
-        assert panel["curve"]
+        assert panel["curve_chart"]["bars"]
 
     def test_a_deck_with_a_stale_statistics_blob_is_recomputed(self, client):
         from mtg_deck_analyzer.models import Deck
@@ -1578,7 +1578,7 @@ class TestStatisticsPanel:
         Deck.objects.filter(pk=deck.id).update(statistics={"schema": 1,
                                                            "curve": "nonsense"})
         panel = client.get(f"/decks/{deck.id}").context["statistics"]
-        assert panel["curve"][0]["label"] == "0"
+        assert panel["curve_chart"]["bars"][0]["label"] == "0"
 
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
@@ -1587,3 +1587,27 @@ class TestStatisticsPanel:
         Deck.objects.filter(pk=deck.id).update(statistics={}, cards=[])
 
         assert client.get(f"/decks/{deck.id}").context["statistics"] is None
+
+    def test_the_curve_is_rendered_as_an_svg_chart(self, client):
+        deck = self._deck(client)
+        body = client.get(f"/decks/{deck.id}").content.decode()
+        assert "<svg" in body
+        assert "Mana Value" in body
+        assert "Number of cards" in body
+
+    def test_the_chart_geometry_is_computed_in_the_view(self, client):
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        assert len(chart["bars"]) == 8
+        first = chart["bars"][0]
+        assert {"x", "width", "permanents", "spells", "total", "label"} <= set(first)
+        assert chart["gridlines"], "an axis with no gridlines is not an axis"
+
+    def test_every_color_column_is_present_even_when_unused(self, client):
+        colors = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["colors"]
+        assert [c["key"] for c in colors] == ["W", "U", "B", "R", "G", "C"]
+
+    def test_the_mana_value_sentence_is_rendered(self, client):
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        assert "average mana value" in body.lower()

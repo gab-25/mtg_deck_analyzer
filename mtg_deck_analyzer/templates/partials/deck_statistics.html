@@ -1,6 +1,7 @@
 {% comment %}
-The Statistics panel: mana curve and the opening-hand odds. Every number is
-precomputed in the view; this file only lays them out.
+The Statistics panel, laid out as Moxfield's: stacked curve, the mana-value
+sentence, a column per colour, then the opening hand. Every number and every
+SVG coordinate is precomputed in the view; this file only places them.
 {% endcomment %}
 <div class="panel-card overflow-hidden">
     <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
@@ -12,29 +13,63 @@ precomputed in the view; this file only lays them out.
     <div class="py-5 px-[18px] flex flex-col gap-5">
 
         <div>
-            <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Mana curve</div>
-            <div class="flex items-end gap-[7px] h-[120px]">
-                {% for b in statistics.curve %}
-                <div class="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                    <span class="font-mono2 font-bold text-[11px] text-txt2">{{ b.count }}</span>
-                    <div class="w-full min-h-[3px] rounded-t-[5px] rounded-b-[2px] bg-[linear-gradient(180deg,var(--violet2),var(--violet))]" style="height:{{ b.pct }}%"></div>
-                    <span class="font-mono2 text-[11px] text-txt3">{{ b.label }}</span>
-                </div>
+            <svg viewBox="0 0 {{ statistics.curve_chart.width }} {{ statistics.curve_chart.height }}" class="w-full" role="img" aria-label="Mana curve">
+                {% for g in statistics.curve_chart.gridlines %}
+                <line x1="{{ statistics.curve_chart.axis_x }}" y1="{{ g.y }}" x2="{{ statistics.curve_chart.width }}" y2="{{ g.y }}" stroke="#2a2e3a" stroke-width="1" />
+                <text x="{{ statistics.curve_chart.axis_x }}" y="{{ g.y }}" dx="-8" dy="4" text-anchor="end" fill="#8b8f9c" font-size="11">{{ g.value }}</text>
                 {% endfor %}
+                {% for b in statistics.curve_chart.bars %}
+                <rect x="{{ b.x }}" y="{{ b.spells.y }}" width="{{ b.width }}" height="{{ b.spells.height }}" fill="#6b7280" />
+                <rect x="{{ b.x }}" y="{{ b.permanents.y }}" width="{{ b.width }}" height="{{ b.permanents.height }}" fill="#7c5cff" />
+                <text x="{{ b.label_x }}" y="{{ statistics.curve_chart.label_y }}" text-anchor="middle" fill="#8b8f9c" font-size="11">{{ b.label }}</text>
+                {% endfor %}
+                <text x="{{ statistics.curve_chart.width }}" y="{{ statistics.curve_chart.height }}" text-anchor="end" fill="#8b8f9c" font-size="11">Mana Value</text>
+                <text x="0" y="12" fill="#8b8f9c" font-size="11">Number of cards</text>
+            </svg>
+            <div class="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-txt3">
+                <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-full" style="background:#7c5cff"></span>Permanents</span>
+                <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-full" style="background:#6b7280"></span>Spells</span>
             </div>
-            <div class="text-center mt-2.5 text-[11px] text-txt3">Mana value · lands excluded</div>
         </div>
+
+        <div class="text-[12.5px] text-txt3 font-light leading-[1.5]">
+            The average mana value of your main deck is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.average }}</span> with lands and
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.average_without_lands }}</span> without lands.
+            The median mana value is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.median }}</span> with lands and
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.median_without_lands }}</span> without lands.
+            This deck's total mana value is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.total }}</span>.
+        </div>
+
+        <div class="grid gap-3" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+            {% for c in statistics.colors %}
+            {# opacity inline: the compiled stylesheet ships no opacity-* utility. #}
+            <div class="text-center"{% if not c.used %} style="opacity:.4"{% endif %}>
+                <div class="mx-auto w-[9px] h-[9px] rounded-full mb-2.5" style="background:{{ c.hex }}"></div>
+                <div class="font-mono2 font-bold text-[19px]">{{ c.card_pct }}%</div>
+                <div class="text-[11px] text-txt3">{{ c.symbol_pct }}% of all symbols</div>
+                <svg viewBox="0 0 {{ c.sparkline.width }} {{ c.sparkline.height }}" class="w-full mt-2.5" role="img" aria-label="{{ c.name }} curve">
+                    {% for b in c.sparkline.bars %}<rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" fill="{{ c.hex }}" />{% endfor %}
+                </svg>
+                <div class="mt-2.5 text-[11px] text-txt3">{{ c.name }} production</div>
+                <div class="mt-1.5 h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
+                    <div class="h-full rounded-full" style="background:{{ c.hex }};width:{{ c.production_pct }}%"></div>
+                </div>
+                <div class="mt-1.5 font-mono2 text-[11px] text-txt3">{{ c.production_pct }}%</div>
+                <div class="text-[11px] text-txt3">{{ c.lands_pct }}% on lands</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center text-[11px] text-txt3">The percentages will not add up to 100% if you have multi-color cards</div>
 
         <div>
             <div class="mb-1.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Opening hand</div>
-            <div class="mb-3.5 text-[11px] text-txt3 font-light">
-                Exact odds over a {{ statistics.library_size }}-card library, on the play.
-            </div>
             <div class="flex justify-between text-[13px] mb-3">
                 <span class="text-txt2">Two to five lands in seven</span>
                 <span class="font-mono2 font-bold text-[13px] text-gold">{{ statistics.opening_hand.keepable }}%</span>
             </div>
-            {# grid-template-columns inline: the compiled CSS ships no grid-cols-4. #}
             <div class="grid gap-2.5 mb-4" style="grid-template-columns:repeat(4,minmax(0,1fr))">
                 {% for l in statistics.opening_hand.land_counts %}
                 <div class="py-2 px-2.5 rounded-md border border-line2 text-center">
