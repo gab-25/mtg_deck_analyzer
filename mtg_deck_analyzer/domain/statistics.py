@@ -23,7 +23,8 @@ from .probability import at_least, exactly
 
 # Bumped whenever the stored dictionary changes shape. A deck whose blob
 # carries a different value is stale and gets recomputed rather than read.
-STATISTICS_SCHEMA = 2
+# Bumped to 3 because sources_known became a required top-level key.
+STATISTICS_SCHEMA = 3
 
 # Colourless is a production column only — it has no colour identity and no
 # coloured pips, so it sits after WUBRG with two of its four figures at zero.

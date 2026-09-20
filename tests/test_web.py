@@ -1580,6 +1580,22 @@ class TestStatisticsPanel:
         panel = client.get(f"/decks/{deck.id}").context["statistics"]
         assert panel["curve_chart"]["bars"][0]["label"] == "0"
 
+    def test_a_deck_with_schema_2_missing_sources_known_is_recomputed(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Simulate a blob from before sources_known was added: schema 2 but
+        # missing the required sources_known key. The guard should reject this
+        # and recompute it, so the page returns 200 without raising KeyError.
+        current_stats = deck.statistics.copy()
+        stale_stats = {k: v for k, v in current_stats.items() if k != "sources_known"}
+        stale_stats["schema"] = 2
+        Deck.objects.filter(pk=deck.id).update(statistics=stale_stats)
+
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"]["sources_known"] is True
+
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 

@@ -1,8 +1,7 @@
 """What the deck asks for in colored mana, and what it offers.
 
-Pure functions over the processed cards. Three counts read straight off the
-cards: the pips a deck's costs demand, the sources that can pay them and the
-mana curve.
+Pure functions over the processed cards. Two counts read straight off the
+cards: the pips a deck's costs demand and the mana curve.
 """
 
 import re
