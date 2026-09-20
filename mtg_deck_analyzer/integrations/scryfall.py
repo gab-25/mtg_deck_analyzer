@@ -155,6 +155,8 @@ def process_cached_card(card: dict, cache) -> dict:
         "cmc": card.get("cmc", 0.0),
         # Color identity drives the Commander color-identity rule and the deck pips.
         "color_identity": card.get("color_identity", []),
+        # Colors this card can tap for; drives the deck's colored-source count.
+        "produced_mana": card.get("produced_mana", []),
         # Per-format legality; the Commander entry drives the ban-list check.
         "legalities": card.get("legalities", {}),
     }
