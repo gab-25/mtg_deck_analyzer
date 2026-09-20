@@ -36,20 +36,56 @@ def _type_lines(card_data: dict) -> list:
     return lines or [(card_data.get("type_line") or "").lower()]
 
 
+def _pips_in_cost(mana_cost: str) -> dict:
+    """Colored pips a single mana cost string asks for, per WUBRG letter.
+
+    A hybrid or Phyrexian symbol counts for *each* color it can be paid with,
+    because each one is a color the deck has to be able to produce.
+    """
+    pips = _empty_counts()
+    for symbol in _MANA_SYMBOL_RE.findall(mana_cost or ""):
+        # A set, so a symbol never counts twice for the same color.
+        for letter in {ch for ch in symbol.upper() if ch in WUBRG}:
+            pips[letter] += 1
+    return pips
+
+
+def _face_mana_value(mana_cost: str) -> int:
+    """The mana value a single face's own mana cost contributes.
+
+    Per the comprehensive rules: a numeric symbol contributes its number
+    (``{3}`` -> 3); ``{X}`` contributes 0; a monocolor hybrid contributes its
+    number (``{2/W}`` -> 2); every other symbol — colored, two-color hybrid or
+    Phyrexian (``{W}``, ``{W/U}``, ``{W/P}``) — contributes 1.
+    """
+    total = 0
+    for symbol in _MANA_SYMBOL_RE.findall(mana_cost or ""):
+        if symbol.isdigit():
+            total += int(symbol)
+        elif symbol.upper() == "X":
+            continue
+        elif "/" in symbol:
+            numeric_half = next((part for part in symbol.split("/") if part.isdigit()), None)
+            total += int(numeric_half) if numeric_half is not None else 1
+        else:
+            total += 1
+    return total
+
+
 def card_pips(card_data: dict) -> dict:
     """Colored pips a card's mana costs ask for, per WUBRG letter.
 
     Every face that has a mana cost counts, so both halves of a split card are
-    counted and a transform back (which has none) adds nothing. A hybrid or
-    Phyrexian symbol counts for *each* color it can be paid with, because each
-    one is a color the deck has to be able to produce.
+    counted and a transform back (which has none) adds nothing. Both halves of
+    an adventure or a modal DFC are genuinely castable, so their pips are
+    summed here too — see :func:`_hardest_cast` for why they are not paired
+    with the card's overall mana value.
     """
     pips = _empty_counts()
     for face in card_data.get("faces", []):
-        for symbol in _MANA_SYMBOL_RE.findall(face.get("mana_cost") or ""):
-            # A set, so a symbol never counts twice for the same color.
-            for letter in {ch for ch in symbol.upper() if ch in WUBRG}:
-                pips[letter] += 1
+        face_pips = _pips_in_cost(face.get("mana_cost") or "")
+        for letter, count in face_pips.items():
+            pips[letter] += count
     return pips
 
 
@@ -146,32 +182,41 @@ def sources_required(pips: int, turn: int, library_size: int) -> int | None:
 
 
 def _hardest_cast(processed_cards: list, color: str, library_size: int) -> dict:
-    """The card that asks the most of ``color``, and what it asks for.
+    """The face that asks the most of ``color``, and what it asks for.
 
     "Most" is measured in sources required, not in pips: a triple-pip seven-drop
     has four extra turns to find its mana, and is an easier cast than a
     double-pip two-drop.
+
+    Judged **per face**, not per card: for a split card Scryfall's ``cmc`` is
+    the sum of both halves, so pairing a card's summed pips with its ``cmc``
+    is fine. For an adventure or a modal DFC, ``cmc`` is the *front face only*
+    — pairing the summed pips with it would pair one face's mana value with
+    the other face's colors. Each face is judged on its own cost instead.
     """
     hardest = {"demand_card": "", "demand_pips": 0, "demand_turn": 0, "required": 0}
     for item in processed_cards:
-        pips = card_pips(item["data"])[color]
-        if not pips:
-            continue
-        # A card cannot be cast before the turn its mana value allows.
-        turn = max(1, int(item["data"].get("cmc", 0) or 0))
-        required = sources_required(pips, turn, library_size)
-        # An unreachable requirement outranks every reachable one.
-        if required is None or hardest["required"] is None:
-            better = required is None
-        else:
-            better = required > hardest["required"]
-        if better:
-            hardest = {
-                "demand_card": item["data"].get("name", ""),
-                "demand_pips": pips,
-                "demand_turn": turn,
-                "required": required,
-            }
+        data = item["data"]
+        for face in data.get("faces", []):
+            mana_cost = face.get("mana_cost") or ""
+            pips = _pips_in_cost(mana_cost)[color]
+            if not pips:
+                continue
+            # A face cannot be cast before its own mana value allows.
+            turn = max(1, _face_mana_value(mana_cost))
+            required = sources_required(pips, turn, library_size)
+            # An unreachable requirement outranks every reachable one.
+            if required is None or hardest["required"] is None:
+                better = required is None
+            else:
+                better = required > hardest["required"]
+            if better:
+                hardest = {
+                    "demand_card": data.get("name", ""),
+                    "demand_pips": pips,
+                    "demand_turn": turn,
+                    "required": required,
+                }
     return hardest
 
 

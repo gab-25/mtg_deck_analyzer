@@ -247,3 +247,36 @@ class TestColorFixing:
                  "data": _card("{W}{U}{B}{R}{G}",
                                type_line="Legendary Creature — Angel", cmc=5.0)}]
         assert len(color_fixing(deck, 99)) == 5
+
+    def test_an_adventure_is_judged_on_its_own_face_not_the_summed_cmc(self):
+        # Brazen Borrower: cmc 3.0 is the front face only, but the old code
+        # paired the *summed* pips of both faces with that cmc, inflating the
+        # demand. Each face must be judged on its own mana value instead.
+        card = {
+            "name": "Brazen Borrower",
+            "cmc": 3.0,
+            "faces": [
+                {"mana_cost": "{1}{U}{U}", "type_line": "Creature — Faerie Rogue"},
+                {"mana_cost": "{1}{U}", "type_line": "Instant — Adventure"},
+            ],
+        }
+        blue = color_fixing(self._deck(card), 99)[0]
+        assert blue["demand_pips"] == 2
+        assert blue["demand_turn"] == 3
+        assert blue["required"] == 36
+
+    def test_a_modal_dfc_is_judged_per_face(self):
+        # Valki // Tibalt: the front face is a {1}{B} two-drop, the back face
+        # a {4}{B}{R} six-drop. The black demand must come from the front
+        # face's own turn, not from summing both faces' pips onto front cmc.
+        card = {
+            "name": "Valki // Tibalt, Cosmic Impostor",
+            "cmc": 2.0,
+            "faces": [
+                {"mana_cost": "{1}{B}", "type_line": "Legendary Creature — Devil"},
+                {"mana_cost": "{4}{B}{R}", "type_line": "Legendary Planeswalker"},
+            ],
+        }
+        entries = {entry["color"]: entry for entry in color_fixing(self._deck(card), 99)}
+        assert entries["B"]["demand_pips"] == 1
+        assert entries["B"]["demand_turn"] == 2
