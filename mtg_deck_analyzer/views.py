@@ -423,7 +423,6 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt: s
                 color_identity=stats["color_identity"],
                 total_cards=stats["total_cards"],
                 total_value_eur=stats["total_value_eur"],
-                avg_cmc=stats["avg_cmc"],
                 category_counts=stats["category_counts"],
                 statistics=stats["statistics"],
                 cards=cards_for_storage(result["processed_cards"]),

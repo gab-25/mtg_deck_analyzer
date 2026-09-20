@@ -51,7 +51,6 @@ def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
             "color_identity": ["W", "U", "B", "G"],
             "total_cards": 2,
             "total_value_eur": 0.10,
-            "avg_cmc": 0.0,
             "category_counts": {"Land": 2},
             "statistics": deck_statistics(processed_cards),
         },
@@ -382,7 +381,6 @@ def test_proxy_pdf_download(client):
         status=Deck.Status.READY,
         total_cards=6,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Instant": 3, "Land": 3},
         cards=[
             _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=3, type_line="Instant"),
@@ -414,7 +412,6 @@ def test_proxy_pdf_prints_the_back_face_of_a_double_faced_card(client):
         status=Deck.Status.READY,
         total_cards=9,
         total_value_eur=0.0,
-        avg_cmc=1.0,
         category_counts={"Instant": 8, "Creature": 1},
         cards=[
             _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=8, type_line="Instant"),
@@ -439,7 +436,6 @@ def test_deck_detail_has_export_proxy_button(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[],
     )
@@ -526,7 +522,6 @@ def test_deck_detail_card_images_link_to_modal(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[
             {
@@ -560,7 +555,6 @@ def test_deck_detail_modal_link_carries_every_face(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=1.0,
         category_counts={"Creature": 1},
         cards=[
             {
@@ -603,7 +597,6 @@ def test_deck_detail_and_list_show_the_commander(client):
         color_identity=["W", "U", "B", "G"],
         total_cards=100,
         total_value_eur=0.0,
-        avg_cmc=3.0,
         category_counts={"Creature": 1},
         cards=[
             {
@@ -654,7 +647,6 @@ def test_deck_detail_copy_plain_text_button(client):
         status=Deck.Status.READY,
         total_cards=6,
         total_value_eur=0.0,
-        avg_cmc=0.5,
         category_counts={"Creature": 4, "Land": 2},
         cards=[
             {
@@ -701,7 +693,6 @@ def test_destructive_actions_use_confirm_modal(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[],
     )

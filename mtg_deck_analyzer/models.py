@@ -76,7 +76,6 @@ class Deck(models.Model):
     # Aggregate statistics.
     total_cards = models.IntegerField(default=0)
     total_value_eur = models.FloatField(default=0.0)
-    avg_cmc = models.FloatField(default=0.0)
     category_counts = models.JSONField(default=dict)
 
     # The statistics panel, derived from ``cards`` at analysis time: mana

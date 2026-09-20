@@ -112,7 +112,10 @@ def analyze_decklist(
         else:
             log_analysis_unavailable()
 
-    total_cards, total_price, avg_cmc, category_counts = compute_statistics(
+    # The average CMC this also returns is deliberately dropped: the mana
+    # curve replaced it, and only the PDF fact sheet still prints one (which
+    # it computes itself).
+    total_cards, total_price, _avg_cmc, category_counts = compute_statistics(
         processed_cards
     )
 
@@ -124,7 +127,6 @@ def analyze_decklist(
             "color_identity": deck_color_identity(processed_cards),
             "total_cards": total_cards,
             "total_value_eur": total_price,
-            "avg_cmc": avg_cmc,
             "category_counts": category_counts,
             "statistics": deck_statistics(processed_cards),
         },
