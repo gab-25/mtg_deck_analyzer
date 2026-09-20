@@ -160,3 +160,30 @@ class TestPromptFormat:
         prompt = self._prompt(posted)
         assert "40 starting life" in prompt
         assert "four-player pod" in prompt
+
+
+def test_prompt_states_the_bracket_and_its_signals(posted):
+    openrouter.analyze_deck_list(
+        "1 Rhystic Study",
+        api_key="k",
+        bracket={
+            "bracket": 3,
+            "label": "Upgraded",
+            "signals": {
+                "game_changers": ["Rhystic Study"],
+                "mass_land_denial": [],
+                "extra_turns": [],
+            },
+        },
+    )
+    prompt = posted.call["json"]["messages"][0]["content"]
+    assert "Bracket: 3 (Upgraded)" in prompt
+    assert "Rhystic Study" in prompt
+    assert "no mass land denial" in prompt
+    assert "Do not re-estimate" in prompt
+
+
+def test_prompt_is_unchanged_when_no_bracket_is_given(posted):
+    openrouter.analyze_deck_list("1 Forest", api_key="k")
+    prompt = posted.call["json"]["messages"][0]["content"]
+    assert "Bracket" not in prompt

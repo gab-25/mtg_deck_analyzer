@@ -40,16 +40,18 @@ def analyze_deck_list(
     api_key: str = None,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
+    bracket: dict = None,
 ) -> str | None:
     """Asks the configured model to write a tactical strategy guide for the deck.
 
     ``commanders`` are the deck's commander name(s); they anchor the analysis
     when known. ``fmt`` is the Commander format the deck is built for: it
     decides the game the model is asked to judge the deck in, which differs
-    sharply between a four-player pod and a 1v1 duel. Returns the analysis
-    text, or None if it could not be produced
-    (in which case nothing should be added to the PDF; the reason is logged to
-    the console).
+    sharply between a four-player pod and a 1v1 duel. ``bracket`` is the
+    computed Commander Bracket verdict; when given, the model is told the level
+    instead of being asked to guess it. Returns the analysis text, or None if
+    it could not be produced (in which case nothing should be added to the PDF;
+    the reason is logged to the console).
     """
     api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
@@ -65,6 +67,35 @@ def analyze_deck_list(
 
     rules = FORMATS[fmt]
 
+    # The bracket is an input, not a question: the model is good at judgement
+    # and prose, and bad at recalling which cards are Game Changers.
+    bracket_lines = ""
+    if bracket:
+        signals = bracket.get("signals", {})
+
+        def _signal(names: list, singular: str, none_text: str) -> str:
+            if not names:
+                return none_text
+            return f"{len(names)} {singular} ({', '.join(names)})"
+
+        detail = "; ".join(
+            (
+                _signal(signals.get("game_changers") or [],
+                        "Game Changers", "no Game Changers"),
+                _signal(signals.get("mass_land_denial") or [],
+                        "mass land denial cards", "no mass land denial"),
+                _signal(signals.get("extra_turns") or [],
+                        "extra-turn cards", "no extra-turn cards"),
+            )
+        )
+        bracket_lines = (
+            f"- Estimated Commander Bracket: {bracket['bracket']} "
+            f"({bracket['label']}), a minimum estimate computed from the list: "
+            f"{detail}.\n"
+            "- Judge the deck at that bracket. Do not re-estimate it, dispute it, "
+            "or name a different bracket number.\n"
+        )
+
     prompt = f"""You are an expert Magic: The Gathering Commander (EDH) strategist.
 Write a strategy guide for the {rules.label} deck below, entirely in English, using
 clean GitHub-flavored Markdown.
@@ -72,7 +103,7 @@ clean GitHub-flavored Markdown.
 CONTEXT — this is a {rules.label} deck:
 - 100-card singleton, {rules.context}, {rules.life} starting life.
 - {commander_line.strip()}
-- Judge the deck as a {rules.label} deck: commander-centric game plan, color identity,
+{bracket_lines}- Judge the deck as a {rules.label} deck: commander-centric game plan, color identity,
   ramp and mana base, card advantage engines, interaction, and the threat assessment
   this format calls for. Never discuss it as a 60-card constructed or limited deck.
 
