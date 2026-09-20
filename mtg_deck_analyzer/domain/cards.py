@@ -20,6 +20,16 @@ def front_type_line(card_data: dict) -> str:
     return type_line.split("//")[0].strip().lower()
 
 
+def rules_text(card_data: dict) -> str:
+    """All of a card's rules text, every face, lowercased.
+
+    The single place card text is read from, so the rules checks and the
+    functional tagging always see the same string.
+    """
+    faces = card_data.get("faces", [])
+    return "\n".join(face.get("rules_text", "") or "" for face in faces).lower()
+
+
 def classify_card(card_data: dict) -> str:
     """Classifies a card based on the type line of its front face."""
     tl = front_type_line(card_data)

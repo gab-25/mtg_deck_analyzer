@@ -1,0 +1,197 @@
+"""Tests for the functional tagging of cards by the role they play."""
+
+from mtg_deck_analyzer.domain.cards import rules_text
+from mtg_deck_analyzer.domain.roles import (
+    baseline_report,
+    card_roles,
+    interaction_count,
+    role_counts,
+)
+
+
+def _card(text, type_line="Instant", name="Test Card"):
+    return {
+        "name": name,
+        "type_line": type_line,
+        "faces": [{"name": name, "type_line": type_line, "rules_text": text,
+                   "mana_cost": ""}],
+    }
+
+
+def _item(card, quantity=1):
+    return {"quantity": quantity, "is_commander": False, "data": card}
+
+
+class TestRulesText:
+    def test_every_face_is_included_and_lowercased(self):
+        card = {"faces": [{"rules_text": "Flying"}, {"rules_text": "Draw A Card"}]}
+        assert rules_text(card) == "flying\ndraw a card"
+
+    def test_a_card_with_no_faces_has_no_text(self):
+        assert rules_text({}) == ""
+
+
+class TestRamp:
+    def test_a_mana_rock_is_ramp(self):
+        # Sol Ring.
+        card = _card("{T}: Add {C}{C}.", "Artifact")
+        assert "ramp" in card_roles(card)
+
+    def test_a_mana_dork_is_ramp(self):
+        card = _card("{T}: Add {G}.", "Creature — Elf Druid")
+        assert "ramp" in card_roles(card)
+
+    def test_land_fetch_is_ramp(self):
+        # Cultivate.
+        card = _card(
+            "Search your library for up to two basic land cards, reveal them, "
+            "put one onto the battlefield tapped and the other into your hand.",
+            "Sorcery",
+        )
+        assert "ramp" in card_roles(card)
+
+    def test_a_land_is_not_ramp(self):
+        # A land is the mana, not what accelerates it.
+        card = _card("{T}: Add {G}.", "Basic Land — Forest")
+        assert "ramp" not in card_roles(card)
+
+
+class TestDraw:
+    def test_drawing_a_card_is_draw(self):
+        assert "draw" in card_roles(_card("Draw a card."))
+
+    def test_drawing_several_cards_is_draw(self):
+        assert "draw" in card_roles(_card("Draw three cards."))
+
+    def test_a_vanilla_creature_does_not_draw(self):
+        assert "draw" not in card_roles(_card("Flying", "Creature — Bird"))
+
+
+class TestRemoval:
+    def test_destroy_target_is_targeted_removal(self):
+        assert "targeted_removal" in card_roles(_card("Destroy target creature."))
+
+    def test_exile_target_is_targeted_removal(self):
+        # Swords to Plowshares.
+        roles = card_roles(_card("Exile target creature. Its controller gains life."))
+        assert "targeted_removal" in roles
+
+    def test_burn_to_any_target_is_targeted_removal(self):
+        # Lightning Bolt.
+        card = _card("Lightning Bolt deals 3 damage to any target.")
+        assert "targeted_removal" in card_roles(card)
+
+    def test_bounce_is_targeted_removal(self):
+        card = _card("Return target creature to its owner's hand.")
+        assert "targeted_removal" in card_roles(card)
+
+    def test_destroy_all_is_a_board_wipe(self):
+        # Wrath of God.
+        card = _card("Destroy all creatures. They can't be regenerated.", "Sorcery")
+        assert "board_wipe" in card_roles(card)
+
+    def test_mass_damage_is_a_board_wipe(self):
+        # Blasphemous Act.
+        card = _card("Blasphemous Act deals 13 damage to each creature.", "Sorcery")
+        assert "board_wipe" in card_roles(card)
+
+
+class TestTutor:
+    def test_searching_for_a_spell_is_a_tutor(self):
+        # Demonic Tutor.
+        card = _card("Search your library for a card, put it into your hand.")
+        assert "tutor" in card_roles(card)
+
+    def test_searching_only_for_lands_is_ramp_not_a_tutor(self):
+        card = _card(
+            "Search your library for a basic land card, put it onto the "
+            "battlefield tapped.",
+            "Sorcery",
+        )
+        roles = card_roles(card)
+        assert "ramp" in roles
+        assert "tutor" not in roles
+
+
+class TestInteraction:
+    def test_a_counterspell_interacts(self):
+        assert "interaction" in card_roles(_card("Counter target spell."))
+
+    def test_granting_hexproof_interacts(self):
+        card = _card("Target creature you control gains hexproof until end of turn.")
+        assert "interaction" in card_roles(card)
+
+    def test_a_creature_that_merely_has_hexproof_does_not(self):
+        # Otherwise the interaction count fills up with ordinary creatures.
+        card = _card("Hexproof, trample", "Creature — Beast")
+        assert "interaction" not in card_roles(card)
+
+    def test_a_sacrifice_outlet_interacts(self):
+        card = _card("Sacrifice a creature: Draw a card.", "Enchantment")
+        assert "interaction" in card_roles(card)
+
+
+class TestMultipleRoles:
+    def test_a_card_can_hold_several_roles(self):
+        # Mystic Confluence: draw and bounce on the same card.
+        card = _card(
+            "Choose three. Draw a card. Return target creature to its owner's "
+            "hand. Target creature gets -2/-2 until end of turn."
+        )
+        roles = card_roles(card)
+        assert {"draw", "targeted_removal"} <= roles
+
+
+class TestRoleCounts:
+    def test_counts_are_weighted_by_quantity(self):
+        deck = [_item(_card("Draw a card."), quantity=4)]
+        assert role_counts(deck)["draw"] == 4
+
+    def test_every_role_is_present_even_at_zero(self):
+        from mtg_deck_analyzer.domain.constants import ROLE_ORDER
+
+        assert set(role_counts([])) == set(ROLE_ORDER)
+
+
+class TestInteractionCount:
+    def test_a_card_interacting_two_ways_is_counted_once(self):
+        card = _card("Destroy target creature. Destroy all artifacts.", "Sorcery")
+        assert {"targeted_removal", "board_wipe"} <= card_roles(card)
+        assert interaction_count([_item(card)]) == 1
+
+
+class TestBaselineReport:
+    def _deck(self, ramp=0, draw=0, removal=0, lands=0):
+        deck = []
+        if ramp:
+            deck.append(_item(_card("{T}: Add {C}.", "Artifact"), ramp))
+        if draw:
+            deck.append(_item(_card("Draw a card."), draw))
+        if removal:
+            deck.append(_item(_card("Destroy target creature."), removal))
+        if lands:
+            deck.append(_item(_card("{T}: Add {G}.", "Basic Land — Forest"), lands))
+        return deck
+
+    def test_a_deck_inside_the_baseline_has_no_delta(self):
+        report = {e["key"]: e for e in baseline_report(self._deck(ramp=10))}
+        assert report["ramp"]["count"] == 10
+        assert report["ramp"]["delta"] == 0
+
+    def test_too_little_ramp_reports_a_negative_delta(self):
+        report = {e["key"]: e for e in baseline_report(self._deck(ramp=6))}
+        assert report["ramp"]["delta"] == -4
+
+    def test_too_much_draw_reports_a_positive_delta(self):
+        report = {e["key"]: e for e in baseline_report(self._deck(draw=20))}
+        assert report["draw"]["delta"] == 8
+
+    def test_lands_are_counted_from_the_type_line(self):
+        report = {e["key"]: e for e in baseline_report(self._deck(lands=37))}
+        assert report["lands"]["count"] == 37
+        assert report["lands"]["delta"] == 0
+
+    def test_the_report_follows_the_configured_order(self):
+        from mtg_deck_analyzer.domain.constants import BASELINE_ORDER
+
+        assert [e["key"] for e in baseline_report([])] == BASELINE_ORDER

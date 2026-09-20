@@ -117,3 +117,40 @@ CATEGORY_ORDER = [
     "Land",
     "Other",
 ]
+
+# Display order and labels of the functional roles a card can play.
+ROLE_ORDER = [
+    "ramp",
+    "draw",
+    "targeted_removal",
+    "board_wipe",
+    "tutor",
+    "interaction",
+]
+
+ROLE_LABELS = {
+    "ramp": "Ramp",
+    "draw": "Card draw",
+    "targeted_removal": "Targeted removal",
+    "board_wipe": "Board wipes",
+    "tutor": "Tutors",
+    "interaction": "Protection & interaction",
+}
+
+# The common EDH deckbuilding baseline, as inclusive ranges. Rules of thumb,
+# not rules: a deck outside them is worth a second look, not a verdict.
+EDH_BASELINE = {
+    "ramp": (10, 12),
+    "draw": (10, 12),
+    "interaction": (8, 12),
+    "lands": (36, 38),
+}
+
+BASELINE_ORDER = ["ramp", "draw", "interaction", "lands"]
+
+BASELINE_LABELS = {
+    "ramp": "Ramp",
+    "draw": "Card draw",
+    "interaction": "Interaction",
+    "lands": "Lands",
+}
