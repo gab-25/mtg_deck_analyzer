@@ -79,6 +79,14 @@ class Deck(models.Model):
     avg_cmc = models.FloatField(default=0.0)
     category_counts = models.JSONField(default=dict)
 
+    # The statistics panel, derived from ``cards`` at analysis time: mana
+    # curve, pips against colored sources, the color-fixing verdict, the
+    # functional role counts and the opening-hand odds. One JSON blob rather
+    # than five columns, because nothing queries it — it is only ever read
+    # whole. Empty for decks analyzed before it existed; the deck page
+    # recomputes it for those.
+    statistics = models.JSONField(default=dict)
+
     # Processed card list: ``[{"quantity": int, "is_commander": bool,
     # "data": {...}}]`` where each card's ``image_paths`` are stored as
     # cache-relative basenames.

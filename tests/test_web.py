@@ -16,29 +16,33 @@ def _legal_decklist(commander=COMMANDER):
 
 def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
     """Deterministic stand-in for the heavy analysis pipeline."""
+    from mtg_deck_analyzer.domain.statistics import deck_statistics
+
     if not decklist.strip():
         raise ValueError("No cards could be parsed from the decklist.")
+    processed_cards = [
+        {
+            "quantity": 2,
+            "data": {
+                "name": "Forest",
+                "type_line": "Basic Land — Forest",
+                "cmc": 0.0,
+                "price_eur": 0.05,
+                "image_paths": [],
+                "produced_mana": ["G"],
+                "faces": [
+                    {
+                        "name": "Forest",
+                        "mana_cost": "",
+                        "type_line": "Basic Land — Forest",
+                        "rules_text": "({T}: Add {G}.)",
+                    }
+                ],
+            },
+        }
+    ]
     return {
-        "processed_cards": [
-            {
-                "quantity": 2,
-                "data": {
-                    "name": "Forest",
-                    "type_line": "Basic Land — Forest",
-                    "cmc": 0.0,
-                    "price_eur": 0.05,
-                    "image_paths": [],
-                    "faces": [
-                        {
-                            "name": "Forest",
-                            "mana_cost": "",
-                            "type_line": "Basic Land — Forest",
-                            "rules_text": "({T}: Add {G}.)",
-                        }
-                    ],
-                },
-            }
-        ],
+        "processed_cards": processed_cards,
         "deck_analysis": None
         if skip_analysis
         else "## Overview\n\n- A **Forest** deck.",
@@ -49,6 +53,7 @@ def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
             "total_value_eur": 0.10,
             "avg_cmc": 0.0,
             "category_counts": {"Land": 2},
+            "statistics": deck_statistics(processed_cards),
         },
     }
 
@@ -1524,3 +1529,15 @@ def test_the_deck_page_shows_the_format_badge(client):
 
     body = client.get(f"/decks/{deck.id}").content.decode()
     assert "Duel Commander" in body
+
+
+@pytest.mark.django_db
+def test_the_analysis_stores_the_statistics(client):
+    """The panel's data is derived once and persisted with the deck."""
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Stats", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Stats")
+
+    assert deck.statistics["library_size"] == 2
+    assert deck.statistics["opening_hand"]["hand_size"] == 7

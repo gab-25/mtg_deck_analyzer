@@ -326,6 +326,7 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt: s
                 total_value_eur=stats["total_value_eur"],
                 avg_cmc=stats["avg_cmc"],
                 category_counts=stats["category_counts"],
+                statistics=stats["statistics"],
                 cards=cards_for_storage(result["processed_cards"]),
                 status=Deck.Status.READY,
                 error=None,

@@ -11,6 +11,7 @@ from .domain.cards import compute_statistics
 from .domain.commander import check_deck, commander_names, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS
 from .domain.decklist import parse_decklist_text
+from .domain.statistics import deck_statistics
 from .integrations.openrouter import analyze_deck_list, log_analysis_unavailable
 from .integrations.scryfall import fetch_card_data
 
@@ -125,6 +126,7 @@ def analyze_decklist(
             "total_value_eur": total_price,
             "avg_cmc": avg_cmc,
             "category_counts": category_counts,
+            "statistics": deck_statistics(processed_cards),
         },
     }
 
