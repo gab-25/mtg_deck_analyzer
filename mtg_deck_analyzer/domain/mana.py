@@ -6,6 +6,7 @@ mana curve.
 """
 
 import re
+from statistics import median
 
 from .cards import classify_card, front_type_line
 from .commander import WUBRG
@@ -215,3 +216,35 @@ def land_production(processed_cards: list) -> dict:
                 slots += quantity
 
     return {"lands": lands, "symbol_slots": slots, "by_color": by_color}
+
+
+def mana_value_summary(processed_cards: list) -> dict:
+    """Average, median and total mana value, with and without lands.
+
+    Main deck only — the commander is left out, which is what makes the
+    reference deck total 156 over 98 cards rather than 160 over 100. "Land"
+    here is the front face, as :func:`~.cards.classify_card` reads it: the
+    without-lands average only reconciles against 74 non-lands, not against
+    the 27 lands :func:`is_land_card` counts for mana production.
+    """
+    values = []
+    without_lands = []
+
+    for item in processed_cards:
+        if item.get("is_commander"):
+            continue
+        data = item["data"]
+        value = float(data.get("cmc", 0) or 0)
+        values.extend([value] * item["quantity"])
+        if classify_card(data) != "Land":
+            without_lands.extend([value] * item["quantity"])
+
+    return {
+        "total": int(sum(values)),
+        "average": sum(values) / len(values) if values else 0.0,
+        "average_without_lands": (
+            sum(without_lands) / len(without_lands) if without_lands else 0.0
+        ),
+        "median": median(values) if values else 0.0,
+        "median_without_lands": median(without_lands) if without_lands else 0.0,
+    }

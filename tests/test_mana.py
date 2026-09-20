@@ -1,5 +1,7 @@
 """Tests for pip counting, colored sources and the mana curve."""
 
+import pytest
+
 from mtg_deck_analyzer.domain.mana import (
     card_pips,
     deck_pips,
@@ -251,3 +253,42 @@ class TestLandProduction:
         out = land_production([self._item(card)])
         assert out["lands"] == 1
         assert out["by_color"]["U"] == 1
+
+
+from mtg_deck_analyzer.domain.mana import mana_value_summary
+
+
+class TestManaValueSummary:
+    def test_an_empty_deck_is_all_zeroes(self):
+        out = mana_value_summary([])
+        assert out == {"total": 0, "average": 0.0, "average_without_lands": 0.0,
+                       "median": 0.0, "median_without_lands": 0.0}
+
+    def test_totals_and_averages_are_quantity_weighted(self):
+        deck = [_item(_card(type_line="Sorcery", cmc=3.0), 3),
+                _item(_card(type_line="Basic Land — Island", cmc=0.0), 1)]
+        out = mana_value_summary(deck)
+        assert out["total"] == 9
+        assert out["average"] == pytest.approx(9 / 4)
+        assert out["average_without_lands"] == pytest.approx(3.0)
+
+    def test_medians_are_reported_with_and_without_lands(self):
+        deck = [_item(_card(type_line="Sorcery", cmc=4.0), 1),
+                _item(_card(type_line="Basic Land — Island", cmc=0.0), 3)]
+        out = mana_value_summary(deck)
+        assert out["median"] == 0.0
+        assert out["median_without_lands"] == 4.0
+
+    def test_the_commander_is_excluded(self):
+        # Moxfield's figures are main-deck only; the reference deck totals 156
+        # over 98 cards, not 160 over 100.
+        deck = [_item(_card(type_line="Sorcery", cmc=2.0)),
+                _item(_card(type_line="Legendary Creature — Elf", cmc=6.0),
+                      is_commander=True)]
+        assert mana_value_summary(deck)["total"] == 2
+
+    def test_a_deck_of_only_lands_has_no_non_land_average(self):
+        deck = [_item(_card(type_line="Basic Land — Island", cmc=0.0), 5)]
+        out = mana_value_summary(deck)
+        assert out["average_without_lands"] == 0.0
+        assert out["median_without_lands"] == 0.0
