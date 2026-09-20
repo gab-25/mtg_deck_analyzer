@@ -1,0 +1,37 @@
+{% comment %}
+The deck's version trail, newest first. Each entry carries its changelog
+against the version before it; the oldest one has nothing to compare against.
+The view annotates every entry with {version, number, is_current, changes}.
+{% endcomment %}
+<div class="panel-card p-[18px]">
+    <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">
+        Version history
+    </div>
+    <div class="flex flex-col gap-4">
+        {% for entry in version_history %}
+        <div class="{% if not forloop.last %}pb-4 border-b border-line2{% endif %}">
+            <div class="flex items-center justify-between gap-3 flex-wrap mb-1.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <a href="{% url 'deck_version' deck.id entry.version.id %}" class="font-cinzel font-semibold text-[15px] text-txt no-underline">
+                        Version {{ entry.number }}
+                    </a>
+                    {% if entry.is_current %}<span class="chip">Current</span>{% endif %}
+                </div>
+                <span class="text-[11.5px] text-txt3">{{ entry.version.created_at|timesince }} ago</span>
+            </div>
+            {% if entry.version.note %}
+            <div class="text-[12.5px] text-txt2 font-light mb-1.5">{{ entry.version.note }}</div>
+            {% endif %}
+            {% if entry.changes %}
+            <div class="font-mono2 text-[12.5px] leading-[1.6]">
+                {% for c in entry.changes %}
+                <div class="{% if c.sign == '+' %}text-teal{% else %}text-txt3{% endif %}">{{ c.sign }}{{ c.quantity }} {{ c.name }}</div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-[12.5px] text-txt3 font-light">Initial version.</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>

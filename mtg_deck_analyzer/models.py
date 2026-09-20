@@ -2,6 +2,7 @@
 
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -17,8 +18,32 @@ class Deck(models.Model):
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
 
+    class Visibility(models.TextChoices):
+        PRIVATE = "private", "Private"
+        UNLISTED = "unlisted", "Unlisted"
+
     # UUID primary key so deck URLs aren't sequentially enumerable.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Who submitted the deck. NULL means only that the deck predates
+    # ownership: those decks stay visible to every signed-in user, exactly
+    # as they were before. Deleting a user deletes their decks and their
+    # version history (CASCADE) rather than orphaning them to NULL, which
+    # would otherwise make a deleted user's private decks readable and
+    # writable by everyone.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="decks",
+    )
+
+    # PRIVATE is owner-only; UNLISTED is readable by anyone holding the link.
+    # No share token is needed: ``id`` is a UUID, so deck URLs aren't enumerable.
+    visibility = models.CharField(
+        max_length=16, choices=Visibility.choices, default=Visibility.PRIVATE
+    )
 
     name = models.CharField(max_length=255)
     raw_decklist = models.TextField()
@@ -63,6 +88,29 @@ class Deck(models.Model):
 
     class Meta:
         db_table = "decks"
+
+
+class DeckVersion(models.Model):
+    """One submitted decklist in a deck's history.
+
+    Append-only: ``Deck.raw_decklist`` holds the current state, and these rows
+    are the trail that says how it got there. Nothing here is ever rewritten,
+    which is what makes "what did I cut when I added the second wheel?" a
+    question the app can answer.
+    """
+
+    deck = models.ForeignKey(Deck, on_delete=models.CASCADE, related_name="versions")
+    raw_decklist = models.TextField()
+
+    # Optional one-line note the submitter attaches to a revision.
+    note = models.CharField(max_length=255, blank=True, default="")
+
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "deck_versions"
+        # Oldest first: a version is read against the one before it.
+        ordering = ["created_at", "id"]
 
 
 class ScryfallCard(models.Model):

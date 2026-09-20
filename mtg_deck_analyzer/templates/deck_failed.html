@@ -5,9 +5,11 @@
 {% block content %}
 {# .page-narrow caps width at 960px; this page overrides it to 640px, so it stays inline. #}
 <div class="page-narrow" style="max-width:640px">
+    {% if user.is_authenticated %}
     <a href="{% url 'index' %}" class="link-back mb-[18px]">
         <span class="ms text-[18px]">arrow_back</span>All decks
     </a>
+    {% endif %}
 
     <div class="panel-card p-8 text-center">
         <div class="w-[56px] h-[56px] rounded-full bg-[rgba(208,90,62,.12)] border border-[rgba(208,90,62,.3)] flex items-center justify-center mx-auto mt-0 mb-[18px]">
@@ -18,12 +20,15 @@
             We couldn’t finish analyzing <span class="text-txt font-medium">{{ deck.name }}</span>.
         </p>
         {% if deck.error %}
-        {# The reason can span several lines (one per Commander rule broken): keep
-           the line breaks and top-align them. Both override .alert's own flex
-           rules, which are unlayered and would beat the equivalent utilities. #}
+        {% comment %}
+        The reason can span several lines (one per Commander rule broken): keep
+        the line breaks and top-align them. Both override .alert's own flex
+        rules, which are unlayered and would beat the equivalent utilities.
+        {% endcomment %}
         <div class="alert alert-error text-left mb-[18px]"
             style="align-items:flex-start;white-space:pre-line">{{ deck.error }}</div>
         {% endif %}
+        {% if can_edit %}
         <div class="flex justify-center gap-2.5 flex-wrap">
             <form method="post" action="{% url 'reanalyze_deck' deck.id %}" class="m-0">
                 {% csrf_token %}
@@ -33,6 +38,11 @@
             {% url 'delete_deck' deck.id as delete_url %}
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>
+        {% endif %}
     </div>
+
+    {% if version_history %}
+    {% include "partials/deck_versions.html" %}
+    {% endif %}
 </div>
 {% endblock %}

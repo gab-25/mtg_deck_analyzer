@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} — MTG Deck Analyzer{% endblock %}
+
+{% block content %}
+{# .page-narrow caps width at 960px; this page overrides it to 640px, so it stays inline. #}
+<div class="page-narrow" style="max-width:640px">
+    {% if user.is_authenticated %}
+    <a href="{% url 'index' %}" class="link-back mb-[18px]">
+        <span class="ms text-[18px]">arrow_back</span>All decks
+    </a>
+    {% endif %}
+
+    <div class="panel-card p-8 text-center">
+        <div class="w-[56px] h-[56px] rounded-full bg-[rgba(124,92,255,.12)] border border-[rgba(124,92,255,.3)] flex items-center justify-center mx-auto mt-0 mb-[18px]">
+            <span class="ms text-[28px] text-violet2">auto_awesome</span>
+        </div>
+        <h1 class="font-cinzel font-semibold text-[24px] m-0 mb-2">Analysis in progress</h1>
+        <p class="text-txt2 font-light m-0">
+            <span class="text-txt font-medium">{{ deck.name }}</span> is still being analyzed.
+            This page will show the deck as soon as it's ready — check back shortly.
+        </p>
+    </div>
+</div>
+{% endblock %}
