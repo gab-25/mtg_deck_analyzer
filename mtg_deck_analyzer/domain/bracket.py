@@ -55,10 +55,14 @@ def _name_key(card: dict) -> str:
 
 
 def _is_game_changer(card: dict) -> bool:
-    """True when Scryfall flags the card, or the fallback list names it."""
-    if card.get("game_changer"):
-        return True
-    # No key at all: the card was cached before the flag reached this app.
+    """True when Scryfall flags the card, or the fallback list names it.
+
+    A card cached before this app carried the flag has no key at all, and only
+    then does the hand-maintained list get a say: an explicit ``False`` is
+    live data and outranks a list that may have gone stale.
+    """
+    if "game_changer" in card:
+        return bool(card["game_changer"])
     return _name_key(card) in GAME_CHANGER_NAMES
 
 

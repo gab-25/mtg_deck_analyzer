@@ -115,3 +115,8 @@ class TestSignalDetection:
         assert estimate_bracket([])["signals"] == {
             "game_changers": [], "mass_land_denial": [], "extra_turns": [],
         }
+
+    def test_an_explicit_false_from_scryfall_outranks_the_name_list(self):
+        verdict = estimate_bracket(_deck(_card("Rhystic Study", game_changer=False)))
+        assert verdict["signals"]["game_changers"] == []
+        assert verdict["bracket"] == 2
