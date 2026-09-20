@@ -213,14 +213,25 @@ def _sparkline(values: list) -> dict:
     }
 
 
+def _stored_statistics(deck) -> dict | None:
+    """The deck's stored statistics, or None when they predate the current shape.
+
+    Both routes into the panel need this: a blob from before the schema existed
+    is not empty, it simply has different keys, so an emptiness check lets it
+    through into code that will raise on the first missing one.
+    """
+    stored = deck.statistics or {}
+    return stored if stored.get("schema") == STATISTICS_SCHEMA else None
+
+
 def _statistics_panel(deck) -> dict | None:
     """View-model for the Statistics panel, or None when there is nothing yet.
 
     A deck analyzed before the current shape carries a blob that is not empty
     but has the wrong keys, so it is recomputed rather than read.
     """
-    stored = deck.statistics or {}
-    if stored.get("schema") != STATISTICS_SCHEMA:
+    stored = _stored_statistics(deck)
+    if stored is None:
         stored = deck_statistics(deck.cards or [])
     if not stored.get("library_size"):
         return None
@@ -767,7 +778,7 @@ def deck_pdf(request, deck):
         tmp_path,
         commanders=deck.commanders,
         fmt=deck.format,
-        statistics=deck.statistics or None,
+        statistics=_stored_statistics(deck),
     )
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"

@@ -1611,3 +1611,18 @@ class TestStatisticsPanel:
     def test_the_mana_value_sentence_is_rendered(self, client):
         body = client.get(f"/decks/{self._deck(client).id}").content.decode()
         assert "average mana value" in body.lower()
+
+    def test_a_deck_with_a_stale_statistics_blob_is_recomputed_for_the_pdf(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Schema-1 shaped, so it is truthy and carries "library_size" — the
+        # exact shape that used to slip past deck_pdf's guard and die inside
+        # curve_bars with a KeyError on "permanents".
+        Deck.objects.filter(pk=deck.id).update(statistics={
+            "schema": 1, "library_size": 10, "curve": [{"foo": 1}],
+        })
+
+        response = client.get(f"/decks/{deck.id}/pdf")
+        assert response.status_code == 200
+        assert response["content-type"] == "application/pdf"
