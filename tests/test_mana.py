@@ -292,3 +292,64 @@ class TestManaValueSummary:
         out = mana_value_summary(deck)
         assert out["average_without_lands"] == 0.0
         assert out["median_without_lands"] == 0.0
+
+
+from mtg_deck_analyzer.domain.mana import color_card_counts, color_curves
+
+
+def _identity(colors, type_line="Creature — Bear", cmc=2.0):
+    return {"name": "X", "type_line": type_line, "cmc": cmc,
+            "color_identity": list(colors),
+            "faces": [{"name": "X", "mana_cost": "", "type_line": type_line,
+                       "rules_text": ""}]}
+
+
+class TestColorCardCounts:
+    def test_counts_cards_by_color_identity(self):
+        deck = [_item(_identity("U"), 3), _item(_identity("WU"))]
+        out = color_card_counts(deck)
+        assert out["non_lands"] == 4
+        assert out["by_color"]["U"] == 4
+        assert out["by_color"]["W"] == 1
+        assert out["by_color"]["B"] == 0
+
+    def test_lands_are_excluded_from_both_sides(self):
+        deck = [_item(_identity("U", type_line="Land", cmc=0.0), 5),
+                _item(_identity("U"))]
+        out = color_card_counts(deck)
+        assert out["non_lands"] == 1
+        assert out["by_color"]["U"] == 1
+
+    def test_the_commander_is_counted(self):
+        # Unlike the mana-value figures, the colour split includes it.
+        deck = [_item(_identity("R"), is_commander=True)]
+        out = color_card_counts(deck)
+        assert out["non_lands"] == 1
+        assert out["by_color"]["R"] == 1
+
+
+class TestColorCurves:
+    def test_a_color_curve_counts_only_that_colors_cards(self):
+        deck = [_item(_identity("U", cmc=1.0), 2), _item(_identity("R", cmc=3.0))]
+        curves = color_curves(deck)
+        assert curves["U"][1] == 2
+        assert curves["U"][3] == 0
+        assert curves["R"][3] == 1
+
+    def test_a_multicolor_card_appears_in_every_colors_curve(self):
+        curves = color_curves([_item(_identity("WU", cmc=2.0))])
+        assert curves["W"][2] == 1
+        assert curves["U"][2] == 1
+
+    def test_lands_are_excluded(self):
+        deck = [_item(_identity("G", type_line="Land", cmc=0.0), 4)]
+        assert sum(color_curves(deck)["G"]) == 0
+
+    def test_seven_and_up_is_merged(self):
+        deck = [_item(_identity("B", cmc=9.0))]
+        assert color_curves(deck)["B"][7] == 1
+
+    def test_every_color_has_a_curve_even_when_empty(self):
+        curves = color_curves([])
+        assert set(curves) == set("WUBRG")
+        assert all(len(c) == 8 for c in curves.values())

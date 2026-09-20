@@ -248,3 +248,55 @@ def mana_value_summary(processed_cards: list) -> dict:
         "median": median(values) if values else 0.0,
         "median_without_lands": median(without_lands) if without_lands else 0.0,
     }
+
+
+def _card_identity(card_data: dict) -> set:
+    """A card's colour identity as a set of WUBRG letters."""
+    return {c for c in (card_data.get("color_identity") or []) if c in WUBRG}
+
+
+def color_card_counts(processed_cards: list) -> dict:
+    """Non-land cards per colour, and how many non-land cards there are.
+
+    The commander counts here, unlike in :func:`mana_value_summary` — Moxfield
+    is inconsistent about this and we mirror it rather than diverge from their
+    figures. Colour identity decides, so a card is counted under every colour
+    it belongs to and the percentages do not add up to 100.
+
+    Known gap: on the reference deck this gives blue 49% and red 20% where
+    Moxfield shows 47% and 18%. Twelve combinations of colour rule, land rule
+    and commander handling were tried and none reproduces their counts exactly;
+    a rule we can state beats one tuned to a single deck.
+    """
+    non_lands = 0
+    by_color = {color: 0 for color in WUBRG}
+
+    for item in processed_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        quantity = item["quantity"]
+        non_lands += quantity
+        for color in _card_identity(data):
+            by_color[color] += quantity
+
+    return {"non_lands": non_lands, "by_color": by_color}
+
+
+def color_curves(processed_cards: list) -> dict:
+    """A mana curve per colour, for the sparkline under each colour's figures.
+
+    Same buckets as :func:`mana_curve`, restricted to the non-land cards of
+    that colour. A gold card appears in each of its colours' curves.
+    """
+    curves = {color: [0] * CURVE_BUCKETS for color in WUBRG}
+
+    for item in processed_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
+        for color in _card_identity(data):
+            curves[color][value] += item["quantity"]
+
+    return curves
