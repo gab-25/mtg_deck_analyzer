@@ -287,7 +287,10 @@ def color_curves(processed_cards: list) -> dict:
     """A mana curve per colour, for the sparkline under each colour's figures.
 
     Same buckets as :func:`mana_curve`, restricted to the non-land cards of
-    that colour. A gold card appears in each of its colours' curves.
+    that colour — but unlike :func:`mana_curve`, the commander is included
+    here, for the same reason it is in :func:`color_card_counts`: this is
+    what colour a card belongs to, not what you draw into. Not a bug, just a
+    different question. A gold card appears in each of its colours' curves.
     """
     curves = {color: [0] * CURVE_BUCKETS for color in WUBRG}
 
