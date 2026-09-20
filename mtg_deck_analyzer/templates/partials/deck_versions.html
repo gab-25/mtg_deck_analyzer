@@ -17,7 +17,7 @@ The view annotates every entry with {version, number, is_current, changes}.
                     </a>
                     {% if entry.is_current %}<span class="chip">Current</span>{% endif %}
                 </div>
-                <span class="text-[11.5px] text-txt3">{{ entry.version.created_at|timesince }} ago</span>
+                <span class="text-[11px] text-txt3">{{ entry.version.created_at|timesince }} ago</span>
             </div>
             {% if entry.version.note %}
             <div class="text-[12.5px] text-txt2 font-light mb-1.5">{{ entry.version.note }}</div>
