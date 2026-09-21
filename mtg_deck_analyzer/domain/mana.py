@@ -82,15 +82,14 @@ PERMANENT_TYPES = ("creature", "artifact", "enchantment", "planeswalker", "battl
 def mana_curve(processed_cards: list) -> list:
     """Cards per mana value, lands out, permanents and spells kept apart.
 
-    The commander is excluded: it starts in the command zone rather than the
-    deck, so it is not part of the curve you draw into. (Moxfield does the
-    same, which is how the reference deck's curve sums to its 74 non-lands.)
+    The commander is included. It is not drawn, but it is cast every game, so
+    leaving it off understates the curve exactly where it matters — a deck
+    whose only six-drop is its commander would show an empty bucket at six.
+    Checked against Moxfield, which counts it too.
     """
     buckets = [{"permanents": 0, "spells": 0} for _ in range(CURVE_BUCKETS)]
 
     for item in processed_cards:
-        if item.get("is_commander"):
-            continue
         data = item["data"]
         if classify_card(data) == "Land":
             continue

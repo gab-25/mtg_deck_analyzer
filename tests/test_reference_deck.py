@@ -70,13 +70,17 @@ class TestColors:
 
 class TestCurve:
     def test_the_curve_totals_match_the_published_chart(self):
+        # These were first pinned a card short in buckets 0 and 4 — the two
+        # partners — because the chart was read as though the commander were
+        # excluded, and the one-bar difference was written off as misreading a
+        # screenshot. It was not: Moxfield counts the commander.
         curve = deck_statistics(DECK)["curve"]
         totals = [b["permanents"] + b["spells"] for b in curve]
-        assert totals == [8, 24, 11, 20, 7, 3, 0, 1]
+        assert totals == [9, 24, 11, 20, 8, 3, 0, 1]
 
-    def test_the_curve_covers_every_non_land_card(self):
+    def test_the_curve_covers_every_non_land_card_and_the_commanders(self):
         curve = deck_statistics(DECK)["curve"]
-        assert sum(b["permanents"] + b["spells"] for b in curve) == 74
+        assert sum(b["permanents"] + b["spells"] for b in curve) == 76
 
 
 STORM = json.loads(

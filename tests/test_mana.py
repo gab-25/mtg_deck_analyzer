@@ -107,11 +107,13 @@ class TestManaCurve:
                 _item(_card(type_line="Sorcery", cmc=12.0))]
         assert mana_curve(deck)[7]["spells"] == 2
 
-    def test_the_commander_is_excluded(self):
-        # Moxfield leaves the commander out of the curve; so do we.
+    def test_the_commander_is_included(self):
+        # It is a card you cast every game, so it belongs on the curve. Checked
+        # against Moxfield: a deck whose only six-drop is its commander shows a
+        # bar of one at six, not an empty bucket.
         deck = [_item(_card(type_line="Legendary Creature — Elf", cmc=3.0),
                       is_commander=True)]
-        assert mana_curve(deck)[3]["permanents"] == 0
+        assert mana_curve(deck)[3]["permanents"] == 1
 
     def test_a_spell_with_a_land_back_stays_on_the_curve(self):
         card = {"type_line": "Instant // Land", "cmc": 3.0,
