@@ -16,29 +16,33 @@ def _legal_decklist(commander=COMMANDER):
 
 def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
     """Deterministic stand-in for the heavy analysis pipeline."""
+    from mtg_deck_analyzer.domain.statistics import deck_statistics
+
     if not decklist.strip():
         raise ValueError("No cards could be parsed from the decklist.")
+    processed_cards = [
+        {
+            "quantity": 2,
+            "data": {
+                "name": "Forest",
+                "type_line": "Basic Land — Forest",
+                "cmc": 0.0,
+                "price_eur": 0.05,
+                "image_paths": [],
+                "produced_mana": ["G"],
+                "faces": [
+                    {
+                        "name": "Forest",
+                        "mana_cost": "",
+                        "type_line": "Basic Land — Forest",
+                        "rules_text": "({T}: Add {G}.)",
+                    }
+                ],
+            },
+        }
+    ]
     return {
-        "processed_cards": [
-            {
-                "quantity": 2,
-                "data": {
-                    "name": "Forest",
-                    "type_line": "Basic Land — Forest",
-                    "cmc": 0.0,
-                    "price_eur": 0.05,
-                    "image_paths": [],
-                    "faces": [
-                        {
-                            "name": "Forest",
-                            "mana_cost": "",
-                            "type_line": "Basic Land — Forest",
-                            "rules_text": "({T}: Add {G}.)",
-                        }
-                    ],
-                },
-            }
-        ],
+        "processed_cards": processed_cards,
         "deck_analysis": None
         if skip_analysis
         else "## Overview\n\n- A **Forest** deck.",
@@ -47,8 +51,8 @@ def _fake_analyze(decklist, api_key=None, skip_analysis=False, **kwargs):
             "color_identity": ["W", "U", "B", "G"],
             "total_cards": 2,
             "total_value_eur": 0.10,
-            "avg_cmc": 0.0,
             "category_counts": {"Land": 2},
+            "statistics": deck_statistics(processed_cards),
         },
     }
 
@@ -377,7 +381,6 @@ def test_proxy_pdf_download(client):
         status=Deck.Status.READY,
         total_cards=6,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Instant": 3, "Land": 3},
         cards=[
             _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=3, type_line="Instant"),
@@ -409,7 +412,6 @@ def test_proxy_pdf_prints_the_back_face_of_a_double_faced_card(client):
         status=Deck.Status.READY,
         total_cards=9,
         total_value_eur=0.0,
-        avg_cmc=1.0,
         category_counts={"Instant": 8, "Creature": 1},
         cards=[
             _proxy_card("Lightning Bolt", ["img_bolt.jpg"], quantity=8, type_line="Instant"),
@@ -434,7 +436,6 @@ def test_deck_detail_has_export_proxy_button(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[],
     )
@@ -521,7 +522,6 @@ def test_deck_detail_card_images_link_to_modal(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[
             {
@@ -555,7 +555,6 @@ def test_deck_detail_modal_link_carries_every_face(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=1.0,
         category_counts={"Creature": 1},
         cards=[
             {
@@ -598,7 +597,6 @@ def test_deck_detail_and_list_show_the_commander(client):
         color_identity=["W", "U", "B", "G"],
         total_cards=100,
         total_value_eur=0.0,
-        avg_cmc=3.0,
         category_counts={"Creature": 1},
         cards=[
             {
@@ -649,7 +647,6 @@ def test_deck_detail_copy_plain_text_button(client):
         status=Deck.Status.READY,
         total_cards=6,
         total_value_eur=0.0,
-        avg_cmc=0.5,
         category_counts={"Creature": 4, "Land": 2},
         cards=[
             {
@@ -696,7 +693,6 @@ def test_destructive_actions_use_confirm_modal(client):
         status=Deck.Status.READY,
         total_cards=1,
         total_value_eur=0.0,
-        avg_cmc=0.0,
         category_counts={"Land": 1},
         cards=[],
     )
@@ -1524,3 +1520,231 @@ def test_the_deck_page_shows_the_format_badge(client):
 
     body = client.get(f"/decks/{deck.id}").content.decode()
     assert "Duel Commander" in body
+
+
+@pytest.mark.django_db
+def test_the_analysis_stores_the_statistics(client):
+    """The panel's data is derived once and persisted with the deck."""
+    from mtg_deck_analyzer.models import Deck
+
+    client.post("/decks", data={"name": "Stats", "decklist": _legal_decklist()})
+    deck = Deck.objects.get(name="Stats")
+
+    assert deck.statistics["library_size"] == 2
+    assert deck.statistics["opening_hand"]["hand_size"] == 7
+
+
+@pytest.mark.django_db
+class TestStatisticsPanel:
+    """The Statistics panel on the deck page."""
+
+    def _deck(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        client.post("/decks", data={"name": "Stats", "decklist": _legal_decklist()})
+        return Deck.objects.get(name="Stats")
+
+    def test_the_panel_is_rendered_for_an_analyzed_deck(self, client):
+        deck = self._deck(client)
+        response = client.get(f"/decks/{deck.id}")
+
+        assert response.status_code == 200
+        assert "Statistics" in response.content.decode()
+        assert response.context["statistics"] is not None
+
+    def test_probabilities_are_whole_percentages(self, client):
+        deck = self._deck(client)
+        panel = client.get(f"/decks/{deck.id}").context["statistics"]
+
+        keepable = panel["opening_hand"]["keepable"]
+        assert isinstance(keepable, int)
+        assert 0 <= keepable <= 100
+
+    def test_a_deck_without_stored_statistics_shows_no_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Analyzed before the panel existed: no stored blob. The statistics
+        # are computed at analysis time and nowhere else, so the page simply
+        # leaves the panel out until the backfill or a re-analysis fills it.
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=deck.cards)
+
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"] is None
+
+    def test_a_deck_with_a_stale_statistics_blob_shows_no_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        Deck.objects.filter(pk=deck.id).update(statistics={"schema": 1,
+                                                           "curve": "nonsense"})
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"] is None
+
+    def test_a_deck_with_schema_2_missing_sources_known_shows_no_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # A blob from before sources_known was added: schema 2, and missing a
+        # key the panel requires. The schema guard has to reject it on the
+        # version alone, or the page dies with a KeyError instead.
+        current_stats = deck.statistics.copy()
+        stale_stats = {k: v for k, v in current_stats.items() if k != "sources_known"}
+        stale_stats["schema"] = 2
+        Deck.objects.filter(pk=deck.id).update(statistics=stale_stats)
+
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"] is None
+
+    def test_a_deck_with_no_cards_has_no_panel(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=[])
+
+        assert client.get(f"/decks/{deck.id}").context["statistics"] is None
+
+    def test_the_curve_is_rendered_as_an_svg_chart(self, client):
+        deck = self._deck(client)
+        body = client.get(f"/decks/{deck.id}").content.decode()
+        assert "<svg" in body
+        assert "Mana Value" in body
+        assert "Number of cards" in body
+
+    def test_the_chart_geometry_is_computed_in_the_view(self, client):
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        assert len(chart["bars"]) == 8
+        first = chart["bars"][0]
+        assert {"x", "width", "permanents", "spells", "total", "label"} <= set(first)
+        assert chart["gridlines"], "an axis with no gridlines is not an axis"
+
+    def test_the_axis_captions_clear_the_chart(self, client):
+        # "Number of cards" was drawn at the same y as the topmost tick, so
+        # the two printed on top of each other.
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        top_tick = min(g["y"] for g in chart["gridlines"])
+        assert top_tick >= chart["caption_y"] + 11, "caption overlaps the top tick"
+
+    def test_the_x_axis_caption_sits_inside_the_viewbox(self, client):
+        # Drawn on the very last row, its descenders were clipped.
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        assert chart["x_label_y"] < chart["height"]
+        assert chart["x_label_y"] > chart["label_y"]
+
+    def test_every_color_column_is_present_even_when_unused(self, client):
+        colors = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["colors"]
+        assert [c["key"] for c in colors] == ["W", "U", "B", "R", "G", "C"]
+
+    def test_the_opening_hand_shows_the_whole_distribution(self, client):
+        # Only 2-5 used to be shown, which hid how often a hand is unkeepable.
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        assert [b["lands"] for b in hand["distribution"]["bars"]] == list(range(8))
+
+    def test_the_keepable_window_is_marked_on_the_distribution(self, client):
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        keepable = {b["lands"] for b in hand["distribution"]["bars"] if b["keepable"]}
+        assert keepable == {2, 3, 4, 5}
+
+    def test_the_land_drops_read_as_one_series_not_five_sentences(self, client):
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        # "Never missing" states the cumulative meaning the old label needed
+        # a spoken explanation to convey.
+        assert "Never missing a land drop" in body
+        assert "Every land drop through turn 1" not in body
+
+    def test_the_land_drop_odds_say_they_ignore_ramp(self, client):
+        # 48% by turn five alarms more than it should without this.
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        assert "ramp" in body.lower()
+
+    def test_the_average_is_rendered_to_two_decimals(self, client):
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        assert isinstance(hand["average_lands"], str)
+        assert "." in hand["average_lands"]
+
+    def test_a_deck_whose_every_hand_is_keepable_claims_no_mulligans(self, client):
+        # The stub deck is two lands, so every hand holds exactly two: there is
+        # no mulligan rate to state, and the sentence must not offer one.
+        response = client.get(f"/decks/{self._deck(client).id}")
+        assert response.context["statistics"]["opening_hand"]["mulligan_in"] == 0
+        assert "one hand in 0" not in response.content.decode()
+
+    def test_the_mana_value_sentence_is_rendered(self, client):
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        assert "average mana value" in body.lower()
+
+    def test_a_deck_with_a_stale_statistics_blob_still_exports_a_pdf(self, client):
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Schema-1 shaped, so it is truthy and carries "library_size" — the
+        # exact shape that used to slip past deck_pdf's guard and die inside
+        # curve_bars with a KeyError on "permanents". The export drops the
+        # section rather than recomputing it.
+        Deck.objects.filter(pk=deck.id).update(statistics={
+            "schema": 1, "library_size": 10, "curve": [{"foo": 1}],
+        })
+
+        response = client.get(f"/decks/{deck.id}/pdf")
+        assert response.status_code == 200
+        assert response["content-type"] == "application/pdf"
+
+    def test_a_legacy_deck_does_not_report_zero_percent_production(self, client):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+        from mtg_deck_analyzer.models import Deck
+
+        deck = self._deck(client)
+        # Simulates a deck analyzed before produced_mana was carried through:
+        # none of its cards carry the key.
+        stripped = [
+            {**item, "data": {k: v for k, v in item["data"].items()
+                              if k != "produced_mana"}}
+            for item in deck.cards
+        ]
+        Deck.objects.filter(pk=deck.id).update(
+            statistics=deck_statistics(stripped), cards=stripped
+        )
+
+        response = client.get(f"/decks/{deck.id}")
+        assert response.context["statistics"]["sources_known"] is False
+        assert "re-analyze the deck to see them" in response.content.decode()
+
+    def test_a_color_is_not_used_merely_because_a_rainbow_land_produces_it(self):
+        # A rainbow land can make a colour "produced" without the deck ever
+        # asking for it: production alone must not light up a colour column.
+        from mtg_deck_analyzer import views
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+        from mtg_deck_analyzer.models import Deck
+
+        cards = [
+            {"quantity": 1, "is_commander": True,
+             "data": {"name": "Cmdr", "type_line": "Legendary Creature — Human",
+                      "cmc": 1.0, "color_identity": ["W"],
+                      "faces": [{"name": "Cmdr", "mana_cost": "{W}",
+                                 "type_line": "Legendary Creature — Human",
+                                 "rules_text": ""}]}},
+            {"quantity": 1, "is_commander": False,
+             "data": {"name": "Command Tower", "type_line": "Land",
+                      "cmc": 0.0, "produced_mana": ["W", "U", "B", "R", "G"],
+                      "faces": [{"name": "Command Tower", "mana_cost": "",
+                                 "type_line": "Land", "rules_text": ""}]}},
+        ]
+        deck = Deck(cards=cards, statistics=deck_statistics(cards))
+
+        panel = views._statistics_panel(deck)
+
+        black = next(c for c in panel["colors"] if c["key"] == "B")
+        assert black["card_pct"] == 0
+        assert black["symbol_pct"] == 0
+        assert black["production_pct"] > 0
+        assert black["used"] is False

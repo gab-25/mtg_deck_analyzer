@@ -117,3 +117,8 @@ CATEGORY_ORDER = [
     "Land",
     "Other",
 ]
+
+
+# Full colour names, as the deck page and the PDF both label their columns.
+COLOR_FULL_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red",
+                    "G": "Green", "C": "Colorless"}

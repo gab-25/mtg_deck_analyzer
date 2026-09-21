@@ -5,11 +5,13 @@ from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Table
 
 from mtg_deck_analyzer.domain.cards import compute_statistics as _compute_statistics
+from mtg_deck_analyzer.rendering import pdf as pdf_module
 from mtg_deck_analyzer.rendering.pdf import (
     _build_card_image_cell,
     _build_styles,
     create_no_image_placeholder,
     create_stats_table,
+    create_statistics_flowables,
     generate_pdf,
 )
 
@@ -30,47 +32,50 @@ def _item(qty, type_line, price=0.0, cmc=0.0):
 
 class TestComputeStatistics:
     def test_empty_deck(self):
-        total, price, avg_cmc, counts = _compute_statistics([])
+        total, price, counts = _compute_statistics([])
         assert total == 0
         assert price == 0.0
-        assert avg_cmc == 0.0
         assert all(v == 0 for v in counts.values())
 
     def test_total_cards_sums_quantities(self):
         cards = [_item(4, "Creature"), _item(2, "Instant")]
-        total, _, _, _ = _compute_statistics(cards)
+        total, _, _ = _compute_statistics(cards)
         assert total == 6
 
     def test_total_price_weighted_by_quantity(self):
         cards = [_item(2, "Creature", price=1.50), _item(1, "Instant", price=3.00)]
-        _, price, _, _ = _compute_statistics(cards)
+        _, price, _ = _compute_statistics(cards)
         assert price == pytest.approx(2 * 1.50 + 3.00)
 
     def test_category_counts(self):
         cards = [_item(4, "Creature"), _item(3, "Land"), _item(1, "Sorcery")]
-        _, _, _, counts = _compute_statistics(cards)
+        _, _, counts = _compute_statistics(cards)
         assert counts["Creature"] == 4
         assert counts["Land"] == 3
         assert counts["Sorcery"] == 1
 
-    def test_avg_cmc_excludes_lands(self):
-        cards = [
-            _item(2, "Creature", cmc=3.0),  # contributes 2*3 = 6 over 2 cards
-            _item(4, "Land", cmc=0.0),      # excluded entirely
-        ]
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == pytest.approx(3.0)
 
-    def test_avg_cmc_zero_when_only_lands(self):
-        cards = [_item(10, "Land", cmc=0.0)]
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == 0.0
+class TestStatsTableAverage:
+    def test_the_average_is_labelled_the_way_the_deck_page_words_it(self):
+        # The PDF and the deck page print the same number; they should call
+        # it the same thing. "CMC" is the name the game retired.
+        table = create_stats_table(10, 0.0, 2.25, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "Average Mana Value" in blob
+        assert "CMC" not in blob
 
-    def test_avg_cmc_is_quantity_weighted(self):
-        cards = [_item(3, "Creature", cmc=2.0), _item(1, "Sorcery", cmc=6.0)]
-        # (3*2 + 1*6) / 4 = 3.0
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == pytest.approx(3.0)
+    def test_the_average_row_is_dropped_when_there_is_none(self):
+        table = create_stats_table(10, 0.0, None, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "Average" not in blob
+
+    def test_the_average_row_is_shown_when_there_is_one(self):
+        table = create_stats_table(10, 0.0, 2.25, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "2.25" in blob
 
 
 class TestPlaceholderAndImageCell:
@@ -189,6 +194,149 @@ class TestGeneratePdfEndToEnd:
         out = tmp_path / "deck.pdf"
         generate_pdf("No Analysis Deck", None, cards, str(out))
         assert out.read_bytes().startswith(b"%PDF")
+
+
+class TestStatisticsSection:
+    def _statistics(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+        return deck_statistics([
+            {"quantity": 30, "is_commander": False,
+             "data": {"name": "Island", "type_line": "Basic Land — Island",
+                      "cmc": 0.0, "produced_mana": ["U"],
+                      "faces": [{"name": "Island", "mana_cost": "",
+                                 "type_line": "Basic Land — Island",
+                                 "rules_text": "{T}: Add {U}."}]}},
+            {"quantity": 40, "is_commander": False,
+             "data": {"name": "Counterspell", "type_line": "Instant",
+                      "cmc": 2.0, "produced_mana": [], "color_identity": ["U"],
+                      "faces": [{"name": "Counterspell", "mana_cost": "{U}{U}",
+                                 "type_line": "Instant", "rules_text": ""}]}},
+            {"quantity": 29, "is_commander": False,
+             "data": {"name": "Bear", "type_line": "Creature — Bear",
+                      "cmc": 3.0, "produced_mana": [], "color_identity": ["U"],
+                      "faces": [{"name": "Bear", "mana_cost": "{2}{U}",
+                                 "type_line": "Creature — Bear",
+                                 "rules_text": ""}]}},
+        ])
+
+    def test_the_section_is_built_from_the_statistics(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        assert flowables
+        assert any(isinstance(f, Table) for f in flowables)
+
+    def test_an_empty_deck_yields_no_section(self):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
+        assert create_statistics_flowables(deck_statistics([]), _build_styles()) == []
+
+    def test_the_curve_row_separates_permanents_from_spells(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        # Text lives either on a bare Paragraph flowable or inside a Table cell.
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
+        assert any("Permanents" in t for t in texts)
+        assert any("Spells" in t for t in texts)
+
+    def test_the_opening_hand_reports_the_average_and_every_land_count(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
+        blob = " ".join(texts)
+        assert "average" in blob.lower()
+        # Every count from none to seven, not just the keepable window.
+        for count in range(8):
+            assert f"{count}:" in blob, f"land count {count} missing"
+
+    def _section_text(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
+        return " ".join(texts)
+
+    def test_the_colors_are_named_the_way_the_deck_page_names_them(self):
+        # The deck page heads each column "White production", not "W".
+        blob = self._section_text()
+        for name in ("White", "Blue", "Black", "Red", "Green", "Colorless"):
+            assert name in blob, f"{name} missing"
+
+    def test_the_opening_hand_is_worded_the_way_the_deck_page_words_it(self):
+        blob = self._section_text()
+        assert "Two to five lands in seven" in blob
+        assert "Average lands in seven" in blob
+        assert "Lands in a seven-card hand" in blob
+
+    def test_generate_pdf_includes_the_section(self, tmp_path):
+        out = tmp_path / "deck.pdf"
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(out), statistics=self._statistics())
+        assert out.stat().st_size > 0
+
+    def test_the_fact_sheet_average_comes_from_the_stored_statistics(
+        self, tmp_path, monkeypatch
+    ):
+        # The fact sheet used to compute its own average over the non-land
+        # cards, commanders included, while the section below it read the
+        # stored blob, commanders excluded. Two labels, one deck, two
+        # numbers. The fact sheet now reads the same blob, so a doctored
+        # value has to reach it untouched.
+        stored = self._statistics()
+        stored["mana_values"]["average_without_lands"] = 9.99
+
+        received = []
+        real = pdf_module.create_stats_table
+        monkeypatch.setattr(
+            pdf_module,
+            "create_stats_table",
+            lambda *a, **kw: (received.append(a[2]) or real(*a, **kw)),
+        )
+
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(tmp_path / "deck.pdf"), statistics=stored)
+
+        assert received == [9.99]
+
+    def test_the_fact_sheet_drops_the_average_without_stored_statistics(
+        self, tmp_path, monkeypatch
+    ):
+        # No blob, nothing to read: the row goes rather than being computed
+        # here, the same way the section below it goes.
+        received = []
+        real = pdf_module.create_stats_table
+        monkeypatch.setattr(
+            pdf_module,
+            "create_stats_table",
+            lambda *a, **kw: (received.append(a[2]) or real(*a, **kw)),
+        )
+
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(tmp_path / "deck.pdf"))
+
+        assert received == [None]
+
+    def test_generate_pdf_omits_the_section_when_given_none(self, tmp_path,
+                                                            monkeypatch):
+        # Statistics are computed when the deck is analyzed and stored with
+        # it. A deck exported from before they existed has none, and the
+        # export leaves the section out rather than computing it here.
+        received = []
+        real = pdf_module.create_statistics_flowables
+        monkeypatch.setattr(
+            pdf_module,
+            "create_statistics_flowables",
+            lambda stats, styles: (received.append(stats) or real(stats, styles)),
+        )
+
+        out = tmp_path / "deck.pdf"
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(out))
+        assert out.exists()
+
+        # The section builder is handed nothing to draw, rather than a blob
+        # computed here from the cards. A rendered PDF is compressed, so the
+        # handover is where the claim can be read.
+        assert received == [{}]
 
 
 def _make_png(path):

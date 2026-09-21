@@ -99,3 +99,21 @@ class TestProcessCachedCard:
     def test_missing_legalities_becomes_an_empty_dict(self):
         out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
         assert out["legalities"] == {}
+
+
+class TestProducedMana:
+    """``produced_mana`` drives the deck's colored-source count."""
+
+    def test_produced_mana_is_carried_through(self):
+        card = {
+            "id": "x",
+            "name": "Command Tower",
+            "type_line": "Land",
+            "produced_mana": ["W", "U", "B", "R", "G"],
+        }
+        processed = process_cached_card(card, _NoImageCache())
+        assert processed["produced_mana"] == ["W", "U", "B", "R", "G"]
+
+    def test_missing_produced_mana_is_an_empty_list(self):
+        card = {"id": "x", "name": "Lightning Bolt", "type_line": "Instant"}
+        assert process_cached_card(card, _NoImageCache())["produced_mana"] == []

@@ -13,7 +13,7 @@ different data:
 
 import re
 
-from .cards import front_type_line, is_basic_land
+from .cards import front_type_line, is_basic_land, rules_text
 from .constants import (
     ANY_NUMBER_CARD_NAMES,
     BASIC_LAND_NAMES,
@@ -30,12 +30,6 @@ from .text_utils import front_face_name
 WUBRG = "WUBRG"
 
 _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
-
-
-def _rules_text(card_data: dict) -> str:
-    """All rules text of a card (every face), lowercased."""
-    faces = card_data.get("faces", [])
-    return "\n".join(face.get("rules_text", "") or "" for face in faces).lower()
 
 
 def card_color_identity(card_data: dict) -> list:
@@ -87,12 +81,12 @@ def _can_be_commander(card_data: dict) -> bool:
     type_line = front_type_line(card_data)
     if "legendary" in type_line and "creature" in type_line:
         return True
-    return CAN_BE_COMMANDER_TEXT in _rules_text(card_data)
+    return CAN_BE_COMMANDER_TEXT in rules_text(card_data)
 
 
 def _allows_duplicates(card_data: dict) -> bool:
     """Reports whether a card is exempt from the singleton rule."""
-    return is_basic_land(card_data) or UNLIMITED_COPIES_TEXT in _rules_text(card_data)
+    return is_basic_land(card_data) or UNLIMITED_COPIES_TEXT in rules_text(card_data)
 
 
 def _format_identity(identity: list) -> str:

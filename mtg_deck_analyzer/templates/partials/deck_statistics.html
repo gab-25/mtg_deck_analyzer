@@ -1,0 +1,129 @@
+{% comment %}
+The Statistics panel, laid out as Moxfield's: stacked curve, the mana-value
+sentence, a column per colour, then the opening hand. Every number and every
+SVG coordinate is precomputed in the view; this file only places them.
+{% endcomment %}
+<div class="panel-card overflow-hidden">
+    <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
+        <span class="ms text-txt2 text-[20px]">bar_chart</span>
+        <span class="font-semibold text-[15px]">Statistics</span>
+        <span class="text-[12px] text-txt3">{{ statistics.library_size }}-card library · {{ statistics.land_count }} lands</span>
+    </div>
+
+    <div class="py-5 px-[18px] flex flex-col gap-5">
+
+        <div>
+            <svg viewBox="0 0 {{ statistics.curve_chart.width }} {{ statistics.curve_chart.height }}" class="w-full" role="img" aria-label="Mana curve">
+                {% for g in statistics.curve_chart.gridlines %}
+                <line x1="{{ statistics.curve_chart.axis_x }}" y1="{{ g.y }}" x2="{{ statistics.curve_chart.width }}" y2="{{ g.y }}" stroke="#2a2e3a" stroke-width="1" />
+                <text x="{{ statistics.curve_chart.axis_x }}" y="{{ g.y }}" dx="-8" dy="4" text-anchor="end" fill="#8b8f9c" font-size="11">{{ g.value }}</text>
+                {% endfor %}
+                {% for b in statistics.curve_chart.bars %}
+                <rect x="{{ b.x }}" y="{{ b.spells.y }}" width="{{ b.width }}" height="{{ b.spells.height }}" fill="#6b7280" />
+                <rect x="{{ b.x }}" y="{{ b.permanents.y }}" width="{{ b.width }}" height="{{ b.permanents.height }}" fill="#7c5cff" />
+                <text x="{{ b.label_x }}" y="{{ statistics.curve_chart.label_y }}" text-anchor="middle" fill="#8b8f9c" font-size="11">{{ b.label }}</text>
+                {% endfor %}
+                <text x="{{ statistics.curve_chart.width }}" y="{{ statistics.curve_chart.x_label_y }}" text-anchor="end" fill="#8b8f9c" font-size="11">Mana Value</text>
+                <text x="0" y="{{ statistics.curve_chart.caption_y }}" fill="#8b8f9c" font-size="11">Number of cards</text>
+            </svg>
+            <div class="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-txt3">
+                <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-full" style="background:#7c5cff"></span>Permanents</span>
+                <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-full" style="background:#6b7280"></span>Spells</span>
+            </div>
+        </div>
+
+        <div class="text-[12.5px] text-txt3 font-light leading-[1.5]">
+            The average mana value of your main deck is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.average }}</span> with lands and
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.average_without_lands }}</span> without lands.
+            The median mana value is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.median }}</span> with lands and
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.median_without_lands }}</span> without lands.
+            This deck's total mana value is
+            <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.total }}</span>.
+        </div>
+
+        <div class="grid gap-3" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+            {% for c in statistics.colors %}
+            {# opacity inline: the compiled stylesheet ships no opacity-* utility. #}
+            <div class="text-center"{% if not c.used %} style="opacity:.4"{% endif %}>
+                <div class="mx-auto w-[9px] h-[9px] rounded-full mb-2.5" style="background:{{ c.hex }}"></div>
+                <div class="font-mono2 font-bold text-[19px]">{{ c.card_pct }}%</div>
+                <div class="text-[11px] text-txt3">{{ c.symbol_pct }}% of all symbols</div>
+                <svg viewBox="0 0 {{ c.sparkline.width }} {{ c.sparkline.height }}" class="w-full mt-2.5" role="img" aria-label="{{ c.name }} curve">
+                    {% for b in c.sparkline.bars %}<rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" fill="{{ c.hex }}" />{% endfor %}
+                </svg>
+                <div class="mt-2.5 text-[11px] text-txt3">{{ c.name }} production</div>
+                {% if statistics.sources_known %}
+                <div class="mt-1.5 h-[7px] overflow-hidden rounded-full bg-[#0c0e15]">
+                    <div class="h-full rounded-full" style="background:{{ c.hex }};width:{{ c.production_pct }}%"></div>
+                </div>
+                <div class="mt-1.5 font-mono2 text-[11px] text-txt3">{{ c.production_pct }}%</div>
+                <div class="text-[11px] text-txt3">{{ c.lands_pct }}% on lands</div>
+                {% else %}
+                <div class="mt-1.5 font-mono2 text-[11px] text-txt3">&mdash;</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center text-[11px] text-txt3">The percentages will not add up to 100% if you have multi-color cards</div>
+        {% if not statistics.sources_known %}
+        <div class="text-center text-[11px] text-txt3">Analyzed before mana sources were recorded; re-analyze the deck to see them.</div>
+        {% endif %}
+
+        <div>
+            <div class="mb-1.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Opening hand</div>
+            <div class="flex justify-between text-[13px] mb-3">
+                <span class="text-txt2">Two to five lands in seven</span>
+                <span class="font-mono2 font-bold text-[13px] text-gold">{{ statistics.opening_hand.keepable }}%</span>
+            </div>
+            <div class="flex justify-between text-[13px] mb-3">
+                <span class="text-txt2">Average lands in seven</span>
+                <span class="font-mono2 font-bold text-[13px] text-txt3">{{ statistics.opening_hand.average_lands }}</span>
+            </div>
+            {% comment %}
+            The whole distribution, not just the keepable window: how often a
+            hand falls outside it is what a mulligan decision turns on. Drawn
+            as SVG for the same reason as the curve — the stylesheet is a
+            committed build and cannot grow new classes.
+            {% endcomment %}
+            <svg viewBox="0 0 {{ statistics.opening_hand.distribution.width }} {{ statistics.opening_hand.distribution.height }}" class="w-full mb-1.5" role="img" aria-label="Lands in the opening hand">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" fill="{% if b.keepable %}#7c5cff{% else %}#3a3f4d{% endif %}" />
+                {% endfor %}
+            </svg>
+            <div class="flex mb-1.5">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <div class="flex-1 text-center font-mono2 text-[11px] {% if b.keepable %}text-txt2{% else %}text-txt3{% endif %}">{{ b.pct }}%</div>
+                {% endfor %}
+            </div>
+            <div class="flex mb-4">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <div class="flex-1 text-center font-mono2 text-[11px] text-txt3">{{ b.lands }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-4 text-[11px] text-txt3 font-light">
+                Lands in a seven-card hand. The highlighted bars are the keepable window{% if statistics.opening_hand.mulligan_in %} —
+                roughly one hand in {{ statistics.opening_hand.mulligan_in }} falls outside it and wants a mulligan{% endif %}.
+            </div>
+            {% comment %}
+            One series rather than five near-identical sentences. "Never
+            missing" carries the cumulative meaning that "every land drop
+            through turn N" needed explaining out loud.
+            {% endcomment %}
+            <div class="text-[13px] text-txt2 mb-2">Never missing a land drop</div>
+            <div class="flex">
+                {% for d in statistics.opening_hand.land_drops %}
+                <div class="flex-1 text-center">
+                    <div class="font-mono2 font-bold text-[13px] text-txt2">{{ d.pct }}%</div>
+                    <div class="font-mono2 text-[11px] text-txt3">through T{{ d.turn }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-2.5 text-[11px] text-txt3 font-light">
+                These odds ignore ramp: a mana rock or a dork makes a missed drop matter less.
+            </div>
+        </div>
+
+    </div>
+</div>

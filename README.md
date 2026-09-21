@@ -2,9 +2,10 @@
 
 A **Django** web app for Magic: The Gathering **Commander (EDH)** decks. Paste a Commander decklist in the browser and it fetches card images and descriptions in real time through the **Scryfall** API, produces a strategic deck analysis with an LLM of your choice through **OpenRouter**, and renders an interactive report (**HTMX + Tailwind CSS**) backed by a **Postgres** database — with a one-click download of the same report as a professional **PDF**.
 
-Commander is the only format the app handles: there is no format selection and no
-format detection. Every deck is parsed, validated, analyzed and rendered as a
-100-card singleton Commander deck.
+Commander is the only family of formats the app handles: every deck is parsed,
+validated, analyzed and rendered as a 100-card singleton Commander deck. A deck
+declares on creation whether it is built for **Commander** or **Duel Commander** —
+construction is identical, the ban list and the game are not (see [Formats](#formats)).
 
 See [Web Service](#web-service) to get it running.
 
@@ -14,14 +15,19 @@ See [Web Service](#web-service) to get it running.
 - **Commander legality checks**: A decklist that is not a legal deck is never stored. Rules that plain text can settle — exactly 100 cards, exactly one commander, singleton except basic lands and "any number" cards — are checked instantly and reported *all at once* in the form. Rules that need the real cards — the commander is a legendary creature (or says it can be your commander), every card sits inside its color identity, and no card is on the ban list of the deck's format — are enforced during the analysis, which fails with the same kind of explanation.
 - **Commander and Duel Commander**: A deck declares its format on creation. The two share their construction rules but not their ban lists — 186 cards legal in Commander are banned in Duel, Sol Ring included — so the deck is checked against the one it claims, and the AI analysis judges it as a pod deck or a 1v1 deck accordingly.
 - **Fact Sheet & Statistics**: Adds a summary info box at the top of the PDF containing:
-  - The format (always Commander) and the deck's commander.
+  - The deck's format (Commander or Duel Commander) and its commander.
   - Total number of cards in the deck.
   - Estimated total monetary value based on **Cardmarket** prices (in Euros).
-  - Average Mana Value (CMC) computed excluding lands.
+  - Average mana value excluding lands — the same number the statistics section prints, read from the deck's stored blob rather than computed a second time. It is omitted for a deck whose blob predates the current schema.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
+- **Deck statistics**: A `Statistics` panel on the deck page, and a matching section in the PDF, computed from the cached Scryfall data alone — no extra API call, no LLM, no new dependency. Mirrors Moxfield's own deck page, in four blocks: a **stacked mana curve** (lands excluded, permanents against spells, 7+ merged); a **mana-value sentence** (average and median, with and without lands, plus the deck's total); a **six-column colour block** (share of non-land cards, share of colored symbols, and mana production, per WUBRG colour plus colorless); and **opening-hand probabilities**.
+  - The opening-hand block is exact hypergeometric arithmetic, not a simulation: the odds of 2/3/4/5 lands in the opening seven, of keeping a hand with two to five lands, and of hitting every land drop through turn N.
+  - Statistics are derived data, computed once during the analysis and stored on the deck in a single `statistics` JSON field. They are computed there and nowhere else: neither the page nor the PDF recomputes on the way out, so a stored blob is what gets rendered or nothing is.
+  - The blob carries a `schema` version. A deck whose blob predates the current shape is not read — its keys may be missing or its numbers computed by rules since corrected — so it shows no panel until it is refilled. `python manage.py recompute_statistics` does that refill (`--all` to rewrite every deck), and it is the deploy step a bump of `STATISTICS_SCHEMA` costs.
+  - The one thing a refill cannot recover is which lands tap for which color, on decks analyzed before that was stored: those are asked to re-analyze rather than being told they have no sources.
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
-- **Multi-language card content**: Fetches card names and descriptions in the chosen language (English, Italian, Spanish, French, German — defined in a single registry in `constants.py`). If a card is not available in the chosen language it falls back intelligently: first to an alternative set that has it localized, then to a machine translation, and finally to the English text. Each card records its text **provenance** (`official` / `machine` / `english`), surfaced as an "Auto-translated" or "English text" badge in the web page and a note in the PDF, so machine-translated rules text is never passed off as official. The interface itself stays in English.
+- **English card text**: Cards are always fetched in English — there is no language selection. Oracle text is the text the rules are written in, and the localized printings Scryfall serves are neither consistently available nor consistently current, so a decklist resolves to one English printing per card and the cache is keyed on it (`card_en_<slug>`). This also means a card is cached once, not once per language.
 - **AI Analysis**: Analyzes the deck as a Commander deck — commander and archetype, multiplayer game plan (early, mid, and late game), synergies and combos, strengths and weaknesses. The request goes through [OpenRouter](https://openrouter.ai)'s OpenAI-compatible endpoint, so the app is not tied to a single provider: the default model is `google/gemini-2.5-flash`, and any other model id (Claude, GPT, Llama, ...) can be selected with the `OPENROUTER_MODEL` environment variable, without touching the code. The commander's name is passed into the prompt, and the model is told it is judging a 100-card singleton deck in a multiplayer pod. If no API key is configured, the analysis is simply skipped and logged to the console — the PDF is generated without the strategy section (no placeholder block is inserted).
 - **Complex Card Support**: Correctly handles double-faced cards, split cards, adventures, and rooms. Both faces of a double-faced card are shown side by side in the PDF, flipped with a button in the card zoom on the web page, and printed as two adjacent cards on the proxy sheet.
 - **Scryfall Cache in the Database**: Card JSON and images are cached in Postgres (tables `scryfall_cards` and `scryfall_images`), shared across all decks, to avoid overloading the Scryfall API and make subsequent analyses fast. The cache backend is pluggable — a filesystem cache is also available when the engine is used standalone.
@@ -50,6 +56,7 @@ mtg_deck_analyzer/
 ├── access.py          # Deck ownership and visibility rules (one source of truth)
 ├── models.py          # ORM models (Deck, DeckVersion, ScryfallCard, ScryfallImage)
 ├── migrations/        # Database migrations
+├── management/        # manage.py commands (recompute_statistics)
 ├── templates/         # Django templates
 ├── pipeline.py        # Analysis pipeline (parse → fetch → validate → analyze → stats)
 ├── domain/            # Pure domain logic (no I/O, no Django)
@@ -58,6 +65,9 @@ mtg_deck_analyzer/
 │   ├── changelog.py   #   Differences between two decklists (+1 / -1 entries)
 │   ├── commander.py   #   Commander format rules (color identity, legality, ban list)
 │   ├── cards.py       #   Card classification and aggregate statistics
+│   ├── probability.py #   Hypergeometric primitives (no Magic concepts)
+│   ├── mana.py        #   Pips, colored production, mana curve, mana-value summary
+│   ├── statistics.py  #   Assembles the stored statistics panel
 │   ├── text_utils.py  #   Slugs and Markdown -> ReportLab Flowables conversion
 │   └── storage.py     #   Card image (de)serialization for storage/PDF
 ├── integrations/      # External service clients

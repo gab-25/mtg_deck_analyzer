@@ -20,7 +20,13 @@ from reportlab.platypus import (
 )
 
 from ..domain.cards import classify_card, compute_statistics
-from ..domain.constants import CATEGORY_ORDER, DEFAULT_FORMAT, FORMATS
+from ..domain.constants import (
+    CATEGORY_ORDER,
+    COLOR_FULL_NAMES,
+    DEFAULT_FORMAT,
+    FORMATS,
+)
+from ..domain.statistics import curve_bars
 from ..domain.text_utils import markdown_to_flowables
 
 _CATEGORY_LABELS = {
@@ -41,7 +47,7 @@ _STATS_LABELS = {
     "commander": "Commander",
     "cards": "Total Cards",
     "value": "Estimated Value (Cardmarket)",
-    "cmc": "Average CMC (non-Lands)",
+    "cmc": "Average Mana Value (non-Lands)",
 }
 
 
@@ -81,7 +87,7 @@ def create_no_image_placeholder(width=110, height=154):
 def create_stats_table(
     total_cards: int,
     total_price: float,
-    avg_cmc: float,
+    avg_cmc: float | None,
     category_counts: dict,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
@@ -116,12 +122,16 @@ def create_stats_table(
     if commanders:
         names = html.escape(", ".join(commanders))
         commander_html = f'<b>{stats_labels["commander"]}:</b> {names}<br/>'
+    # A deck whose statistics predate the current schema has no average to
+    # show, and this is not the place that computes one: the row goes.
+    cmc_html = ""
+    if avg_cmc is not None:
+        cmc_html = f'<br/><b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}'
     left_html = f"""
     <b>{stats_labels["format"]}:</b> {FORMATS[fmt].label}<br/>
     {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
-    <b>{stats_labels["value"]}:</b> {val_str}<br/>
-    <b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}
+    <b>{stats_labels["value"]}:</b> {val_str}{cmc_html}
     """
 
     # Right column: per-type counts.
@@ -163,6 +173,144 @@ def create_stats_table(
     )
 
     return stats_table
+
+
+# The widest a curve bar gets, in points: the tallest bucket fills it.
+_CURVE_BAR_WIDTH = 240
+
+
+def _plain_table(data: list, col_widths: list, style: TableStyle) -> Table:
+    """A Table with the section's shared padding and alignment already applied.
+
+    Left-aligned rather than Platypus's centered default, so the section's
+    tables line up with each other and with their headings however wide each
+    one is — the way the deck page stacks them.
+    """
+    table = Table(data, colWidths=col_widths, hAlign="LEFT")
+    table.setStyle(style)
+    return table
+
+
+# Colours for the two halves of a curve bar, matching the deck page's legend.
+_PERMANENT_COLOR = HexColor("#7c5cff")
+_SPELL_COLOR = HexColor("#6b7280")
+
+
+def _stacked_bar(permanents: int, spells: int, peak: int) -> Table:
+    """One curve bar: permanents then spells, each as wide as its count."""
+    unit = _CURVE_BAR_WIDTH / (peak or 1)
+    widths, styles, row = [], [], []
+    for count, color in ((permanents, _PERMANENT_COLOR), (spells, _SPELL_COLOR)):
+        if count <= 0:
+            continue
+        widths.append(max(1, round(count * unit)))
+        styles.append(("BACKGROUND", (len(row), 0), (len(row), 0), color))
+        row.append("")
+    if not row:
+        widths, row = [1], [""]
+
+    bar = Table([row], colWidths=widths, rowHeights=[7], hAlign="LEFT")
+    bar.setStyle(TableStyle(styles + [
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return bar
+
+
+_SECTION_TABLE_STYLE = TableStyle(
+    [
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]
+)
+
+
+def create_statistics_flowables(statistics: dict, styles: dict) -> list:
+    """The "Deck Statistics" section: curve, mana values, colours, opening hand.
+
+    The same numbers the deck page shows. Returns an empty list for a deck with
+    no cards, so the caller can extend with it unconditionally.
+    """
+    if not statistics.get("library_size"):
+        return []
+
+    text = styles["body"]
+    flowables = [Paragraph("Deck Statistics", styles["h2"]), Spacer(1, 4)]
+
+    # 1. Mana curve, permanents against spells — same legend as the deck page.
+    flowables.append(Paragraph(
+        "<b>Mana curve</b> &mdash; "
+        "<font color='#7c5cff'>Permanents</font> and "
+        "<font color='#6b7280'>Spells</font>, lands excluded", text))
+    bars = curve_bars(statistics["curve"])
+    peak = max((b["total"] for b in bars), default=0)
+    flowables.append(_plain_table(
+        [[Paragraph(b["label"], text),
+          _stacked_bar(b["permanents"], b["spells"], peak),
+          Paragraph(str(b["total"]), text)] for b in bars],
+        [22, _CURVE_BAR_WIDTH + 6, 30], _SECTION_TABLE_STYLE))
+    flowables.append(Spacer(1, 8))
+
+    # 2. The mana-value sentence.
+    mv = statistics["mana_values"]
+    flowables.append(Paragraph(
+        f"<b>Mana value</b> &mdash; average {mv['average']:.2f} with lands and "
+        f"{mv['average_without_lands']:.2f} without; median {mv['median']:g} "
+        f"and {mv['median_without_lands']:g}; total {mv['total']}", text))
+    flowables.append(Spacer(1, 8))
+
+    # 3. One row per colour.
+    flowables.append(Paragraph("<b>Colors</b>", text))
+    sources_known = statistics["sources_known"]
+    rows = [[Paragraph(f"<b>{h}</b>", text) for h in
+             ("Color", "Cards", "Symbols", "Production", "On lands")]]
+    for entry in statistics["colors"]:
+        production = f"{entry['production_pct']}%" if sources_known else "-"
+        on_lands = f"{entry['lands_pct']}%" if sources_known else "-"
+        rows.append([Paragraph(COLOR_FULL_NAMES[entry["key"]], text),
+                     Paragraph(f"{entry['card_pct']}%", text),
+                     Paragraph(f"{entry['symbol_pct']}%", text),
+                     Paragraph(production, text),
+                     Paragraph(on_lands, text)])
+    flowables.append(_plain_table(rows, [62, 45, 55, 65, 55],
+                                  _SECTION_TABLE_STYLE))
+    if not sources_known:
+        flowables.append(Paragraph(
+            "Analyzed before mana sources were recorded; re-analyze the deck "
+            "to see them.", text))
+    flowables.append(Spacer(1, 8))
+
+    # 4. Opening hand, computed rather than simulated.
+    hand = statistics["opening_hand"]
+    flowables.append(Paragraph(
+        f"<b>Opening hand</b> &mdash; a {hand['hand_size']}-card hand off a "
+        f"{statistics['library_size']}-card library, on the play", text))
+    # Every land count, not just the keepable window: how often a hand falls
+    # outside it is the figure a mulligan decision turns on. Written compactly
+    # because eight "N lands: X%" pairs do not fit on one line.
+    lands_line = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>{e['lands']}:</b> {round(e['p'] * 100)}%" for e in hand["land_counts"])
+    flowables.append(Paragraph(
+        f"Lands in a seven-card hand &mdash; {lands_line}", text))
+    flowables.append(Paragraph(
+        f"<b>Two to five lands in seven:</b> {round(hand['keepable'] * 100)}% "
+        f"&nbsp;&bull;&nbsp; <b>Average lands in seven:</b> "
+        f"{hand['average_lands']:.2f}", text))
+    # "Never missing" rather than "every land drop through": the figure is
+    # cumulative, and the old wording had to be explained out loud.
+    drops = " &nbsp;&bull;&nbsp; ".join(
+        f"<b>T{e['turn']}:</b> {round(e['p'] * 100)}%" for e in hand["land_drops"])
+    flowables.append(Paragraph(
+        f"Never missing a land drop &mdash; {drops} "
+        f"<i>(ignoring ramp)</i>", text))
+    flowables.append(Spacer(1, 8))
+
+    return flowables
 
 
 def _build_styles():
@@ -513,6 +661,7 @@ def generate_pdf(
     output_path: str,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
+    statistics: dict = None,
 ):
     """Generates the formatted PDF using the ReportLab Platypus layout."""
     doc = SimpleDocTemplate(
@@ -538,15 +687,23 @@ def generate_pdf(
     )
     story_flowables.append(Paragraph(subtitle_text, styles["subtitle"]))
 
-    # 1.1 Statistics and summary table.
-    total_cards, total_price, avg_cmc, category_counts = compute_statistics(
-        processed_cards
+    # 1.1 Statistics and summary table. Its average mana value is the one
+    # stored with the deck — the same number the section below prints, over
+    # the same cards — not a second one computed here.
+    total_cards, total_price, category_counts = compute_statistics(processed_cards)
+    average_mv = (statistics or {}).get("mana_values", {}).get(
+        "average_without_lands"
     )
     stats_table = create_stats_table(
-        total_cards, total_price, avg_cmc, category_counts, commanders, fmt
+        total_cards, total_price, average_mv, category_counts, commanders, fmt
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))
+
+    # 1.2 Statistics section. Stored with the deck when it was analyzed, and
+    # computed nowhere else: a deck exported from before they existed simply
+    # has no section until it is backfilled or re-analyzed.
+    story_flowables.extend(create_statistics_flowables(statistics or {}, styles))
 
     # 2. AI analysis section.
     if deck_analysis:

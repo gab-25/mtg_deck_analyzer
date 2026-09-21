@@ -76,8 +76,16 @@ class Deck(models.Model):
     # Aggregate statistics.
     total_cards = models.IntegerField(default=0)
     total_value_eur = models.FloatField(default=0.0)
-    avg_cmc = models.FloatField(default=0.0)
     category_counts = models.JSONField(default=dict)
+
+    # The statistics panel, derived from ``cards`` at analysis time: the
+    # stacked mana curve, the mana-value sentence, the six-column colour
+    # block and the opening-hand odds. One JSON blob rather than four
+    # columns, because nothing queries it — it is only ever read whole. It
+    # carries a ``schema`` version, and it is written here and nowhere else:
+    # a blob from before the current shape is skipped by both renderers
+    # until ``manage.py recompute_statistics`` refills it.
+    statistics = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "is_commander": bool,
     # "data": {...}}]`` where each card's ``image_paths`` are stored as

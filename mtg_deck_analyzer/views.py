@@ -19,9 +19,10 @@ from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
 from .domain.changelog import decklist_changes
 from .domain.commander import check_decklist, commanders, deck_color_identity
-from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
-from .domain.constants import CATEGORY_ORDER
+from .domain.constants import CATEGORY_ORDER, COLOR_FULL_NAMES, DEFAULT_FORMAT
+from .domain.constants import FORMATS, format_choices
 from .domain.decklist import parse_decklist_text
+from .domain.statistics import STATISTICS_SCHEMA, curve_bars
 from .domain.storage import (
     cards_for_pdf,
     cards_for_storage,
@@ -83,23 +84,6 @@ def _deck_pips(deck) -> list:
     return [{"letter": c, "hex": COLOR_HEX.get(c, COLOR_HEX["C"])} for c in letters]
 
 
-def _mana_curve(stored_cards: list) -> list:
-    """Buckets non-land cards by mana value (0–6, then 7+), weighted by quantity."""
-    buckets = [0] * 8  # indices 0..6 exact, 7 => "7+"
-    for item in stored_cards:
-        data = item["data"]
-        if classify_card(data) == "Land":
-            continue
-        idx = min(int(data.get("cmc", 0) or 0), 7)
-        buckets[idx] += item["quantity"]
-    peak = max(buckets) or 1
-    labels = ["0", "1", "2", "3", "4", "5", "6", "7+"]
-    return [
-        {"label": labels[i], "count": buckets[i], "pct": round(buckets[i] / peak * 100)}
-        for i in range(8)
-    ]
-
-
 def _type_bars(category_counts: dict) -> list:
     """Turns the stored category counts into proportional bars for the sidebar."""
     total = sum(category_counts.values()) or 1
@@ -127,6 +111,190 @@ def _value_stats(stored_cards: list, total_value: float) -> dict:
         "total": total_value,
         "avg": total_value / total_cards,
         "max": max(prices) if prices else 0.0,
+    }
+
+
+def _pct(probability: float) -> int:
+    """A probability as a whole percentage, which is all the panel shows."""
+    return round(probability * 100)
+
+
+# The land counts a hand is kept on without thinking about it. Bars outside
+# this window are the ones a mulligan decision turns on, so the chart marks it.
+_KEEPABLE_WINDOW = range(2, 6)
+
+
+def _land_distribution(land_counts: list) -> dict:
+    """Geometry for the opening-hand distribution, drawn like the sparklines.
+
+    Every land count from none to seven, so the unkeepable tail is visible
+    rather than cropped away — showing only the window states the conclusion
+    and hides the evidence for it.
+    """
+    peak = max((entry["p"] for entry in land_counts), default=0) or 1
+    width, height, gap = 240, 46, 4.0
+    slot = width / len(land_counts)
+    return {
+        "width": width,
+        "height": height,
+        "bars": [
+            {
+                "lands": entry["lands"],
+                "pct": _pct(entry["p"]),
+                "keepable": entry["lands"] in _KEEPABLE_WINDOW,
+                "x": round(slot * index, 2),
+                "width": round(slot - gap, 2),
+                "label_x": round(slot * index + (slot - gap) / 2, 2),
+                "y": round(height * (1 - entry["p"] / peak), 2),
+                "height": round(height * entry["p"] / peak, 2),
+            }
+            for index, entry in enumerate(land_counts)
+        ],
+    }
+
+
+def _opening_hand_rows(opening_hand: dict) -> dict:
+    """The opening-hand block with every probability turned into a percentage."""
+    keepable = opening_hand["keepable"]
+    return {
+        "hand_size": opening_hand["hand_size"],
+        "keepable": _pct(keepable),
+        "average_lands": f"{opening_hand['average_lands']:.2f}",
+        # "One hand in six" reads as a decision; "16%" reads as a statistic.
+        "mulligan_in": round(1 / (1 - keepable)) if keepable < 1 else 0,
+        "distribution": _land_distribution(opening_hand["land_counts"]),
+        "land_drops": [
+            {"turn": entry["turn"], "pct": _pct(entry["p"])}
+            for entry in opening_hand["land_drops"]
+        ],
+    }
+
+
+# Chart box in SVG user units. The viewBox scales to whatever width the panel
+# gives it, so these are proportions rather than pixels.
+# "top" leaves room for the y-axis caption above the highest gridline, and
+# "bottom" for the bucket labels and the x-axis caption below the baseline.
+# Too little of either and a caption prints over a tick.
+_CHART = {"w": 560, "h": 252, "left": 38, "bottom": 34, "top": 28}
+_CAPTION_Y = 10
+
+
+def _y_ticks(peak: int) -> list:
+    """Round tick values covering 0..peak, at a step that stays readable."""
+    step = 10 if peak > 20 else (5 if peak > 5 else 1)
+    top = max(step, -(-peak // step) * step)
+    return list(range(0, top + step, step))
+
+
+def _curve_chart(curve: list) -> dict:
+    """Ready-to-draw geometry for the stacked curve.
+
+    Computed here because a Django template cannot do arithmetic, and drawn as
+    SVG because the project's stylesheet is a committed Tailwind build with no
+    build step — a class it does not already carry silently does nothing.
+    """
+    bars = curve_bars(curve)
+    ticks = _y_ticks(max((b["total"] for b in bars), default=0))
+    top_value = ticks[-1]
+
+    plot_h = _CHART["h"] - _CHART["bottom"] - _CHART["top"]
+    plot_w = _CHART["w"] - _CHART["left"]
+    slot = plot_w / len(bars)
+    bar_w = slot * 0.62
+
+    def y_of(value: float) -> float:
+        return _CHART["top"] + plot_h * (1 - value / top_value)
+
+    out = []
+    for index, bar in enumerate(bars):
+        x = _CHART["left"] + slot * index + (slot - bar_w) / 2
+        perm_h = plot_h * bar["permanents"] / top_value
+        spell_h = plot_h * bar["spells"] / top_value
+        out.append({
+            "label": bar["label"],
+            "total": bar["total"],
+            "x": round(x, 2),
+            "width": round(bar_w, 2),
+            "label_x": round(x + bar_w / 2, 2),
+            # Permanents sit on the axis, spells stack on top of them.
+            "permanents": {"y": round(y_of(bar["permanents"]), 2),
+                           "height": round(perm_h, 2)},
+            "spells": {"y": round(y_of(bar["total"]), 2),
+                       "height": round(spell_h, 2)},
+        })
+
+    return {
+        "width": _CHART["w"], "height": _CHART["h"],
+        "caption_y": _CAPTION_Y,
+        # Clear of the bucket labels, and inside the box so nothing is clipped.
+        "x_label_y": _CHART["h"] - 2,
+        "axis_x": _CHART["left"],
+        "label_y": round(y_of(0) + 16, 2),
+        "bars": out,
+        "gridlines": [{"value": t, "y": round(y_of(t), 2)} for t in ticks],
+    }
+
+
+def _sparkline(values: list) -> dict:
+    """A small bar chart for one colour's curve, same idea as _curve_chart."""
+    peak = max(values, default=0) or 1
+    width, height, gap = 56, 18, 1.0
+    slot = width / len(values)
+    return {
+        "width": width, "height": height,
+        "bars": [
+            {"x": round(slot * i, 2), "width": round(slot - gap, 2),
+             "y": round(height * (1 - v / peak), 2),
+             "height": round(height * v / peak, 2)}
+            for i, v in enumerate(values)
+        ],
+    }
+
+
+def _stored_statistics(deck) -> dict | None:
+    """The deck's stored statistics, or None when they predate the current shape.
+
+    Both routes into the panel need this: a blob from before the schema existed
+    is not empty, it simply has different keys, so an emptiness check lets it
+    through into code that will raise on the first missing one.
+    """
+    stored = deck.statistics or {}
+    return stored if stored.get("schema") == STATISTICS_SCHEMA else None
+
+
+def _statistics_panel(deck) -> dict | None:
+    """View-model for the Statistics panel, or None when there is nothing yet.
+
+    The statistics are computed when the deck is analyzed and never here: a
+    deck whose blob predates the current shape has no panel until the backfill
+    command or a re-analysis replaces it.
+    """
+    stored = _stored_statistics(deck)
+    if stored is None or not stored.get("library_size"):
+        return None
+
+    mv = stored["mana_values"]
+    return {
+        "library_size": stored["library_size"],
+        "land_count": stored["land_count"],
+        "sources_known": stored["sources_known"],
+        "curve_chart": _curve_chart(stored["curve"]),
+        "mana_values": {
+            "total": mv["total"],
+            "average": f"{mv['average']:.2f}",
+            "average_without_lands": f"{mv['average_without_lands']:.2f}",
+            "median": f"{mv['median']:g}",
+            "median_without_lands": f"{mv['median_without_lands']:g}",
+        },
+        "colors": [
+            {**{k: v for k, v in entry.items() if k != "curve"},
+             "name": COLOR_FULL_NAMES[entry["key"]],
+             "hex": COLOR_HEX[entry["key"]],
+             "used": entry["card_pct"] > 0 or entry["symbol_pct"] > 0,
+             "sparkline": _sparkline(entry["curve"])}
+            for entry in stored["colors"]
+        ],
+        "opening_hand": _opening_hand_rows(stored["opening_hand"]),
     }
 
 
@@ -324,8 +492,8 @@ def _run_analysis(deck_id: uuid.UUID, decklist: str, api_key: str | None, fmt: s
                 color_identity=stats["color_identity"],
                 total_cards=stats["total_cards"],
                 total_value_eur=stats["total_value_eur"],
-                avg_cmc=stats["avg_cmc"],
                 category_counts=stats["category_counts"],
+                statistics=stats["statistics"],
                 cards=cards_for_storage(result["processed_cards"]),
                 status=Deck.Status.READY,
                 error=None,
@@ -498,7 +666,7 @@ def deck_detail(request, deck):
             "commander_cards": _commander_cards(stored_cards),
             "card_groups": _detail_card_groups(stored_cards),
             "moxfield_text": _moxfield_text(stored_cards),
-            "mana_curve": _mana_curve(stored_cards),
+            "statistics": _statistics_panel(deck),
             "type_bars": _type_bars(deck.category_counts or {}),
             "value_stats": _value_stats(stored_cards, deck.total_value_eur),
             "version_history": _version_history(deck),
@@ -648,6 +816,7 @@ def deck_pdf(request, deck):
         tmp_path,
         commanders=deck.commanders,
         fmt=deck.format,
+        statistics=_stored_statistics(deck),
     )
 
     filename = f"{slugify(deck.name) or 'deck'}.pdf"

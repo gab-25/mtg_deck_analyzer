@@ -1,0 +1,271 @@
+"""What the deck asks for in colored mana, and what it offers.
+
+Pure functions over the processed cards. Two counts read straight off the
+cards: the pips a deck's costs demand and the mana curve.
+"""
+
+import re
+from statistics import median
+
+from .cards import classify_card, front_type_line, rules_text
+from .commander import WUBRG
+
+_MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
+
+# 0..6 are exact mana values; index 7 is the merged "7 or more" bucket.
+CURVE_BUCKETS = 8
+CURVE_LABELS = ("0", "1", "2", "3", "4", "5", "6", "7+")
+
+
+def _empty_counts() -> dict:
+    return {color: 0 for color in WUBRG}
+
+
+def _type_lines(card_data: dict) -> list:
+    """Every face's type line, lowercased, falling back to the combined one."""
+    lines = [
+        (face.get("type_line") or "").lower() for face in card_data.get("faces", [])
+    ]
+    lines = [line for line in lines if line]
+    return lines or [(card_data.get("type_line") or "").lower()]
+
+
+def _pips_in_cost(mana_cost: str) -> dict:
+    """Colored pips a single mana cost string asks for, per WUBRG letter.
+
+    A hybrid or Phyrexian symbol counts for *each* color it can be paid with,
+    because each one is a color the deck has to be able to produce.
+    """
+    pips = _empty_counts()
+    for symbol in _MANA_SYMBOL_RE.findall(mana_cost or ""):
+        # A set, so a symbol never counts twice for the same color.
+        for letter in {ch for ch in symbol.upper() if ch in WUBRG}:
+            pips[letter] += 1
+    return pips
+
+
+def card_pips(card_data: dict) -> dict:
+    """Colored pips a card's mana costs ask for, per WUBRG letter.
+
+    Every face that has a mana cost counts, so both halves of a split card are
+    counted and a transform back (which has none) adds nothing. Both halves of
+    an adventure or a modal DFC are genuinely castable, so their pips are
+    summed here too.
+    """
+    pips = _empty_counts()
+    for face in card_data.get("faces", []):
+        face_pips = _pips_in_cost(face.get("mana_cost") or "")
+        for letter, count in face_pips.items():
+            pips[letter] += count
+    return pips
+
+
+def deck_pips(processed_cards: list) -> dict:
+    """The deck's total colored pips, weighted by quantity.
+
+    The commander is included: cast from the command zone or not, its cost is
+    the deck's most binding color requirement.
+    """
+    totals = _empty_counts()
+    for item in processed_cards:
+        for letter, count in card_pips(item["data"]).items():
+            totals[letter] += count * item["quantity"]
+    return totals
+
+
+# Card types that stay on the battlefield. Everything else that is not a land
+# — instants and sorceries — is a spell, which is the split Moxfield's curve
+# shows and the only one that needs naming here.
+PERMANENT_TYPES = ("creature", "artifact", "enchantment", "planeswalker", "battle")
+
+
+def mana_curve(processed_cards: list) -> list:
+    """Cards per mana value, lands out, permanents and spells kept apart.
+
+    The commander is included. It is not drawn, but it is cast every game, so
+    leaving it off understates the curve exactly where it matters — a deck
+    whose only six-drop is its commander would show an empty bucket at six.
+    Checked against Moxfield, which counts it too.
+    """
+    buckets = [{"permanents": 0, "spells": 0} for _ in range(CURVE_BUCKETS)]
+
+    for item in processed_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
+        type_line = front_type_line(data)
+        key = (
+            "permanents"
+            if any(t in type_line for t in PERMANENT_TYPES)
+            else "spells"
+        )
+        buckets[value][key] += item["quantity"]
+
+    return buckets
+
+
+# The opening hand's size: the cards a player starts with before the London
+# mulligan considerations even come up.
+OPENING_HAND_SIZE = 7
+
+
+def cards_seen(turn: int) -> int:
+    """Cards seen by ``turn`` on the play: the opening seven, plus one a turn."""
+    return OPENING_HAND_SIZE + max(0, turn - 1)
+
+
+def is_land_card(card_data: dict) -> bool:
+    """Whether any of a card's faces is a land.
+
+    Deliberately different from :func:`~.cards.classify_card`, which reads the
+    front face only and decides what the card is *cast as*. Here the question
+    is what the card can be tapped for, so a modal card with a land back
+    (Sink into Stupor, Hydroelectric Specimen) counts — which is also how
+    Moxfield reaches the land count its mana figures are built on.
+    """
+    return any("land" in line for line in _type_lines(card_data))
+
+
+# A land whose mana ability is defined by what *your other* lands make adds no
+# colour of its own — Reflecting Pool in a deck of Islands makes blue, nothing
+# more. Crediting it with every colour double-counts the mana base it mirrors.
+# A land mirroring an opponent's lands is deliberately not in here: what it can
+# make is unknowable from the decklist, so it keeps its printed colours.
+_MIRRORS_YOUR_LANDS = "a land you control could produce"
+
+
+def _mirrors_your_own_lands(card_data: dict) -> bool:
+    """Whether a land only makes what the rest of your mana base already does."""
+    return _MIRRORS_YOUR_LANDS in rules_text(card_data)
+
+
+def land_production(processed_cards: list) -> dict:
+    """How many lands the deck plays, and what they can be tapped for.
+
+    ``symbol_slots`` counts one slot per color per land: a Command Tower fills
+    five, an Island one, a land with no mana ability none. It is the
+    denominator behind "N% of symbols on lands"; ``lands`` is the denominator
+    behind "N% mana production".
+    """
+    lands = 0
+    slots = 0
+    by_color = {color: 0 for color in list(WUBRG) + ["C"]}
+
+    for item in processed_cards:
+        data = item["data"]
+        if not is_land_card(data):
+            continue
+        quantity = item["quantity"]
+        lands += quantity
+        # Still a land, but it fills no colour slot of its own.
+        if _mirrors_your_own_lands(data):
+            continue
+        produced = data.get("produced_mana") or []
+        for color in by_color:
+            if color in produced:
+                by_color[color] += quantity
+                slots += quantity
+
+    return {"lands": lands, "symbol_slots": slots, "by_color": by_color}
+
+
+def mana_value_summary(processed_cards: list) -> dict:
+    """Average, median and total mana value, with and without lands.
+
+    Main deck only — the commander is left out, which is what makes the
+    reference deck total 156 over 98 cards rather than 160 over 100. "Land"
+    here is the front face, as :func:`~.cards.classify_card` reads it: the
+    without-lands average only reconciles against 74 non-lands, not against
+    the 27 lands :func:`is_land_card` counts for mana production.
+    """
+    values = []
+    without_lands = []
+
+    for item in processed_cards:
+        if item.get("is_commander"):
+            continue
+        data = item["data"]
+        value = float(data.get("cmc", 0) or 0)
+        values.extend([value] * item["quantity"])
+        if classify_card(data) != "Land":
+            without_lands.extend([value] * item["quantity"])
+
+    return {
+        "total": int(sum(values)),
+        "average": sum(values) / len(values) if values else 0.0,
+        "average_without_lands": (
+            sum(without_lands) / len(without_lands) if without_lands else 0.0
+        ),
+        "median": median(values) if values else 0.0,
+        "median_without_lands": median(without_lands) if without_lands else 0.0,
+    }
+
+
+def _card_colors(card_data: dict) -> set:
+    """The card's own colours: the ones printed in its mana costs.
+
+    Not its colour identity. Tasigur, the Golden Fang costs {5}{B} and has a
+    {G/U} activated ability, so its identity is Sultai while the card itself is
+    black — and Moxfield's colour breakdown counts it under black alone.
+
+    The cost is read on every face that has one, so both halves of a split
+    card count while a transform back — which has no mana cost — adds nothing.
+
+    This is the printed cost and nothing else, not Scryfall's ``colors``. The
+    two differ on a card coloured by an indicator rather than by its cost:
+    Pact of Negation costs {0}, and Scryfall calls it blue while Moxfield's
+    breakdown does not count it towards blue. That is Moxfield's quirk, not
+    ours, but it is what fixed the last two figures that disagreed with their
+    published numbers, on two unrelated decks at once.
+    """
+    return {letter for letter, count in card_pips(card_data).items() if count}
+
+
+def color_card_counts(processed_cards: list) -> dict:
+    """Non-land cards per colour, and how many non-land cards there are.
+
+    The commander counts here, unlike in :func:`mana_value_summary` — Moxfield
+    is inconsistent about this and we mirror it rather than diverge from their
+    figures. A gold card is counted under each of its colours, so the
+    percentages do not add up to 100.
+
+    Colour comes from :func:`_card_colors`, not from colour identity. Identity
+    was the first guess and it ran two points high on every reference deck,
+    because a card whose only off-colour mana appears in an activated ability
+    counts for that colour under identity and does not under Moxfield's rule.
+    """
+    non_lands = 0
+    by_color = {color: 0 for color in WUBRG}
+
+    for item in processed_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        quantity = item["quantity"]
+        non_lands += quantity
+        for color in _card_colors(data):
+            by_color[color] += quantity
+
+    return {"non_lands": non_lands, "by_color": by_color}
+
+
+def color_curves(processed_cards: list) -> dict:
+    """A mana curve per colour, for the sparkline under each colour's figures.
+
+    Same buckets as :func:`mana_curve`, restricted to the non-land cards of
+    that colour, with a gold card appearing in each of its colours' curves.
+    The colour rule is :func:`_card_colors`, the same one the figures above
+    the sparkline use: one column, one set of cards.
+    """
+    curves = {color: [0] * CURVE_BUCKETS for color in WUBRG}
+
+    for item in processed_cards:
+        data = item["data"]
+        if classify_card(data) == "Land":
+            continue
+        value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
+        for color in _card_colors(data):
+            curves[color][value] += item["quantity"]
+
+    return curves

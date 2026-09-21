@@ -167,3 +167,11 @@ def test_the_format_picks_the_ban_list(monkeypatch):
     message = str(excinfo.value)
     assert "Duel Commander" in message
     assert "Sol Ring" in message
+
+
+def test_the_pipeline_returns_deck_statistics(fetched):
+    stats = _analyze(_decklist())["stats"]
+
+    assert stats["statistics"]["library_size"] == 99
+    assert stats["statistics"]["land_count"] == 39
+    assert len(stats["statistics"]["curve"]) == 8
