@@ -276,3 +276,30 @@ class TestLandCountUsesTheAnyFaceRule:
         # The other rule stays: the card list must show it among the instants.
         curve = deck_statistics(self._deck_with_a_modal_land())["curve"]
         assert curve[3]["spells"] == 1
+
+
+class TestPercentageRounding:
+    """Half-up, not Python's default banker's rounding.
+
+    round(12.5) is 12 in Python, which rounds ties to the even number. Nobody
+    reading a percentage expects that, and it was the last disagreement with
+    Moxfield's published figures: a colour sitting on exactly 12.50% showed as
+    12 where they show 13.
+    """
+
+    def test_a_tie_rounds_up(self):
+        from mtg_deck_analyzer.domain.statistics import _pct
+
+        assert _pct(1, 8) == 13  # 12.5%
+        assert _pct(3, 8) == 38  # 37.5%
+
+    def test_ordinary_values_are_unaffected(self):
+        from mtg_deck_analyzer.domain.statistics import _pct
+
+        assert _pct(1, 3) == 33
+        assert _pct(2, 3) == 67
+
+    def test_an_empty_whole_is_zero(self):
+        from mtg_deck_analyzer.domain.statistics import _pct
+
+        assert _pct(0, 0) == 0

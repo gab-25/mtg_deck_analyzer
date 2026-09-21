@@ -5,6 +5,8 @@ the cached Scryfall JSON: no network, no model call, no new dependency — which
 is also why the result can simply be stored with the deck.
 """
 
+from decimal import Decimal, ROUND_HALF_UP
+
 from .cards import classify_card
 from .commander import WUBRG
 from .mana import (
@@ -24,8 +26,7 @@ from .probability import at_least, exactly
 
 # Bumped whenever the stored dictionary changes shape. A deck whose blob
 # carries a different value is stale and gets recomputed rather than read.
-# Bumped to 3 because sources_known became a required top-level key.
-STATISTICS_SCHEMA = 5
+STATISTICS_SCHEMA = 6
 
 # Colourless is a production column only — it has no colour identity and no
 # coloured pips, so it sits after WUBRG with two of its four figures at zero.
@@ -103,8 +104,16 @@ def _opening_hand(library_size: int, land_count: int) -> dict:
 
 
 def _pct(part: int, whole: int) -> int:
-    """A share as a whole percentage; an empty whole is simply zero."""
-    return round(part / whole * 100) if whole else 0
+    """A share as a whole percentage; an empty whole is simply zero.
+
+    Ties round up rather than to even. Python's round() would turn 12.5 into
+    12, which surprises anyone reading a percentage — and was the last figure
+    on which this disagreed with Moxfield's published numbers.
+    """
+    if not whole:
+        return 0
+    share = Decimal(part) * 100 / Decimal(whole)
+    return int(share.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def _colors_block(processed_cards: list) -> list:
