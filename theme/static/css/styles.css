@@ -1522,7 +1522,7 @@ select.field {
   border: 1px solid rgba(232, 182, 76, 0.25);
 }
 @media (max-width: 900px) {
-  .detail-grid, .editor-grid {
+  .detail-grid, .editor-grid, .version-grid {
     grid-template-columns: 1fr !important;
   }
   .detail-sidebar, .editor-sidebar {
