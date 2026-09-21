@@ -1,0 +1,2241 @@
+[
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "City of Traitors",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "C"
+   ],
+   "faces": [
+    {
+     "name": "City of Traitors",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "When you play another land, sacrifice this land.\n{T}: Add {C}{C}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Intuition",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Intuition",
+     "mana_cost": "{2}{U}",
+     "type_line": "Instant",
+     "rules_text": "Search your library for three cards and reveal them. Target opponent chooses one. Put that card into your hand and the rest into your graveyard. Then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Lotus Petal",
+   "type_line": "Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Lotus Petal",
+     "mana_cost": "{0}",
+     "type_line": "Artifact",
+     "rules_text": "{T}, Sacrifice this artifact: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Volcanic Island",
+   "type_line": "Land \u2014 Island Mountain",
+   "cmc": 0.0,
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "produced_mana": [
+    "R",
+    "U"
+   ],
+   "faces": [
+    {
+     "name": "Volcanic Island",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Island Mountain",
+     "rules_text": "({T}: Add {U} or {R}.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Lion's Eye Diamond",
+   "type_line": "Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Lion's Eye Diamond",
+     "mana_cost": "{0}",
+     "type_line": "Artifact",
+     "rules_text": "Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Plateau",
+   "type_line": "Land \u2014 Mountain Plains",
+   "cmc": 0.0,
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "produced_mana": [
+    "R",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Plateau",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Mountain Plains",
+     "rules_text": "({T}: Add {R} or {W}.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Tundra",
+   "type_line": "Land \u2014 Plains Island",
+   "cmc": 0.0,
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "produced_mana": [
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Tundra",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Plains Island",
+     "rules_text": "({T}: Add {W} or {U}.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Rite of Flame",
+   "type_line": "Sorcery",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Rite of Flame",
+     "mana_cost": "{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Add {R}{R}, then add {R} for each card named Rite of Flame in each graveyard."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Chrome Mox",
+   "type_line": "Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Chrome Mox",
+     "mana_cost": "{0}",
+     "type_line": "Artifact",
+     "rules_text": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mox Diamond",
+   "type_line": "Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Mox Diamond",
+     "mana_cost": "{0}",
+     "type_line": "Artifact",
+     "rules_text": "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.\n{T}: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Reiterate",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Reiterate",
+     "mana_cost": "{1}{R}{R}",
+     "type_line": "Instant",
+     "rules_text": "Buyback {3} (You may pay an additional {3} as you cast this spell. If you do, put this card into your hand as it resolves.)\nCopy target instant or sorcery spell. You may choose new targets for the copy."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Infernal Plunge",
+   "type_line": "Sorcery",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Infernal Plunge",
+     "mana_cost": "{R}",
+     "type_line": "Sorcery",
+     "rules_text": "As an additional cost to cast this spell, sacrifice a creature.\nAdd {R}{R}{R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Seething Song",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Seething Song",
+     "mana_cost": "{2}{R}",
+     "type_line": "Instant",
+     "rules_text": "Add {R}{R}{R}{R}{R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Tarnished Citadel",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Tarnished Citadel",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}: Add {C}.\n{T}: Add one mana of any color. This land deals 3 damage to you."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Red Elemental Blast",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Red Elemental Blast",
+     "mana_cost": "{R}",
+     "type_line": "Instant",
+     "rules_text": "Choose one \u2014\n\u2022 Counter target blue spell.\n\u2022 Destroy target blue permanent."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Timetwister",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Timetwister",
+     "mana_cost": "{2}{U}",
+     "type_line": "Sorcery",
+     "rules_text": "Each player shuffles their hand and graveyard into their library, then draws seven cards. (Then put Timetwister into its owner's graveyard.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Wheel of Fortune",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Wheel of Fortune",
+     "mana_cost": "{2}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Each player discards their hand, then draws seven cards."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Scalding Tarn",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Scalding Tarn",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Misty Rainforest",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Misty Rainforest",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Arid Mesa",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Arid Mesa",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Flooded Strand",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Flooded Strand",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Polluted Delta",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Polluted Delta",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Swamp card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Bloodstained Mire",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Bloodstained Mire",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Wooded Foothills",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Wooded Foothills",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+   "type_line": "Legendary Creature \u2014 God // Legendary Artifact",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Birgi, God of Storytelling",
+     "mana_cost": "{2}{R}",
+     "type_line": "Legendary Creature \u2014 God",
+     "rules_text": "Whenever you cast a spell, add {R}. Until end of turn, you don't lose this mana as steps and phases end.\nCreatures you control can boast twice during each of your turns rather than once."
+    },
+    {
+     "name": "Harnfel, Horn of Bounty",
+     "mana_cost": "{4}{R}",
+     "type_line": "Legendary Artifact",
+     "rules_text": "Discard a card: Exile the top two cards of your library. You may play those cards this turn."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Past in Flames",
+   "type_line": "Sorcery",
+   "cmc": 4.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Past in Flames",
+     "mana_cost": "{3}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Each instant and sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost.\nFlashback {4}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Esper Sentinel",
+   "type_line": "Artifact Creature \u2014 Human Soldier",
+   "cmc": 1.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Esper Sentinel",
+     "mana_cost": "{W}",
+     "type_line": "Artifact Creature \u2014 Human Soldier",
+     "rules_text": "Whenever an opponent casts their first noncreature spell each turn, draw a card unless that player pays {X}, where X is this creature's power."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Ragavan, Nimble Pilferer",
+   "type_line": "Legendary Creature \u2014 Monkey Pirate",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Ragavan, Nimble Pilferer",
+     "mana_cost": "{R}",
+     "type_line": "Legendary Creature \u2014 Monkey Pirate",
+     "rules_text": "Whenever Ragavan deals combat damage to a player, create a Treasure token and exile the top card of that player's library. Until end of turn, you may cast that card.\nDash {1}{R} (You may cast this spell for its dash cost. If you do, it gains haste, and it's returned from the battlefield to its owner's hand at the beginning of the next end step.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mystical Tutor",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Mystical Tutor",
+     "mana_cost": "{U}",
+     "type_line": "Instant",
+     "rules_text": "Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Sacred Foundry",
+   "type_line": "Land \u2014 Mountain Plains",
+   "cmc": 0.0,
+   "color_identity": [
+    "R",
+    "W"
+   ],
+   "produced_mana": [
+    "R",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Sacred Foundry",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Mountain Plains",
+     "rules_text": "({T}: Add {R} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Steam Vents",
+   "type_line": "Land \u2014 Island Mountain",
+   "cmc": 0.0,
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "produced_mana": [
+    "R",
+    "U"
+   ],
+   "faces": [
+    {
+     "name": "Steam Vents",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Island Mountain",
+     "rules_text": "({T}: Add {U} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Otawara, Soaring City",
+   "type_line": "Legendary Land",
+   "cmc": 0.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [
+    "U"
+   ],
+   "faces": [
+    {
+     "name": "Otawara, Soaring City",
+     "mana_cost": "",
+     "type_line": "Legendary Land",
+     "rules_text": "{T}: Add {U}.\nChannel \u2014 {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand. This ability costs {1} less to activate for each legendary creature you control."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Brain Freeze",
+   "type_line": "Instant",
+   "cmc": 2.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Brain Freeze",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant",
+     "rules_text": "Target player mills three cards.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mana Confluence",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Mana Confluence",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}, Pay 1 life: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mystic Remora",
+   "type_line": "Enchantment",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Mystic Remora",
+     "mana_cost": "{U}",
+     "type_line": "Enchantment",
+     "rules_text": "Cumulative upkeep {1} (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)\nWhenever an opponent casts a noncreature spell, you may draw a card unless that player pays {4}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mana Vault",
+   "type_line": "Artifact",
+   "cmc": 1.0,
+   "color_identity": [],
+   "produced_mana": [
+    "C"
+   ],
+   "faces": [
+    {
+     "name": "Mana Vault",
+     "mana_cost": "{1}",
+     "type_line": "Artifact",
+     "rules_text": "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "City of Brass",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "City of Brass",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "Whenever this land becomes tapped, it deals 1 damage to you.\n{T}: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Pyretic Ritual",
+   "type_line": "Instant",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Pyretic Ritual",
+     "mana_cost": "{1}{R}",
+     "type_line": "Instant",
+     "rules_text": "Add {R}{R}{R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mox Amber",
+   "type_line": "Legendary Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Mox Amber",
+     "mana_cost": "{0}",
+     "type_line": "Legendary Artifact",
+     "rules_text": "{T}: Add one mana of any color among legendary creatures and planeswalkers you control."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Springleaf Drum",
+   "type_line": "Artifact",
+   "cmc": 1.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Springleaf Drum",
+     "mana_cost": "{1}",
+     "type_line": "Artifact",
+     "rules_text": "{T}, Tap an untapped creature you control: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Faerie Mastermind",
+   "type_line": "Creature \u2014 Faerie Rogue",
+   "cmc": 2.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Faerie Mastermind",
+     "mana_cost": "{1}{U}",
+     "type_line": "Creature \u2014 Faerie Rogue",
+     "rules_text": "Flash\nFlying\nWhenever an opponent draws their second card each turn, you draw a card.\n{3}{U}: Each player draws a card."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gemstone Caverns",
+   "type_line": "Legendary Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Gemstone Caverns",
+     "mana_cost": "",
+     "type_line": "Legendary Land",
+     "rules_text": "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "An Offer You Can't Refuse",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "An Offer You Can't Refuse",
+     "mana_cost": "{U}",
+     "type_line": "Instant",
+     "rules_text": "Counter target noncreature spell. Its controller creates two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Wheel of Misfortune",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Wheel of Misfortune",
+     "mana_cost": "{2}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Each player secretly chooses a number 0 or greater, then all players reveal those numbers simultaneously and determine the highest and lowest numbers revealed this way. Wheel of Misfortune deals damage equal to the highest number to each player who chose that number. Each player who didn't choose the lowest number discards their hand, then draws seven cards."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Storm-Kiln Artist",
+   "type_line": "Creature \u2014 Dwarf Shaman",
+   "cmc": 4.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Storm-Kiln Artist",
+     "mana_cost": "{3}{R}",
+     "type_line": "Creature \u2014 Dwarf Shaman",
+     "rules_text": "This creature gets +1/+0 for each artifact you control.\nMagecraft \u2014 Whenever you cast or copy an instant or sorcery spell, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Smothering Tithe",
+   "type_line": "Enchantment",
+   "cmc": 4.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Smothering Tithe",
+     "mana_cost": "{3}{W}",
+     "type_line": "Enchantment",
+     "rules_text": "Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Rhystic Study",
+   "type_line": "Enchantment",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Rhystic Study",
+     "mana_cost": "{2}{U}",
+     "type_line": "Enchantment",
+     "rules_text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Pyroblast",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Pyroblast",
+     "mana_cost": "{R}",
+     "type_line": "Instant",
+     "rules_text": "Choose one \u2014\n\u2022 Counter target spell if it's blue.\n\u2022 Destroy target permanent if it's blue."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Pact of Negation",
+   "type_line": "Instant",
+   "cmc": 0.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Pact of Negation",
+     "mana_cost": "{0}",
+     "type_line": "Instant",
+     "rules_text": "Counter target spell.\nAt the beginning of your next upkeep, pay {3}{U}{U}. If you don't, you lose the game."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Command Tower",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Command Tower",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}: Add one mana of any color in your commander's color identity."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Chain of Vapor",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Chain of Vapor",
+     "mana_cost": "{U}",
+     "type_line": "Instant",
+     "rules_text": "Return target nonland permanent to its owner's hand. Then that permanent's controller may sacrifice a land of their choice. If the player does, they may copy this spell and may choose a new target for that copy."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Windfall",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Windfall",
+     "mana_cost": "{2}{U}",
+     "type_line": "Sorcery",
+     "rules_text": "Each player discards their hand, then draws cards equal to the greatest number of cards a player discarded this way."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Final Fortune",
+   "type_line": "Instant",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Final Fortune",
+     "mana_cost": "{R}{R}",
+     "type_line": "Instant",
+     "rules_text": "Take an extra turn after this one. At the beginning of that turn's end step, you lose the game."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Will of the Jeskai",
+   "type_line": "Sorcery",
+   "cmc": 4.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Will of the Jeskai",
+     "mana_cost": "{3}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n\u2022 Each player may discard their hand and draw five cards.\n\u2022 Each instant and sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Treasonous Ogre",
+   "type_line": "Creature \u2014 Ogre Shaman",
+   "cmc": 4.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Treasonous Ogre",
+     "mana_cost": "{3}{R}",
+     "type_line": "Creature \u2014 Ogre Shaman",
+     "rules_text": "Dethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)\nPay 3 life: Add {R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Electro, Assaulting Battery",
+   "type_line": "Legendary Creature \u2014 Human Villain",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Electro, Assaulting Battery",
+     "mana_cost": "{1}{R}{R}",
+     "type_line": "Legendary Creature \u2014 Human Villain",
+     "rules_text": "Flying\nYou don't lose unspent red mana as steps and phases end.\nWhenever you cast an instant or sorcery spell, add {R}.\nWhen Electro leaves the battlefield, you may pay {X}. When you do, he deals X damage to target player."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Flash Photography",
+   "type_line": "Sorcery",
+   "cmc": 4.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Flash Photography",
+     "mana_cost": "{2}{U}{U}",
+     "type_line": "Sorcery",
+     "rules_text": "You may cast this spell as though it had flash if it targets a permanent you control.\nCreate a token that's a copy of target permanent.\nFlashback {4}{U}{U}"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Hexing Squelcher",
+   "type_line": "Creature \u2014 Goblin Sorcerer",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Hexing Squelcher",
+     "mana_cost": "{1}{R}",
+     "type_line": "Creature \u2014 Goblin Sorcerer",
+     "rules_text": "This spell can't be countered.\nWard\u2014Pay 2 life.\nSpells you control can't be countered.\nOther creatures you control have \"Ward\u2014Pay 2 life.\""
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Flashback",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Flashback",
+     "mana_cost": "{R}",
+     "type_line": "Instant",
+     "rules_text": "Target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. (You may cast that card from your graveyard for its flashback cost. Then exile it.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Hex Magic",
+   "type_line": "Sorcery \u2014 Arcane",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Hex Magic",
+     "mana_cost": "{2}{R}",
+     "type_line": "Sorcery \u2014 Arcane",
+     "rules_text": "Exile all the cards from your hand, then draw that many cards. Until the end of your next turn, you may play cards exiled this way."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gleaming Splendor",
+   "type_line": "Enchantment",
+   "cmc": 2.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Gleaming Splendor",
+     "mana_cost": "{1}{W}",
+     "type_line": "Enchantment",
+     "rules_text": "Whenever an opponent draws their second card each turn, you create a Treasure token.\n{2}{W}: Two target players each draw a card."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Ancient Tomb",
+   "type_line": "Land",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "C"
+   ],
+   "faces": [
+    {
+     "name": "Ancient Tomb",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "{T}: Add {C}{C}. This land deals 2 damage to you."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gifts Ungiven",
+   "type_line": "Instant",
+   "cmc": 4.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Gifts Ungiven",
+     "mana_cost": "{3}{U}",
+     "type_line": "Instant",
+     "rules_text": "Search your library for up to four cards with different names and reveal them. Target opponent chooses two of those cards. Put the chosen cards into your graveyard and the rest into your hand. Then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Enlightened Tutor",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Enlightened Tutor",
+     "mana_cost": "{W}",
+     "type_line": "Instant",
+     "rules_text": "Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mox Opal",
+   "type_line": "Legendary Artifact",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Mox Opal",
+     "mana_cost": "{0}",
+     "type_line": "Legendary Artifact",
+     "rules_text": "Metalcraft \u2014 {T}: Add one mana of any color. Activate only if you control three or more artifacts."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mind's Desire",
+   "type_line": "Sorcery",
+   "cmc": 6.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Mind's Desire",
+     "mana_cost": "{4}{U}{U}",
+     "type_line": "Sorcery",
+     "rules_text": "Shuffle your library. Then exile the top card of your library. Until end of turn, you may play that card without paying its mana cost.\nStorm (When you cast this spell, copy it for each spell cast before it this turn.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Frantic Search",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Frantic Search",
+     "mana_cost": "{2}{U}",
+     "type_line": "Instant",
+     "rules_text": "Draw two cards, then discard two cards. Untap up to three lands."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Snap",
+   "type_line": "Instant",
+   "cmc": 2.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Snap",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant",
+     "rules_text": "Return target creature to its owner's hand. Untap up to two lands."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Sevinne's Reclamation",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Sevinne's Reclamation",
+     "mana_cost": "{2}{W}",
+     "type_line": "Sorcery",
+     "rules_text": "Return target permanent card with mana value 3 or less from your graveyard to the battlefield. If this spell was cast from a graveyard, you may copy this spell and may choose a new target for the copy.\nFlashback {4}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Paradise Mantle",
+   "type_line": "Artifact \u2014 Equipment",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Paradise Mantle",
+     "mana_cost": "{0}",
+     "type_line": "Artifact \u2014 Equipment",
+     "rules_text": "Equipped creature has \"{T}: Add one mana of any color.\"\nEquip {1}"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Copy Enchantment",
+   "type_line": "Enchantment",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Copy Enchantment",
+     "mana_cost": "{2}{U}",
+     "type_line": "Enchantment",
+     "rules_text": "You may have this enchantment enter as a copy of any enchantment on the battlefield."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Borne Upon a Wind",
+   "type_line": "Instant",
+   "cmc": 2.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Borne Upon a Wind",
+     "mana_cost": "{1}{U}",
+     "type_line": "Instant",
+     "rules_text": "You may cast spells this turn as though they had flash.\nDraw a card."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Silence",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Silence",
+     "mana_cost": "{W}",
+     "type_line": "Instant",
+     "rules_text": "Your opponents can't cast spells this turn."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Flusterstorm",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Flusterstorm",
+     "mana_cost": "{U}",
+     "type_line": "Instant",
+     "rules_text": "Counter target instant or sorcery spell unless its controller pays {1}.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Strike It Rich",
+   "type_line": "Sorcery",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "B",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Strike It Rich",
+     "mana_cost": "{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\nFlashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "type_line": "Legendary Creature \u2014 Human Wizard // Legendary Planeswalker \u2014 Ral",
+   "cmc": 2.0,
+   "color_identity": [
+    "R",
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Ral, Monsoon Mage",
+     "mana_cost": "{1}{R}",
+     "type_line": "Legendary Creature \u2014 Human Wizard",
+     "rules_text": "Instant and sorcery spells you cast cost {1} less to cast.\nWhenever you cast an instant or sorcery spell during your turn, flip a coin. If you lose the flip, Ral deals 1 damage to you. If you win the flip, you may exile Ral. If you do, return him to the battlefield transformed under his owner's control."
+    },
+    {
+     "name": "Ral, Leyline Prodigy",
+     "mana_cost": "",
+     "type_line": "Legendary Planeswalker \u2014 Ral",
+     "rules_text": "Ral enters with an additional loyalty counter on him for each instant and sorcery spell you've cast this turn.\n+1: Until your next turn, instant and sorcery spells you cast cost {1} less to cast.\n\u22122: Ral deals 2 damage divided as you choose among one or two targets. Draw a card if you control a blue permanent other than Ral.\n\u22128: Exile the top eight cards of your library. You may cast instant and sorcery spells from among them this turn without paying their mana costs."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Vexing Bauble",
+   "type_line": "Artifact",
+   "cmc": 1.0,
+   "color_identity": [],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Vexing Bauble",
+     "mana_cost": "{1}",
+     "type_line": "Artifact",
+     "rules_text": "Whenever a player casts a spell, if no mana was spent to cast it, counter that spell.\n{1}, {T}, Sacrifice this artifact: Draw a card."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Pinnacle Monk // Mystic Peak",
+   "type_line": "Creature \u2014 Djinn Monk // Land",
+   "cmc": 5.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Pinnacle Monk",
+     "mana_cost": "{3}{R}{R}",
+     "type_line": "Creature \u2014 Djinn Monk",
+     "rules_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, return target instant or sorcery card from your graveyard to your hand."
+    },
+    {
+     "name": "Mystic Peak",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Artist's Talent",
+   "type_line": "Enchantment \u2014 Class",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Artist's Talent",
+     "mana_cost": "{1}{R}",
+     "type_line": "Enchantment \u2014 Class",
+     "rules_text": "(Gain the next level as a sorcery to add its ability.)\nWhenever you cast a noncreature spell, you may discard a card. If you do, draw a card.\n{2}{R}: Level 2\nNoncreature spells you cast cost {1} less to cast.\n{2}{R}: Level 3\nIf a source you control would deal noncombat damage to an opponent or a permanent an opponent controls, it deals that much damage plus 2 instead."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Solve the Equation",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Solve the Equation",
+     "mana_cost": "{2}{U}",
+     "type_line": "Sorcery",
+     "rules_text": "Search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Jeska's Will",
+   "type_line": "Sorcery",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Jeska's Will",
+     "mana_cost": "{2}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n\u2022 Add {R} for each card in target opponent's hand.\n\u2022 Exile the top three cards of your library. You may play them this turn."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Voice of Victory",
+   "type_line": "Creature \u2014 Human Bard",
+   "cmc": 2.0,
+   "color_identity": [
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Voice of Victory",
+     "mana_cost": "{1}{W}",
+     "type_line": "Creature \u2014 Human Bard",
+     "rules_text": "Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nYour opponents can't cast spells during your turn."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Underworld Breach",
+   "type_line": "Enchantment",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Underworld Breach",
+     "mana_cost": "{1}{R}",
+     "type_line": "Enchantment",
+     "rules_text": "Each nonland card in your graveyard has escape. The escape cost is equal to the card's mana cost plus exile three other cards from your graveyard. (You may cast cards from your graveyard for their escape cost.)\nAt the beginning of the end step, sacrifice this enchantment."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Starting Town",
+   "type_line": "Land \u2014 Town",
+   "cmc": 0.0,
+   "color_identity": [],
+   "produced_mana": [
+    "B",
+    "C",
+    "G",
+    "R",
+    "U",
+    "W"
+   ],
+   "faces": [
+    {
+     "name": "Starting Town",
+     "mana_cost": "",
+     "type_line": "Land \u2014 Town",
+     "rules_text": "This land enters tapped unless it's your first, second, or third turn of the game.\n{T}: Add {C}.\n{T}, Pay 1 life: Add one mana of any color."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Desperate Ritual",
+   "type_line": "Instant \u2014 Arcane",
+   "cmc": 2.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Desperate Ritual",
+     "mana_cost": "{1}{R}",
+     "type_line": "Instant \u2014 Arcane",
+     "rules_text": "Add {R}{R}{R}.\nSplice onto Arcane {1}{R} (As you cast an Arcane spell, you may reveal this card from your hand and pay its splice cost. If you do, add this card's effects to that spell.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Redirect Lightning",
+   "type_line": "Instant \u2014 Lesson",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Redirect Lightning",
+     "mana_cost": "{R}",
+     "type_line": "Instant \u2014 Lesson",
+     "rules_text": "As an additional cost to cast this spell, pay 5 life or pay {2}.\nChange the target of target spell or ability with a single target."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Storm of Memories",
+   "type_line": "Sorcery",
+   "cmc": 5.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Storm of Memories",
+     "mana_cost": "{2}{R}{R}{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Storm (When you cast this spell, copy it for each spell cast before it this turn.)\nExile an instant or sorcery card with mana value 3 or less from your graveyard at random. You may cast it without paying its mana cost. If that spell would be put into a graveyard, exile it instead."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gitaxian Probe",
+   "type_line": "Sorcery",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Gitaxian Probe",
+     "mana_cost": "{U/P}",
+     "type_line": "Sorcery",
+     "rules_text": "({U/P} can be paid with either {U} or 2 life.)\nLook at target player's hand.\nDraw a card."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gut Shot",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Gut Shot",
+     "mana_cost": "{R/P}",
+     "type_line": "Instant",
+     "rules_text": "({R/P} can be paid with either {R} or 2 life.)\nGut Shot deals 1 damage to any target."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Sink into Stupor // Soporific Springs",
+   "type_line": "Instant // Land",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [
+    "U"
+   ],
+   "faces": [
+    {
+     "name": "Sink into Stupor",
+     "mana_cost": "{1}{U}{U}",
+     "type_line": "Instant",
+     "rules_text": "Return target spell or nonland permanent an opponent controls to its owner's hand."
+    },
+    {
+     "name": "Soporific Springs",
+     "mana_cost": "",
+     "type_line": "Land",
+     "rules_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {U}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Fierce Guardianship",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Fierce Guardianship",
+     "mana_cost": "{2}{U}",
+     "type_line": "Instant",
+     "rules_text": "If you control a commander, you may cast this spell without paying its mana cost.\nCounter target noncreature spell."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Gamble",
+   "type_line": "Sorcery",
+   "cmc": 1.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Gamble",
+     "mana_cost": "{R}",
+     "type_line": "Sorcery",
+     "rules_text": "Search your library for a card, put that card into your hand, discard a card at random, then shuffle."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Force of Will",
+   "type_line": "Instant",
+   "cmc": 5.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Force of Will",
+     "mana_cost": "{3}{U}{U}",
+     "type_line": "Instant",
+     "rules_text": "You may pay 1 life and exile a blue card from your hand rather than pay this spell's mana cost.\nCounter target spell."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Mental Misstep",
+   "type_line": "Instant",
+   "cmc": 1.0,
+   "color_identity": [
+    "U"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Mental Misstep",
+     "mana_cost": "{U/P}",
+     "type_line": "Instant",
+     "rules_text": "({U/P} can be paid with either {U} or 2 life.)\nCounter target spell with mana value 1."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Deflecting Swat",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Deflecting Swat",
+     "mana_cost": "{2}{R}",
+     "type_line": "Instant",
+     "rules_text": "If you control a commander, you may cast this spell without paying its mana cost.\nYou may choose new targets for target spell or ability."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Simian Spirit Guide",
+   "type_line": "Creature \u2014 Ape Spirit",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [
+    "R"
+   ],
+   "faces": [
+    {
+     "name": "Simian Spirit Guide",
+     "mana_cost": "{2}{R}",
+     "type_line": "Creature \u2014 Ape Spirit",
+     "rules_text": "Exile this card from your hand: Add {R}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Flare of Duplication",
+   "type_line": "Instant",
+   "cmc": 3.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Flare of Duplication",
+     "mana_cost": "{1}{R}{R}",
+     "type_line": "Instant",
+     "rules_text": "You may sacrifice a nontoken red creature rather than pay this spell's mana cost.\nCopy target instant or sorcery spell. You may choose new targets for the copy."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": false,
+  "data": {
+   "name": "Sol Ring",
+   "type_line": "Artifact",
+   "cmc": 1.0,
+   "color_identity": [],
+   "produced_mana": [
+    "C"
+   ],
+   "faces": [
+    {
+     "name": "Sol Ring",
+     "mana_cost": "{1}",
+     "type_line": "Artifact",
+     "rules_text": "{T}: Add {C}{C}."
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": true,
+  "data": {
+   "name": "Rograkh, Son of Rohgahh",
+   "type_line": "Legendary Creature \u2014 Kobold Warrior",
+   "cmc": 0.0,
+   "color_identity": [
+    "R"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Rograkh, Son of Rohgahh",
+     "mana_cost": "{0}",
+     "type_line": "Legendary Creature \u2014 Kobold Warrior",
+     "rules_text": "First strike, menace, trample\nPartner (You can have two commanders if both have partner.)"
+    }
+   ]
+  }
+ },
+ {
+  "quantity": 1,
+  "is_commander": true,
+  "data": {
+   "name": "Ishai, Ojutai Dragonspeaker",
+   "type_line": "Legendary Creature \u2014 Bird Monk",
+   "cmc": 4.0,
+   "color_identity": [
+    "U",
+    "W"
+   ],
+   "produced_mana": [],
+   "faces": [
+    {
+     "name": "Ishai, Ojutai Dragonspeaker",
+     "mana_cost": "{2}{W}{U}",
+     "type_line": "Legendary Creature \u2014 Bird Monk",
+     "rules_text": "Flying\nWhenever an opponent casts a spell, put a +1/+1 counter on Ishai.\nPartner (You can have two commanders if both have partner.)"
+    }
+   ]
+  }
+ }
+]

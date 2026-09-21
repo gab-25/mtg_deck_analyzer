@@ -14,6 +14,7 @@ from .mana import (
     cards_seen,
     color_card_counts,
     color_curves,
+    is_land_card,
     deck_pips,
     land_production,
     mana_curve,
@@ -24,7 +25,7 @@ from .probability import at_least, exactly
 # Bumped whenever the stored dictionary changes shape. A deck whose blob
 # carries a different value is stale and gets recomputed rather than read.
 # Bumped to 3 because sources_known became a required top-level key.
-STATISTICS_SCHEMA = 4
+STATISTICS_SCHEMA = 5
 
 # Colourless is a production column only — it has no colour identity and no
 # coloured pips, so it sits after WUBRG with two of its four figures at zero.
@@ -135,9 +136,14 @@ def deck_statistics(processed_cards: list) -> dict:
     """
     library = _library(processed_cards)
     library_size = _quantity(library)
-    land_count = _quantity(
-        [item for item in library if classify_card(item["data"]) == "Land"]
-    )
+    # The any-face rule, not classify_card's front face: a modal card with a
+    # land back is a land you can draw and play, so it belongs in every figure
+    # about lands in hand. Moxfield's published average for a real deck only
+    # reconciles this way — 23 lands over 98 cards gives their 1.64, the
+    # front-face count of 21 gives 1.50. The curve and the mana-value sentence
+    # keep the front-face rule, because there the question is what the card is
+    # cast as.
+    land_count = _quantity([item for item in library if is_land_card(item["data"])])
 
     return {
         "schema": STATISTICS_SCHEMA,

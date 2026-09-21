@@ -238,3 +238,41 @@ class TestMulliganRate:
     def test_a_deck_that_never_mulligans_reports_nothing(self):
         # Rather than dividing by zero or claiming "one hand in infinity".
         assert self._rate(1.0) == 0
+
+
+class TestLandCountUsesTheAnyFaceRule:
+    """A modal card with a land back is a land you can draw and play.
+
+    Counting it as the spell on its front understates the lands in an opening
+    hand — and every figure derived from it — for any deck playing modal
+    lands, which is most of them. Verified against Moxfield's published
+    average for a real deck: 23 lands over 98 cards gives 1.64, the front-face
+    count of 21 gives 1.50.
+    """
+
+    def _deck_with_a_modal_land(self):
+        plain = {"name": "Island", "type_line": "Basic Land — Island", "cmc": 0.0,
+                 "color_identity": ["U"], "produced_mana": ["U"],
+                 "faces": [{"name": "Island", "mana_cost": "",
+                            "type_line": "Basic Land — Island", "rules_text": ""}]}
+        modal = {"name": "Sink into Stupor", "type_line": "Instant // Land",
+                 "cmc": 3.0, "color_identity": ["U"], "produced_mana": ["U"],
+                 "faces": [{"name": "Sink into Stupor", "mana_cost": "{2}{U}",
+                            "type_line": "Instant", "rules_text": ""},
+                           {"name": "Soporific Springs", "mana_cost": "",
+                            "type_line": "Land", "rules_text": ""}]}
+        return [{"quantity": 10, "is_commander": False, "data": plain},
+                {"quantity": 1, "is_commander": False, "data": modal}]
+
+    def test_a_modal_card_with_a_land_back_counts_as_a_land(self):
+        assert deck_statistics(self._deck_with_a_modal_land())["land_count"] == 11
+
+    def test_the_opening_hand_average_counts_it_too(self):
+        stats = deck_statistics(self._deck_with_a_modal_land())
+        expected = 7 * 11 / stats["library_size"]
+        assert stats["opening_hand"]["average_lands"] == pytest.approx(expected)
+
+    def test_the_curve_still_files_it_as_the_spell_it_is_cast_as(self):
+        # The other rule stays: the card list must show it among the instants.
+        curve = deck_statistics(self._deck_with_a_modal_land())["curve"]
+        assert curve[3]["spells"] == 1

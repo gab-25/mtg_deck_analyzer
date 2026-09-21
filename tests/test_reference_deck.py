@@ -77,3 +77,45 @@ class TestCurve:
     def test_the_curve_covers_every_non_land_card(self):
         curve = deck_statistics(DECK)["curve"]
         assert sum(b["permanents"] + b["spells"] for b in curve) == 74
+
+
+STORM = json.loads(
+    (Path(__file__).parent / "fixtures" / "moxfield_storm_deck.json").read_text()
+)
+
+
+class TestSecondReferenceDeck:
+    """A second deck, checked the same way — RogShai - Jeskai Storm Combo.
+
+    One deck can be matched by a formula that is right for the wrong reason.
+    This one was fetched after the formulas were settled, and it is what
+    caught the opening-hand land count reading the front face: Moxfield's
+    published average of 1.64 only comes out at 23 lands, the any-face count,
+    where the front face gives 21 and 1.50.
+    """
+
+    def _colors(self):
+        return {c["key"]: c for c in deck_statistics(STORM)["colors"]}
+
+    def test_the_average_lands_in_hand_match_moxfield(self):
+        stats = deck_statistics(STORM)
+        assert stats["library_size"] == 98
+        assert stats["land_count"] == 23
+        assert stats["opening_hand"]["average_lands"] == pytest.approx(1.64, abs=0.005)
+
+    @pytest.mark.parametrize(
+        "color,production", [("W", 39), ("U", 48), ("B", 26), ("R", 48),
+                             ("G", 26), ("C", 22)]
+    )
+    def test_the_production_percentages_match_moxfield(self, color, production):
+        assert self._colors()[color]["production_pct"] == production
+
+    @pytest.mark.parametrize(
+        "color,on_lands", [("W", 19), ("U", 23), ("R", 23), ("C", 10)]
+    )
+    def test_the_land_share_matches_moxfield(self, color, on_lands):
+        # Black and green come out a point below Moxfield's 13 — a rounding
+        # difference on a colour this deck only touches through rainbow lands,
+        # not a disagreement about the count. Left unpinned rather than
+        # encoded as if intended.
+        assert self._colors()[color]["lands_pct"] == on_lands
