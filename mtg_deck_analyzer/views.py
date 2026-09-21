@@ -175,7 +175,11 @@ def _opening_hand_rows(opening_hand: dict) -> dict:
 
 # Chart box in SVG user units. The viewBox scales to whatever width the panel
 # gives it, so these are proportions rather than pixels.
-_CHART = {"w": 560, "h": 240, "left": 38, "bottom": 34, "top": 12}
+# "top" leaves room for the y-axis caption above the highest gridline, and
+# "bottom" for the bucket labels and the x-axis caption below the baseline.
+# Too little of either and a caption prints over a tick.
+_CHART = {"w": 560, "h": 252, "left": 38, "bottom": 34, "top": 28}
+_CAPTION_Y = 10
 
 
 def _y_ticks(peak: int) -> list:
@@ -224,6 +228,9 @@ def _curve_chart(curve: list) -> dict:
 
     return {
         "width": _CHART["w"], "height": _CHART["h"],
+        "caption_y": _CAPTION_Y,
+        # Clear of the bucket labels, and inside the box so nothing is clipped.
+        "x_label_y": _CHART["h"] - 2,
         "axis_x": _CHART["left"],
         "label_y": round(y_of(0) + 16, 2),
         "bars": out,

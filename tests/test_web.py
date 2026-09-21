@@ -1619,6 +1619,21 @@ class TestStatisticsPanel:
         assert {"x", "width", "permanents", "spells", "total", "label"} <= set(first)
         assert chart["gridlines"], "an axis with no gridlines is not an axis"
 
+    def test_the_axis_captions_clear_the_chart(self, client):
+        # "Number of cards" was drawn at the same y as the topmost tick, so
+        # the two printed on top of each other.
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        top_tick = min(g["y"] for g in chart["gridlines"])
+        assert top_tick >= chart["caption_y"] + 11, "caption overlaps the top tick"
+
+    def test_the_x_axis_caption_sits_inside_the_viewbox(self, client):
+        # Drawn on the very last row, its descenders were clipped.
+        chart = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["curve_chart"]
+        assert chart["x_label_y"] < chart["height"]
+        assert chart["x_label_y"] > chart["label_y"]
+
     def test_every_color_column_is_present_even_when_unused(self, client):
         colors = client.get(f"/decks/{self._deck(client).id}") \
             .context["statistics"]["colors"]

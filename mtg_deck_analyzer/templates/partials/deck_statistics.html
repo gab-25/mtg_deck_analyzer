@@ -23,8 +23,8 @@ SVG coordinate is precomputed in the view; this file only places them.
                 <rect x="{{ b.x }}" y="{{ b.permanents.y }}" width="{{ b.width }}" height="{{ b.permanents.height }}" fill="#7c5cff" />
                 <text x="{{ b.label_x }}" y="{{ statistics.curve_chart.label_y }}" text-anchor="middle" fill="#8b8f9c" font-size="11">{{ b.label }}</text>
                 {% endfor %}
-                <text x="{{ statistics.curve_chart.width }}" y="{{ statistics.curve_chart.height }}" text-anchor="end" fill="#8b8f9c" font-size="11">Mana Value</text>
-                <text x="0" y="12" fill="#8b8f9c" font-size="11">Number of cards</text>
+                <text x="{{ statistics.curve_chart.width }}" y="{{ statistics.curve_chart.x_label_y }}" text-anchor="end" fill="#8b8f9c" font-size="11">Mana Value</text>
+                <text x="0" y="{{ statistics.curve_chart.caption_y }}" fill="#8b8f9c" font-size="11">Number of cards</text>
             </svg>
             <div class="flex items-center justify-center gap-4 mt-2.5 text-[11px] text-txt3">
                 <span class="flex items-center gap-1.5"><span class="w-[9px] h-[9px] rounded-full" style="background:#7c5cff"></span>Permanents</span>
