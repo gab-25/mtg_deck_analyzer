@@ -7,7 +7,7 @@ cards: the pips a deck's costs demand and the mana curve.
 import re
 from statistics import median
 
-from .cards import classify_card, front_type_line
+from .cards import classify_card, front_type_line, rules_text
 from .commander import WUBRG
 
 _MANA_SYMBOL_RE = re.compile(r"\{([^}]+)\}")
@@ -128,6 +128,19 @@ def is_land_card(card_data: dict) -> bool:
     return any("land" in line for line in _type_lines(card_data))
 
 
+# A land whose mana ability is defined by what *your other* lands make adds no
+# colour of its own — Reflecting Pool in a deck of Islands makes blue, nothing
+# more. Crediting it with every colour double-counts the mana base it mirrors.
+# A land mirroring an opponent's lands is deliberately not in here: what it can
+# make is unknowable from the decklist, so it keeps its printed colours.
+_MIRRORS_YOUR_LANDS = "a land you control could produce"
+
+
+def _mirrors_your_own_lands(card_data: dict) -> bool:
+    """Whether a land only makes what the rest of your mana base already does."""
+    return _MIRRORS_YOUR_LANDS in rules_text(card_data)
+
+
 def land_production(processed_cards: list) -> dict:
     """How many lands the deck plays, and what they can be tapped for.
 
@@ -146,6 +159,9 @@ def land_production(processed_cards: list) -> dict:
             continue
         quantity = item["quantity"]
         lands += quantity
+        # Still a land, but it fills no colour slot of its own.
+        if _mirrors_your_own_lands(data):
+            continue
         produced = data.get("produced_mana") or []
         for color in by_color:
             if color in produced:

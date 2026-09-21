@@ -304,3 +304,48 @@ class TestColorCurves:
         curves = color_curves([])
         assert set(curves) == set("WUBRG")
         assert all(len(c) == 8 for c in curves.values())
+
+
+class TestMirrorLands:
+    """Lands that produce whatever your other lands produce make nothing of
+    their own, so crediting them with five colours double-counts the mana the
+    rest of the mana base already supplies.
+
+    Reflecting Pool and Cactus Preserve read "any type that a land you control
+    could produce". A land reading "a land an opponent controls" (Exotic
+    Orchard) is different: what it makes is unknowable from the decklist, so
+    it keeps its colours — which is also what Moxfield does.
+    """
+
+    def _land(self, name, text, produced):
+        return {"quantity": 1, "is_commander": False, "data": {
+            "name": name, "type_line": "Land", "produced_mana": produced,
+            "faces": [{"name": name, "type_line": "Land", "mana_cost": "",
+                       "rules_text": text}]}}
+
+    def test_a_mirror_land_still_counts_as_a_land(self):
+        deck = [self._land("Reflecting Pool",
+                           "{T}: Add one mana of any type that a land you "
+                           "control could produce.", list("WUBRG"))]
+        assert land_production(deck)["lands"] == 1
+
+    def test_a_mirror_land_contributes_no_colour(self):
+        deck = [self._land("Reflecting Pool",
+                           "{T}: Add one mana of any type that a land you "
+                           "control could produce.", list("WUBRG"))]
+        out = land_production(deck)
+        assert out["symbol_slots"] == 0
+        assert all(v == 0 for v in out["by_color"].values())
+
+    def test_a_land_mirroring_an_opponent_keeps_its_colours(self):
+        deck = [self._land("Exotic Orchard",
+                           "{T}: Add one mana of any color that a land an "
+                           "opponent controls could produce.", list("WUBRG"))]
+        assert land_production(deck)["symbol_slots"] == 5
+
+    def test_a_land_that_genuinely_produces_keeps_its_colours(self):
+        # Command Tower names the colours it makes rather than borrowing them.
+        deck = [self._land("Command Tower",
+                           "{T}: Add one mana of any color in your commander's "
+                           "color identity.", list("WUBRG"))]
+        assert land_production(deck)["symbol_slots"] == 5
