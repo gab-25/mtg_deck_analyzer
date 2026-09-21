@@ -202,9 +202,24 @@ def mana_value_summary(processed_cards: list) -> dict:
     }
 
 
-def _card_identity(card_data: dict) -> set:
-    """A card's colour identity as a set of WUBRG letters."""
-    return {c for c in (card_data.get("color_identity") or []) if c in WUBRG}
+def _card_colors(card_data: dict) -> set:
+    """The card's own colours: the ones printed in its mana costs.
+
+    Not its colour identity. Tasigur, the Golden Fang costs {5}{B} and has a
+    {G/U} activated ability, so its identity is Sultai while the card itself is
+    black — and Moxfield's colour breakdown counts it under black alone.
+
+    The cost is read on every face that has one, so both halves of a split
+    card count while a transform back — which has no mana cost — adds nothing.
+
+    This is the printed cost and nothing else, not Scryfall's ``colors``. The
+    two differ on a card coloured by an indicator rather than by its cost:
+    Pact of Negation costs {0}, and Scryfall calls it blue while Moxfield's
+    breakdown does not count it towards blue. That is Moxfield's quirk, not
+    ours, but it is what fixed the last two figures that disagreed with their
+    published numbers, on two unrelated decks at once.
+    """
+    return {letter for letter, count in card_pips(card_data).items() if count}
 
 
 def color_card_counts(processed_cards: list) -> dict:
@@ -212,13 +227,13 @@ def color_card_counts(processed_cards: list) -> dict:
 
     The commander counts here, unlike in :func:`mana_value_summary` — Moxfield
     is inconsistent about this and we mirror it rather than diverge from their
-    figures. Colour identity decides, so a card is counted under every colour
-    it belongs to and the percentages do not add up to 100.
+    figures. A gold card is counted under each of its colours, so the
+    percentages do not add up to 100.
 
-    Known gap: on the reference deck this gives blue 49% and red 20% where
-    Moxfield shows 47% and 18%. Twelve combinations of colour rule, land rule
-    and commander handling were tried and none reproduces their counts exactly;
-    a rule we can state beats one tuned to a single deck.
+    Colour comes from :func:`_card_colors`, not from colour identity. Identity
+    was the first guess and it ran two points high on every reference deck,
+    because a card whose only off-colour mana appears in an activated ability
+    counts for that colour under identity and does not under Moxfield's rule.
     """
     non_lands = 0
     by_color = {color: 0 for color in WUBRG}
@@ -229,7 +244,7 @@ def color_card_counts(processed_cards: list) -> dict:
             continue
         quantity = item["quantity"]
         non_lands += quantity
-        for color in _card_identity(data):
+        for color in _card_colors(data):
             by_color[color] += quantity
 
     return {"non_lands": non_lands, "by_color": by_color}
@@ -239,10 +254,9 @@ def color_curves(processed_cards: list) -> dict:
     """A mana curve per colour, for the sparkline under each colour's figures.
 
     Same buckets as :func:`mana_curve`, restricted to the non-land cards of
-    that colour — but unlike :func:`mana_curve`, the commander is included
-    here, for the same reason it is in :func:`color_card_counts`: this is
-    what colour a card belongs to, not what you draw into. Not a bug, just a
-    different question. A gold card appears in each of its colours' curves.
+    that colour, with a gold card appearing in each of its colours' curves.
+    The colour rule is :func:`_card_colors`, the same one the figures above
+    the sparkline use: one column, one set of cards.
     """
     curves = {color: [0] * CURVE_BUCKETS for color in WUBRG}
 
@@ -251,7 +265,7 @@ def color_curves(processed_cards: list) -> dict:
         if classify_card(data) == "Land":
             continue
         value = min(int(data.get("cmc", 0) or 0), CURVE_BUCKETS - 1)
-        for color in _card_identity(data):
+        for color in _card_colors(data):
             curves[color][value] += item["quantity"]
 
     return curves

@@ -53,9 +53,19 @@ class TestColors:
     def test_the_symbol_share_matches_moxfield(self):
         assert self._colors()["W"]["symbol_pct"] == 21
 
+    @pytest.mark.parametrize("color,card_pct", [("W", 21), ("U", 47), ("R", 18)])
+    def test_the_card_share_matches_moxfield(self, color, card_pct):
+        # Blue and red were long a couple of points high here, because colour
+        # identity was counting Pact of Negation as blue and Rograkh as red.
+        # Both cost {0} and are coloured by an indicator; Moxfield reads the
+        # printed cost, so neither counts.
+        assert self._colors()[color]["card_pct"] == card_pct
+
     def test_the_blue_sparkline_dips_at_six_and_returns_at_seven(self):
-        # The signature that confirmed what the sparkline plots.
-        assert self._colors()["U"]["curve"] == [1, 9, 6, 11, 7, 2, 0, 1]
+        # The signature that confirmed what the sparkline plots. Bucket 0 is
+        # empty for the same reason blue reads 47%: Pact of Negation sits at
+        # mana value 0 and is not counted a blue card.
+        assert self._colors()["U"]["curve"] == [0, 9, 6, 11, 7, 2, 0, 1]
 
     @pytest.mark.parametrize("color", ["B", "G"])
     def test_black_and_green_touch_no_cards_despite_producing_mana(self, color):
@@ -115,11 +125,11 @@ class TestSecondReferenceDeck:
         assert self._colors()[color]["production_pct"] == production
 
     @pytest.mark.parametrize(
-        "color,on_lands", [("W", 19), ("U", 23), ("R", 23), ("C", 10)]
+        "color,on_lands", [("W", 19), ("U", 23), ("B", 13), ("R", 23),
+                           ("G", 13), ("C", 10)]
     )
     def test_the_land_share_matches_moxfield(self, color, on_lands):
-        # Black and green come out a point below Moxfield's 13 — a rounding
-        # difference on a colour this deck only touches through rainbow lands,
-        # not a disagreement about the count. Left unpinned rather than
-        # encoded as if intended.
+        # Black and green sat a point low until percentages started rounding
+        # half-up: both land on exactly 12.5%, where Python's round() picks
+        # the even number and Moxfield picks 13.
         assert self._colors()[color]["lands_pct"] == on_lands

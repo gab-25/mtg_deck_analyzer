@@ -250,16 +250,22 @@ class TestManaValueSummary:
 from mtg_deck_analyzer.domain.mana import color_card_counts, color_curves
 
 
-def _identity(colors, type_line="Creature — Bear", cmc=2.0):
+def _colored(colors, type_line="Creature — Bear", cmc=2.0, identity=None):
+    """A card printed in ``colors``, with a wider ``identity`` if one is given.
+
+    The two come apart on a card whose off-colour mana lives in an activated
+    ability, which is the case the colour block has to get right.
+    """
+    cost = "".join("{%s}" % c for c in colors)
     return {"name": "X", "type_line": type_line, "cmc": cmc,
-            "color_identity": list(colors),
-            "faces": [{"name": "X", "mana_cost": "", "type_line": type_line,
+            "color_identity": list(identity if identity is not None else colors),
+            "faces": [{"name": "X", "mana_cost": cost, "type_line": type_line,
                        "rules_text": ""}]}
 
 
 class TestColorCardCounts:
-    def test_counts_cards_by_color_identity(self):
-        deck = [_item(_identity("U"), 3), _item(_identity("WU"))]
+    def test_counts_cards_by_color_colored(self):
+        deck = [_item(_colored("U"), 3), _item(_colored("WU"))]
         out = color_card_counts(deck)
         assert out["non_lands"] == 4
         assert out["by_color"]["U"] == 4
@@ -267,39 +273,55 @@ class TestColorCardCounts:
         assert out["by_color"]["B"] == 0
 
     def test_lands_are_excluded_from_both_sides(self):
-        deck = [_item(_identity("U", type_line="Land", cmc=0.0), 5),
-                _item(_identity("U"))]
+        deck = [_item(_colored("U", type_line="Land", cmc=0.0), 5),
+                _item(_colored("U"))]
         out = color_card_counts(deck)
         assert out["non_lands"] == 1
         assert out["by_color"]["U"] == 1
 
     def test_the_commander_is_counted(self):
         # Unlike the mana-value figures, the colour split includes it.
-        deck = [_item(_identity("R"), is_commander=True)]
+        deck = [_item(_colored("R"), is_commander=True)]
         out = color_card_counts(deck)
         assert out["non_lands"] == 1
         assert out["by_color"]["R"] == 1
 
+    def test_color_in_an_ability_only_does_not_make_the_card_that_color(self):
+        # Tasigur costs {5}{B} and has a {G/U} ability: Sultai by identity,
+        # black as a card. Moxfield's breakdown counts it under black alone.
+        deck = [_item(_colored("B", identity="BGU"))]
+        out = color_card_counts(deck)
+        assert out["by_color"] == {"W": 0, "U": 0, "B": 1, "R": 0, "G": 0}
+
+    def test_a_card_colored_only_by_an_indicator_counts_for_nothing(self):
+        # Pact of Negation costs {0}. Scryfall calls it blue; Moxfield's
+        # breakdown does not, and mirroring them is what made two unrelated
+        # reference decks agree with their published figures.
+        deck = [_item(_colored("", identity="U", cmc=0.0))]
+        out = color_card_counts(deck)
+        assert out["non_lands"] == 1
+        assert out["by_color"]["U"] == 0
+
 
 class TestColorCurves:
     def test_a_color_curve_counts_only_that_colors_cards(self):
-        deck = [_item(_identity("U", cmc=1.0), 2), _item(_identity("R", cmc=3.0))]
+        deck = [_item(_colored("U", cmc=1.0), 2), _item(_colored("R", cmc=3.0))]
         curves = color_curves(deck)
         assert curves["U"][1] == 2
         assert curves["U"][3] == 0
         assert curves["R"][3] == 1
 
     def test_a_multicolor_card_appears_in_every_colors_curve(self):
-        curves = color_curves([_item(_identity("WU", cmc=2.0))])
+        curves = color_curves([_item(_colored("WU", cmc=2.0))])
         assert curves["W"][2] == 1
         assert curves["U"][2] == 1
 
     def test_lands_are_excluded(self):
-        deck = [_item(_identity("G", type_line="Land", cmc=0.0), 4)]
+        deck = [_item(_colored("G", type_line="Land", cmc=0.0), 4)]
         assert sum(color_curves(deck)["G"]) == 0
 
     def test_seven_and_up_is_merged(self):
-        deck = [_item(_identity("B", cmc=9.0))]
+        deck = [_item(_colored("B", cmc=9.0))]
         assert color_curves(deck)["B"][7] == 1
 
     def test_every_color_has_a_curve_even_when_empty(self):
