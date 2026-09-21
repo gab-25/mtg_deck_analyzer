@@ -281,11 +281,15 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     flowables.append(Paragraph(
         f"<b>Opening hand</b> &mdash; a {hand['hand_size']}-card hand off a "
         f"{statistics['library_size']}-card library, on the play", text))
+    # Every land count, not just the keepable window: how often a hand falls
+    # outside it is the figure a mulligan decision turns on. Written compactly
+    # because eight "N lands: X%" pairs do not fit on one line.
     lands_line = " &nbsp;&bull;&nbsp; ".join(
-        f"<b>{e['lands']} lands:</b> {round(e['p'] * 100)}%"
-        for e in hand["land_counts"])
+        f"<b>{e['lands']}:</b> {round(e['p'] * 100)}%" for e in hand["land_counts"])
+    flowables.append(Paragraph(f"Lands in hand &mdash; {lands_line}", text))
     flowables.append(Paragraph(
-        f"{lands_line} &nbsp;&bull;&nbsp; <b>two to five:</b> "
+        f"<b>Average:</b> {hand['average_lands']:.2f} lands "
+        f"&nbsp;&bull;&nbsp; <b>two to five:</b> "
         f"{round(hand['keepable'] * 100)}%", text))
     drops = " &nbsp;&bull;&nbsp; ".join(
         f"<b>T{e['turn']}:</b> {round(e['p'] * 100)}%" for e in hand["land_drops"])

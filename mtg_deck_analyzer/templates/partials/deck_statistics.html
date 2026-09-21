@@ -77,13 +77,34 @@ SVG coordinate is precomputed in the view; this file only places them.
                 <span class="text-txt2">Two to five lands in seven</span>
                 <span class="font-mono2 font-bold text-[13px] text-gold">{{ statistics.opening_hand.keepable }}%</span>
             </div>
-            <div class="grid gap-2.5 mb-4" style="grid-template-columns:repeat(4,minmax(0,1fr))">
-                {% for l in statistics.opening_hand.land_counts %}
-                <div class="py-2 px-2.5 rounded-md border border-line2 text-center">
-                    <div class="font-mono2 font-bold text-[14px]">{{ l.pct }}%</div>
-                    <div class="text-[11px] text-txt3">{{ l.lands }} lands</div>
-                </div>
+            <div class="flex justify-between text-[13px] mb-3">
+                <span class="text-txt2">Average lands in seven</span>
+                <span class="font-mono2 font-bold text-[13px] text-txt3">{{ statistics.opening_hand.average_lands }}</span>
+            </div>
+            {% comment %}
+            The whole distribution, not just the keepable window: how often a
+            hand falls outside it is what a mulligan decision turns on. Drawn
+            as SVG for the same reason as the curve — the stylesheet is a
+            committed build and cannot grow new classes.
+            {% endcomment %}
+            <svg viewBox="0 0 {{ statistics.opening_hand.distribution.width }} {{ statistics.opening_hand.distribution.height }}" class="w-full mb-1.5" role="img" aria-label="Lands in the opening hand">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}" fill="{% if b.keepable %}#7c5cff{% else %}#3a3f4d{% endif %}" />
                 {% endfor %}
+            </svg>
+            <div class="flex mb-1.5">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <div class="flex-1 text-center font-mono2 text-[11px] {% if b.keepable %}text-txt2{% else %}text-txt3{% endif %}">{{ b.pct }}%</div>
+                {% endfor %}
+            </div>
+            <div class="flex mb-4">
+                {% for b in statistics.opening_hand.distribution.bars %}
+                <div class="flex-1 text-center font-mono2 text-[11px] text-txt3">{{ b.lands }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-4 text-[11px] text-txt3 font-light">
+                Lands in a seven-card hand. The highlighted bars are the keepable window{% if statistics.opening_hand.mulligan_in %} —
+                roughly one hand in {{ statistics.opening_hand.mulligan_in }} falls outside it and wants a mulligan{% endif %}.
             </div>
             <div class="flex flex-col gap-2">
                 {% for d in statistics.opening_hand.land_drops %}

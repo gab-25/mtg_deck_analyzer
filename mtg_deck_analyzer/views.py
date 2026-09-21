@@ -122,15 +122,50 @@ def _pct(probability: float) -> int:
     return round(probability * 100)
 
 
+# The land counts a hand is kept on without thinking about it. Bars outside
+# this window are the ones a mulligan decision turns on, so the chart marks it.
+_KEEPABLE_WINDOW = range(2, 6)
+
+
+def _land_distribution(land_counts: list) -> dict:
+    """Geometry for the opening-hand distribution, drawn like the sparklines.
+
+    Every land count from none to seven, so the unkeepable tail is visible
+    rather than cropped away — showing only the window states the conclusion
+    and hides the evidence for it.
+    """
+    peak = max((entry["p"] for entry in land_counts), default=0) or 1
+    width, height, gap = 240, 46, 4.0
+    slot = width / len(land_counts)
+    return {
+        "width": width,
+        "height": height,
+        "bars": [
+            {
+                "lands": entry["lands"],
+                "pct": _pct(entry["p"]),
+                "keepable": entry["lands"] in _KEEPABLE_WINDOW,
+                "x": round(slot * index, 2),
+                "width": round(slot - gap, 2),
+                "label_x": round(slot * index + (slot - gap) / 2, 2),
+                "y": round(height * (1 - entry["p"] / peak), 2),
+                "height": round(height * entry["p"] / peak, 2),
+            }
+            for index, entry in enumerate(land_counts)
+        ],
+    }
+
+
 def _opening_hand_rows(opening_hand: dict) -> dict:
     """The opening-hand block with every probability turned into a percentage."""
+    keepable = opening_hand["keepable"]
     return {
         "hand_size": opening_hand["hand_size"],
-        "keepable": _pct(opening_hand["keepable"]),
-        "land_counts": [
-            {"lands": entry["lands"], "pct": _pct(entry["p"])}
-            for entry in opening_hand["land_counts"]
-        ],
+        "keepable": _pct(keepable),
+        "average_lands": f"{opening_hand['average_lands']:.2f}",
+        # "One hand in six" reads as a decision; "16%" reads as a statistic.
+        "mulligan_in": round(1 / (1 - keepable)) if keepable < 1 else 0,
+        "distribution": _land_distribution(opening_hand["land_counts"]),
         "land_drops": [
             {"turn": entry["turn"], "pct": _pct(entry["p"])}
             for entry in opening_hand["land_drops"]

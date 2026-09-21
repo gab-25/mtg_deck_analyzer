@@ -178,3 +178,63 @@ class TestCurveBars:
     def test_an_empty_curve_has_no_division_by_zero(self):
         bars = curve_bars([{"label": "1", "permanents": 0, "spells": 0}])
         assert bars[0]["pct"] == 0
+
+
+class TestOpeningHandDistribution:
+    """The full 0..7 distribution, not just the keepable window.
+
+    Showing only 2-5 hid the figure a mulligan decision actually turns on:
+    how often the hand falls outside it.
+    """
+
+    def test_every_land_count_from_zero_to_seven_is_reported(self):
+        counts = deck_statistics(_deck())["opening_hand"]["land_counts"]
+        assert [entry["lands"] for entry in counts] == [0, 1, 2, 3, 4, 5, 6, 7]
+
+    def test_the_distribution_sums_to_one(self):
+        # A strong invariant the four-entry version could not express.
+        counts = deck_statistics(_deck())["opening_hand"]["land_counts"]
+        assert sum(entry["p"] for entry in counts) == pytest.approx(1.0)
+
+    def test_keepable_is_still_the_two_to_five_slice(self):
+        hand = deck_statistics(_deck())["opening_hand"]
+        window = [e["p"] for e in hand["land_counts"] if 2 <= e["lands"] <= 5]
+        assert hand["keepable"] == pytest.approx(sum(window))
+
+    def test_the_average_is_the_hand_size_times_the_land_share(self):
+        stats = deck_statistics(_deck())
+        hand = stats["opening_hand"]
+        expected = 7 * stats["land_count"] / stats["library_size"]
+        assert hand["average_lands"] == pytest.approx(expected)
+
+    def test_the_average_matches_the_distribution_it_summarises(self):
+        # The mean of the distribution and the closed form must agree.
+        hand = deck_statistics(_deck())["opening_hand"]
+        mean = sum(e["lands"] * e["p"] for e in hand["land_counts"])
+        assert hand["average_lands"] == pytest.approx(mean)
+
+    def test_an_empty_deck_averages_nothing(self):
+        assert deck_statistics([])["opening_hand"]["average_lands"] == 0.0
+
+
+class TestMulliganRate:
+    """The keepable figure restated as a fraction, which reads as a decision."""
+
+    def _rate(self, keepable):
+        from mtg_deck_analyzer.views import _opening_hand_rows
+
+        return _opening_hand_rows({
+            "hand_size": 7, "keepable": keepable, "average_lands": 2.0,
+            "land_counts": [{"lands": k, "p": 0.125} for k in range(8)],
+            "land_drops": [],
+        })["mulligan_in"]
+
+    def test_a_typical_deck_mulligans_about_one_hand_in_six(self):
+        assert self._rate(0.84) == 6
+
+    def test_a_worse_deck_mulligans_more_often(self):
+        assert self._rate(0.70) == 3
+
+    def test_a_deck_that_never_mulligans_reports_nothing(self):
+        # Rather than dividing by zero or claiming "one hand in infinity".
+        assert self._rate(1.0) == 0

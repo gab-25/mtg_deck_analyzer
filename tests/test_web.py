@@ -1624,6 +1624,31 @@ class TestStatisticsPanel:
             .context["statistics"]["colors"]
         assert [c["key"] for c in colors] == ["W", "U", "B", "R", "G", "C"]
 
+    def test_the_opening_hand_shows_the_whole_distribution(self, client):
+        # Only 2-5 used to be shown, which hid how often a hand is unkeepable.
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        assert [b["lands"] for b in hand["distribution"]["bars"]] == list(range(8))
+
+    def test_the_keepable_window_is_marked_on_the_distribution(self, client):
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        keepable = {b["lands"] for b in hand["distribution"]["bars"] if b["keepable"]}
+        assert keepable == {2, 3, 4, 5}
+
+    def test_the_average_is_rendered_to_two_decimals(self, client):
+        hand = client.get(f"/decks/{self._deck(client).id}") \
+            .context["statistics"]["opening_hand"]
+        assert isinstance(hand["average_lands"], str)
+        assert "." in hand["average_lands"]
+
+    def test_a_deck_whose_every_hand_is_keepable_claims_no_mulligans(self, client):
+        # The stub deck is two lands, so every hand holds exactly two: there is
+        # no mulligan rate to state, and the sentence must not offer one.
+        response = client.get(f"/decks/{self._deck(client).id}")
+        assert response.context["statistics"]["opening_hand"]["mulligan_in"] == 0
+        assert "one hand in 0" not in response.content.decode()
+
     def test_the_mana_value_sentence_is_rendered(self, client):
         body = client.get(f"/decks/{self._deck(client).id}").content.decode()
         assert "average mana value" in body.lower()

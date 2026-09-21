@@ -233,6 +233,17 @@ class TestStatisticsSection:
         assert any("Permanents" in t for t in texts)
         assert any("Spells" in t for t in texts)
 
+    def test_the_opening_hand_reports_the_average_and_every_land_count(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
+        blob = " ".join(texts)
+        assert "average" in blob.lower()
+        # Every count from none to seven, not just the keepable window.
+        for count in range(8):
+            assert f"{count}:" in blob, f"land count {count} missing"
+
     def test_generate_pdf_includes_the_section(self, tmp_path):
         out = tmp_path / "deck.pdf"
         generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],

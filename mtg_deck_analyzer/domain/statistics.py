@@ -24,7 +24,7 @@ from .probability import at_least, exactly
 # Bumped whenever the stored dictionary changes shape. A deck whose blob
 # carries a different value is stale and gets recomputed rather than read.
 # Bumped to 3 because sources_known became a required top-level key.
-STATISTICS_SCHEMA = 3
+STATISTICS_SCHEMA = 4
 
 # Colourless is a production column only — it has no colour identity and no
 # coloured pips, so it sits after WUBRG with two of its four figures at zero.
@@ -32,7 +32,9 @@ COLOR_KEYS = list(WUBRG) + ["C"]
 
 # Land counts a seven-card hand is reported for, and the window that makes a
 # hand keepable without thinking about it.
-HAND_LAND_COUNTS = (2, 3, 4, 5)
+# The whole distribution, not just the keepable slice: how often a hand
+# falls *outside* the window is the figure a mulligan decision turns on.
+HAND_LAND_COUNTS = tuple(range(OPENING_HAND_SIZE + 1))
 KEEPABLE_LANDS = (2, 3, 4, 5)
 # Turns the land-drop table covers, on the play.
 LAND_DROP_TURNS = (1, 2, 3, 4, 5)
@@ -69,7 +71,13 @@ def _opening_hand(library_size: int, land_count: int) -> dict:
     """
     return {
         "hand_size": OPENING_HAND_SIZE,
-        # Exactly k lands in the opening seven.
+        # The expected number of lands in seven cards. Closed form rather than
+        # a sum over the distribution: the two agree, and this one survives a
+        # deck too small to draw a full hand from.
+        "average_lands": (
+            OPENING_HAND_SIZE * land_count / library_size if library_size else 0.0
+        ),
+        # Exactly k lands in the opening seven, for every k.
         "land_counts": [
             {
                 "lands": k,
