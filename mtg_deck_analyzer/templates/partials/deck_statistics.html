@@ -1,6 +1,6 @@
 {% comment %}
 The Statistics panel, laid out as Moxfield's: stacked curve, the mana-value
-sentence, a column per colour, then the opening hand. Every number and every
+sentence, the colours three to a row, then the opening hand. Every number and every
 SVG coordinate is precomputed in the view; this file only places them.
 {% endcomment %}
 <div class="panel-card overflow-hidden">
@@ -43,7 +43,7 @@ SVG coordinate is precomputed in the view; this file only places them.
             <span class="font-mono2 font-bold text-txt2">{{ statistics.mana_values.total }}</span>.
         </div>
 
-        <div class="grid gap-3" style="grid-template-columns:repeat(6,minmax(0,1fr))">
+        <div class="grid gap-3" style="grid-template-columns:repeat(3,minmax(0,1fr))">
             {% for c in statistics.colors %}
             {# opacity inline: the compiled stylesheet ships no opacity-* utility. #}
             <div class="text-center"{% if not c.used %} style="opacity:.4"{% endif %}>

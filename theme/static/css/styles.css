@@ -439,8 +439,8 @@
   .grid-cols-\[minmax\(0\,1fr\)_300px\] {
     grid-template-columns: minmax(0,1fr) 300px;
   }
-  .grid-cols-\[minmax\(0\,1fr\)_336px\] {
-    grid-template-columns: minmax(0,1fr) 336px;
+  .grid-cols-\[minmax\(0\,1fr\)_420px\] {
+    grid-template-columns: minmax(0,1fr) 420px;
   }
   .flex-col {
     flex-direction: column;
@@ -1525,8 +1525,11 @@ select.field {
   .detail-grid, .editor-grid, .version-grid {
     grid-template-columns: 1fr !important;
   }
-  .detail-sidebar, .editor-sidebar {
+  .editor-sidebar {
     position: static !important;
+  }
+  .detail-sidebar {
+    order: -1;
   }
 }
 @media (max-width: 640px) {

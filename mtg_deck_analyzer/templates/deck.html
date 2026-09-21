@@ -4,10 +4,10 @@
 
 {% block content %}
 {% comment %}
-.page-narrow caps width at 960px; this page overrides it to 1180px, so the
+.page-narrow caps width at 960px; this page overrides it to 1264px, so the
 max-width stays inline — a utility would lose to the unlayered component rule.
 {% endcomment %}
-<div class="page-narrow" data-screen-label="Deck detail" style="max-width:1180px">
+<div class="page-narrow" data-screen-label="Deck detail" style="max-width:1264px">
     {% if user.is_authenticated %}
     <a href="{% url 'index' %}" class="link-back no-print mb-[18px]">
         <span class="ms text-[18px]">arrow_back</span>All decks
@@ -50,7 +50,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
         </div>
     </div>
 
-    <div class="detail-grid grid grid-cols-[minmax(0,1fr)_336px] gap-[22px] items-start">
+    <div class="detail-grid grid grid-cols-[minmax(0,1fr)_420px] gap-[22px] items-start">
         <div class="flex flex-col gap-5 min-w-0">
 
             {% if analysis_html %}
@@ -68,10 +68,6 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     <div class="analysis">{{ analysis_html|safe }}</div>
                 </div>
             </div>
-            {% endif %}
-
-            {% if statistics %}
-            {% include "partials/deck_statistics.html" %}
             {% endif %}
 
             <div class="panel-card overflow-hidden">
@@ -120,13 +116,9 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     {% endfor %}
                 </div>
             </div>
-
-            {% if version_history %}
-            {% include "partials/deck_versions.html" %}
-            {% endif %}
         </div>
 
-        <div class="detail-sidebar flex flex-col gap-4 sticky top-[78px]">
+        <div class="detail-sidebar flex flex-col gap-4">
             {% if commander_cards %}
             <div class="panel-card p-[18px]">
                 <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">
@@ -170,6 +162,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </div>
             {% endif %}
 
+            {% if statistics %}
+            {% include "partials/deck_statistics.html" %}
+            {% endif %}
+
             <div class="panel-card p-[18px]">
                 <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Card types</div>
                 <div class="flex flex-col gap-3">
@@ -186,6 +182,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     {% endfor %}
                 </div>
             </div>
+
+            {% if version_history %}
+            {% include "partials/deck_versions.html" %}
+            {% endif %}
         </div>
     </div>
 </div>
