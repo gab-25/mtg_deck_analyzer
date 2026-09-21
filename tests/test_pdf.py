@@ -32,47 +32,41 @@ def _item(qty, type_line, price=0.0, cmc=0.0):
 
 class TestComputeStatistics:
     def test_empty_deck(self):
-        total, price, avg_cmc, counts = _compute_statistics([])
+        total, price, counts = _compute_statistics([])
         assert total == 0
         assert price == 0.0
-        assert avg_cmc == 0.0
         assert all(v == 0 for v in counts.values())
 
     def test_total_cards_sums_quantities(self):
         cards = [_item(4, "Creature"), _item(2, "Instant")]
-        total, _, _, _ = _compute_statistics(cards)
+        total, _, _ = _compute_statistics(cards)
         assert total == 6
 
     def test_total_price_weighted_by_quantity(self):
         cards = [_item(2, "Creature", price=1.50), _item(1, "Instant", price=3.00)]
-        _, price, _, _ = _compute_statistics(cards)
+        _, price, _ = _compute_statistics(cards)
         assert price == pytest.approx(2 * 1.50 + 3.00)
 
     def test_category_counts(self):
         cards = [_item(4, "Creature"), _item(3, "Land"), _item(1, "Sorcery")]
-        _, _, _, counts = _compute_statistics(cards)
+        _, _, counts = _compute_statistics(cards)
         assert counts["Creature"] == 4
         assert counts["Land"] == 3
         assert counts["Sorcery"] == 1
 
-    def test_avg_cmc_excludes_lands(self):
-        cards = [
-            _item(2, "Creature", cmc=3.0),  # contributes 2*3 = 6 over 2 cards
-            _item(4, "Land", cmc=0.0),      # excluded entirely
-        ]
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == pytest.approx(3.0)
 
-    def test_avg_cmc_zero_when_only_lands(self):
-        cards = [_item(10, "Land", cmc=0.0)]
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == 0.0
+class TestStatsTableAverage:
+    def test_the_average_row_is_dropped_when_there_is_none(self):
+        table = create_stats_table(10, 0.0, None, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "Average" not in blob
 
-    def test_avg_cmc_is_quantity_weighted(self):
-        cards = [_item(3, "Creature", cmc=2.0), _item(1, "Sorcery", cmc=6.0)]
-        # (3*2 + 1*6) / 4 = 3.0
-        _, _, avg_cmc, _ = _compute_statistics(cards)
-        assert avg_cmc == pytest.approx(3.0)
+    def test_the_average_row_is_shown_when_there_is_one(self):
+        table = create_stats_table(10, 0.0, 2.25, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "2.25" in blob
 
 
 class TestPlaceholderAndImageCell:
@@ -250,6 +244,48 @@ class TestStatisticsSection:
         generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
                      str(out), statistics=self._statistics())
         assert out.stat().st_size > 0
+
+    def test_the_fact_sheet_average_comes_from_the_stored_statistics(
+        self, tmp_path, monkeypatch
+    ):
+        # The fact sheet used to compute its own average over the non-land
+        # cards, commanders included, while the section below it read the
+        # stored blob, commanders excluded. Two labels, one deck, two
+        # numbers. The fact sheet now reads the same blob, so a doctored
+        # value has to reach it untouched.
+        stored = self._statistics()
+        stored["mana_values"]["average_without_lands"] = 9.99
+
+        received = []
+        real = pdf_module.create_stats_table
+        monkeypatch.setattr(
+            pdf_module,
+            "create_stats_table",
+            lambda *a, **kw: (received.append(a[2]) or real(*a, **kw)),
+        )
+
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(tmp_path / "deck.pdf"), statistics=stored)
+
+        assert received == [9.99]
+
+    def test_the_fact_sheet_drops_the_average_without_stored_statistics(
+        self, tmp_path, monkeypatch
+    ):
+        # No blob, nothing to read: the row goes rather than being computed
+        # here, the same way the section below it goes.
+        received = []
+        real = pdf_module.create_stats_table
+        monkeypatch.setattr(
+            pdf_module,
+            "create_stats_table",
+            lambda *a, **kw: (received.append(a[2]) or real(*a, **kw)),
+        )
+
+        generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
+                     str(tmp_path / "deck.pdf"))
+
+        assert received == [None]
 
     def test_generate_pdf_omits_the_section_when_given_none(self, tmp_path,
                                                             monkeypatch):

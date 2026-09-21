@@ -82,7 +82,7 @@ def create_no_image_placeholder(width=110, height=154):
 def create_stats_table(
     total_cards: int,
     total_price: float,
-    avg_cmc: float,
+    avg_cmc: float | None,
     category_counts: dict,
     commanders: list = None,
     fmt: str = DEFAULT_FORMAT,
@@ -117,12 +117,16 @@ def create_stats_table(
     if commanders:
         names = html.escape(", ".join(commanders))
         commander_html = f'<b>{stats_labels["commander"]}:</b> {names}<br/>'
+    # A deck whose statistics predate the current schema has no average to
+    # show, and this is not the place that computes one: the row goes.
+    cmc_html = ""
+    if avg_cmc is not None:
+        cmc_html = f'<br/><b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}'
     left_html = f"""
     <b>{stats_labels["format"]}:</b> {FORMATS[fmt].label}<br/>
     {commander_html}
     <b>{stats_labels["cards"]}:</b> {total_cards}<br/>
-    <b>{stats_labels["value"]}:</b> {val_str}<br/>
-    <b>{stats_labels["cmc"]}:</b> {avg_cmc:.2f}
+    <b>{stats_labels["value"]}:</b> {val_str}{cmc_html}
     """
 
     # Right column: per-type counts.
@@ -677,12 +681,15 @@ def generate_pdf(
     )
     story_flowables.append(Paragraph(subtitle_text, styles["subtitle"]))
 
-    # 1.1 Statistics and summary table.
-    total_cards, total_price, avg_cmc, category_counts = compute_statistics(
-        processed_cards
+    # 1.1 Statistics and summary table. Its average mana value is the one
+    # stored with the deck — the same number the section below prints, over
+    # the same cards — not a second one computed here.
+    total_cards, total_price, category_counts = compute_statistics(processed_cards)
+    average_mv = (statistics or {}).get("mana_values", {}).get(
+        "average_without_lands"
     )
     stats_table = create_stats_table(
-        total_cards, total_price, avg_cmc, category_counts, commanders, fmt
+        total_cards, total_price, average_mv, category_counts, commanders, fmt
     )
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))

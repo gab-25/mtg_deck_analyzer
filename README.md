@@ -18,7 +18,7 @@ See [Web Service](#web-service) to get it running.
   - The deck's format (Commander or Duel Commander) and its commander.
   - Total number of cards in the deck.
   - Estimated total monetary value based on **Cardmarket** prices (in Euros).
-  - Average Mana Value (CMC) computed excluding lands.
+  - Average mana value excluding lands — the same number the statistics section prints, read from the deck's stored blob rather than computed a second time. It is omitted for a deck whose blob predates the current schema.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
 - **Deck statistics**: A `Statistics` panel on the deck page, and a matching section in the PDF, computed from the cached Scryfall data alone — no extra API call, no LLM, no new dependency. Mirrors Moxfield's own deck page, in four blocks: a **stacked mana curve** (lands excluded, permanents against spells, 7+ merged); a **mana-value sentence** (average and median, with and without lands, plus the deck's total); a **six-column colour block** (share of non-land cards, share of colored symbols, and mana production, per WUBRG colour plus colorless); and **opening-hand probabilities**.
   - The opening-hand block is exact hypergeometric arithmetic, not a simulation: the odds of 2/3/4/5 lands in the opening seven, of keeping a hand with two to five lands, and of hitting every land drop through turn N.

@@ -80,7 +80,7 @@ class TestClassifyDoubleFacedCard:
 
 
 class TestComputeStatistics:
-    def test_a_spell_with_a_land_back_counts_towards_the_average_cmc(self):
+    def test_a_spell_with_a_land_back_is_counted_as_a_spell(self):
         cards = [
             {
                 "quantity": 1,
@@ -95,8 +95,7 @@ class TestComputeStatistics:
                 "data": {"type_line": "Basic Land — Island", "cmc": 0.0},
             },
         ]
-        total_cards, _total_price, avg_cmc, counts = compute_statistics(cards)
+        total_cards, _total_price, counts = compute_statistics(cards)
         assert total_cards == 2
         assert counts["Instant"] == 1
         assert counts["Land"] == 1
-        assert avg_cmc == 3.0

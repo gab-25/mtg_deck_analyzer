@@ -64,32 +64,27 @@ def is_basic_land(card_data: dict) -> bool:
 
 
 def compute_statistics(processed_cards: list):
-    """Computes aggregate deck statistics (totals, price, average CMC, counts).
+    """Computes aggregate deck statistics (totals, price, counts).
 
-    Returns a tuple ``(total_cards, total_price, avg_cmc, category_counts)``.
+    Returns a tuple ``(total_cards, total_price, category_counts)``. The
+    average mana value is deliberately not here: it lives in
+    :func:`~.mana.mana_value_summary`, which counts the main deck the way
+    Moxfield does. This function used to compute its own, over a different
+    set of cards, and the PDF printed both.
     """
     total_cards = 0
     total_price = 0.0
-    total_non_land_cards = 0
-    total_non_land_cmc = 0.0
 
     category_counts = {cat: 0 for cat in CATEGORY_ORDER}
 
     for item in processed_cards:
         qty = item["quantity"]
         card = item["data"]
-        cat = classify_card(card)
-        category_counts[cat] = category_counts.get(cat, 0) + qty
+        category_counts[classify_card(card)] = (
+            category_counts.get(classify_card(card), 0) + qty
+        )
 
         total_cards += qty
         total_price += qty * card.get("price_eur", 0.0)
 
-        if cat != "Land":
-            total_non_land_cards += qty
-            total_non_land_cmc += qty * card.get("cmc", 0.0)
-
-    avg_cmc = (
-        (total_non_land_cmc / total_non_land_cards) if total_non_land_cards > 0 else 0.0
-    )
-
-    return total_cards, total_price, avg_cmc, category_counts
+    return total_cards, total_price, category_counts

@@ -112,10 +112,7 @@ def analyze_decklist(
         else:
             log_analysis_unavailable()
 
-    # The average CMC this also returns is deliberately dropped: the mana
-    # curve replaced it, and only the PDF fact sheet still prints one (which
-    # it computes itself).
-    total_cards, total_price, _avg_cmc, category_counts = compute_statistics(
+    total_cards, total_price, category_counts = compute_statistics(
         processed_cards
     )
 
