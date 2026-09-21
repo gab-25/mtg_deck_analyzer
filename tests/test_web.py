@@ -1560,33 +1560,36 @@ class TestStatisticsPanel:
         assert isinstance(keepable, int)
         assert 0 <= keepable <= 100
 
-    def test_a_deck_without_stored_statistics_still_gets_a_panel(self, client):
+    def test_a_deck_without_stored_statistics_shows_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
-        # Analyzed before the panel existed: no stored statistics blob. The
-        # panel is recomputed from the stored cards instead.
+        # Analyzed before the panel existed: no stored blob. The statistics
+        # are computed at analysis time and nowhere else, so the page simply
+        # leaves the panel out until the backfill or a re-analysis fills it.
         Deck.objects.filter(pk=deck.id).update(statistics={}, cards=deck.cards)
 
-        panel = client.get(f"/decks/{deck.id}").context["statistics"]
-        assert panel["curve_chart"]["bars"]
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"] is None
 
-    def test_a_deck_with_a_stale_statistics_blob_is_recomputed(self, client):
+    def test_a_deck_with_a_stale_statistics_blob_shows_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
         Deck.objects.filter(pk=deck.id).update(statistics={"schema": 1,
                                                            "curve": "nonsense"})
-        panel = client.get(f"/decks/{deck.id}").context["statistics"]
-        assert panel["curve_chart"]["bars"][0]["label"] == "0"
+        response = client.get(f"/decks/{deck.id}")
+        assert response.status_code == 200
+        assert response.context["statistics"] is None
 
-    def test_a_deck_with_schema_2_missing_sources_known_is_recomputed(self, client):
+    def test_a_deck_with_schema_2_missing_sources_known_shows_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
-        # Simulate a blob from before sources_known was added: schema 2 but
-        # missing the required sources_known key. The guard should reject this
-        # and recompute it, so the page returns 200 without raising KeyError.
+        # A blob from before sources_known was added: schema 2, and missing a
+        # key the panel requires. The schema guard has to reject it on the
+        # version alone, or the page dies with a KeyError instead.
         current_stats = deck.statistics.copy()
         stale_stats = {k: v for k, v in current_stats.items() if k != "sources_known"}
         stale_stats["schema"] = 2
@@ -1594,7 +1597,7 @@ class TestStatisticsPanel:
 
         response = client.get(f"/decks/{deck.id}")
         assert response.status_code == 200
-        assert response.context["statistics"]["sources_known"] is True
+        assert response.context["statistics"] is None
 
     def test_a_deck_with_no_cards_has_no_panel(self, client):
         from mtg_deck_analyzer.models import Deck
@@ -1680,13 +1683,14 @@ class TestStatisticsPanel:
         body = client.get(f"/decks/{self._deck(client).id}").content.decode()
         assert "average mana value" in body.lower()
 
-    def test_a_deck_with_a_stale_statistics_blob_is_recomputed_for_the_pdf(self, client):
+    def test_a_deck_with_a_stale_statistics_blob_still_exports_a_pdf(self, client):
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
         # Schema-1 shaped, so it is truthy and carries "library_size" — the
         # exact shape that used to slip past deck_pdf's guard and die inside
-        # curve_bars with a KeyError on "permanents".
+        # curve_bars with a KeyError on "permanents". The export drops the
+        # section rather than recomputing it.
         Deck.objects.filter(pk=deck.id).update(statistics={
             "schema": 1, "library_size": 10, "curve": [{"foo": 1}],
         })
@@ -1696,6 +1700,7 @@ class TestStatisticsPanel:
         assert response["content-type"] == "application/pdf"
 
     def test_a_legacy_deck_does_not_report_zero_percent_production(self, client):
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
         from mtg_deck_analyzer.models import Deck
 
         deck = self._deck(client)
@@ -1706,7 +1711,9 @@ class TestStatisticsPanel:
                               if k != "produced_mana"}}
             for item in deck.cards
         ]
-        Deck.objects.filter(pk=deck.id).update(statistics={}, cards=stripped)
+        Deck.objects.filter(pk=deck.id).update(
+            statistics=deck_statistics(stripped), cards=stripped
+        )
 
         response = client.get(f"/decks/{deck.id}")
         assert response.context["statistics"]["sources_known"] is False
@@ -1716,6 +1723,7 @@ class TestStatisticsPanel:
         # A rainbow land can make a colour "produced" without the deck ever
         # asking for it: production alone must not light up a colour column.
         from mtg_deck_analyzer import views
+        from mtg_deck_analyzer.domain.statistics import deck_statistics
         from mtg_deck_analyzer.models import Deck
 
         cards = [
@@ -1731,7 +1739,7 @@ class TestStatisticsPanel:
                       "faces": [{"name": "Command Tower", "mana_cost": "",
                                  "type_line": "Land", "rules_text": ""}]}},
         ]
-        deck = Deck(cards=cards, statistics={})
+        deck = Deck(cards=cards, statistics=deck_statistics(cards))
 
         panel = views._statistics_panel(deck)
 

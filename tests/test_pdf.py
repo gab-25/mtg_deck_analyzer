@@ -5,6 +5,7 @@ from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Table
 
 from mtg_deck_analyzer.domain.cards import compute_statistics as _compute_statistics
+from mtg_deck_analyzer.rendering import pdf as pdf_module
 from mtg_deck_analyzer.rendering.pdf import (
     _build_card_image_cell,
     _build_styles,
@@ -250,11 +251,28 @@ class TestStatisticsSection:
                      str(out), statistics=self._statistics())
         assert out.stat().st_size > 0
 
-    def test_generate_pdf_recomputes_when_given_none(self, tmp_path):
+    def test_generate_pdf_omits_the_section_when_given_none(self, tmp_path,
+                                                            monkeypatch):
+        # Statistics are computed when the deck is analyzed and stored with
+        # it. A deck exported from before they existed has none, and the
+        # export leaves the section out rather than computing it here.
+        received = []
+        real = pdf_module.create_statistics_flowables
+        monkeypatch.setattr(
+            pdf_module,
+            "create_statistics_flowables",
+            lambda stats, styles: (received.append(stats) or real(stats, styles)),
+        )
+
         out = tmp_path / "deck.pdf"
         generate_pdf("Test Deck", None, [_item(1, "Creature — Bear", cmc=2.0)],
                      str(out))
         assert out.exists()
+
+        # The section builder is handed nothing to draw, rather than a blob
+        # computed here from the cards. A rendered PDF is compressed, so the
+        # handover is where the claim can be read.
+        assert received == [{}]
 
 
 def _make_png(path):

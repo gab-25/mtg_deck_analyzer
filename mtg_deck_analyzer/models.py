@@ -81,9 +81,10 @@ class Deck(models.Model):
     # The statistics panel, derived from ``cards`` at analysis time: the
     # stacked mana curve, the mana-value sentence, the six-column colour
     # block and the opening-hand odds. One JSON blob rather than four
-    # columns, because nothing queries it — it is only ever read whole, and
-    # it carries a ``schema`` version so both renderers can tell a blob from
-    # before the current shape apart from an empty one and recompute it.
+    # columns, because nothing queries it — it is only ever read whole. It
+    # carries a ``schema`` version, and it is written here and nowhere else:
+    # a blob from before the current shape is skipped by both renderers
+    # until ``manage.py recompute_statistics`` refills it.
     statistics = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "is_commander": bool,

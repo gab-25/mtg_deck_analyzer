@@ -21,7 +21,7 @@ from reportlab.platypus import (
 
 from ..domain.cards import classify_card, compute_statistics
 from ..domain.constants import CATEGORY_ORDER, DEFAULT_FORMAT, FORMATS
-from ..domain.statistics import curve_bars, deck_statistics
+from ..domain.statistics import curve_bars
 from ..domain.text_utils import markdown_to_flowables
 
 _CATEGORY_LABELS = {
@@ -687,11 +687,10 @@ def generate_pdf(
     story_flowables.append(stats_table)
     story_flowables.append(Spacer(1, 6))
 
-    # 1.2 Statistics section. Stored with the deck when it was analyzed;
-    # recomputed here for a deck exported from before they existed.
-    if statistics is None:
-        statistics = deck_statistics(processed_cards)
-    story_flowables.extend(create_statistics_flowables(statistics, styles))
+    # 1.2 Statistics section. Stored with the deck when it was analyzed, and
+    # computed nowhere else: a deck exported from before they existed simply
+    # has no section until it is backfilled or re-analyzed.
+    story_flowables.extend(create_statistics_flowables(statistics or {}, styles))
 
     # 2. AI analysis section.
     if deck_analysis:

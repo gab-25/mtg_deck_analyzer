@@ -22,7 +22,7 @@ from .domain.commander import check_decklist, commanders, deck_color_identity
 from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
 from .domain.constants import CATEGORY_ORDER
 from .domain.decklist import parse_decklist_text
-from .domain.statistics import STATISTICS_SCHEMA, curve_bars, deck_statistics
+from .domain.statistics import STATISTICS_SCHEMA, curve_bars
 from .domain.storage import (
     cards_for_pdf,
     cards_for_storage,
@@ -268,13 +268,12 @@ def _stored_statistics(deck) -> dict | None:
 def _statistics_panel(deck) -> dict | None:
     """View-model for the Statistics panel, or None when there is nothing yet.
 
-    A deck analyzed before the current shape carries a blob that is not empty
-    but has the wrong keys, so it is recomputed rather than read.
+    The statistics are computed when the deck is analyzed and never here: a
+    deck whose blob predates the current shape has no panel until the backfill
+    command or a re-analysis replaces it.
     """
     stored = _stored_statistics(deck)
-    if stored is None:
-        stored = deck_statistics(deck.cards or [])
-    if not stored.get("library_size"):
+    if stored is None or not stored.get("library_size"):
         return None
 
     mv = stored["mana_values"]

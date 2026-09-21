@@ -22,7 +22,9 @@ See [Web Service](#web-service) to get it running.
   - Detailed breakdown of the card types present (e.g. Creatures, Lands, Enchantments, Instants, etc.).
 - **Deck statistics**: A `Statistics` panel on the deck page, and a matching section in the PDF, computed from the cached Scryfall data alone — no extra API call, no LLM, no new dependency. Mirrors Moxfield's own deck page, in four blocks: a **stacked mana curve** (lands excluded, permanents against spells, 7+ merged); a **mana-value sentence** (average and median, with and without lands, plus the deck's total); a **six-column colour block** (share of non-land cards, share of colored symbols, and mana production, per WUBRG colour plus colorless); and **opening-hand probabilities**.
   - The opening-hand block is exact hypergeometric arithmetic, not a simulation: the odds of 2/3/4/5 lands in the opening seven, of keeping a hand with two to five lands, and of hitting every land drop through turn N.
-  - Statistics are derived data, so they are computed once during the analysis and stored on the deck in a single `statistics` JSON field. A deck analyzed before the panel existed, or before its current shape, does not lose it: the page and the PDF both recompute from the stored cards. The one thing that cannot be recovered that way is which lands tap for which color, so those decks are asked to re-analyze rather than being told they have no sources.
+  - Statistics are derived data, computed once during the analysis and stored on the deck in a single `statistics` JSON field. They are computed there and nowhere else: neither the page nor the PDF recomputes on the way out, so a stored blob is what gets rendered or nothing is.
+  - The blob carries a `schema` version. A deck whose blob predates the current shape is not read — its keys may be missing or its numbers computed by rules since corrected — so it shows no panel until it is refilled. `python manage.py recompute_statistics` does that refill (`--all` to rewrite every deck), and it is the deploy step a bump of `STATISTICS_SCHEMA` costs.
+  - The one thing a refill cannot recover is which lands tap for which color, on decks analyzed before that was stored: those are asked to re-analyze rather than being told they have no sources.
 - **Category-Grouped List**: Organizes the deck by grouping cards by type (Creatures, Lands, Enchantments, Sorceries, Instants, Artifacts, Planeswalkers, etc.), showing the total count per category.
 - **Individual & Cumulative Prices**: Shows the estimated Cardmarket price of each card next to its title. For quantities greater than 1x, it shows both the unit price and the accumulated total for that stack (e.g. `15x Forest €0.05 (€0.75 tot)`).
 - **English card text**: Cards are always fetched in English — there is no language selection. Oracle text is the text the rules are written in, and the localized printings Scryfall serves are neither consistently available nor consistently current, so a decklist resolves to one English printing per card and the cache is keyed on it (`card_en_<slug>`). This also means a card is cached once, not once per language.
@@ -54,6 +56,7 @@ mtg_deck_analyzer/
 ├── access.py          # Deck ownership and visibility rules (one source of truth)
 ├── models.py          # ORM models (Deck, DeckVersion, ScryfallCard, ScryfallImage)
 ├── migrations/        # Database migrations
+├── management/        # manage.py commands (recompute_statistics)
 ├── templates/         # Django templates
 ├── pipeline.py        # Analysis pipeline (parse → fetch → validate → analyze → stats)
 ├── domain/            # Pure domain logic (no I/O, no Django)
