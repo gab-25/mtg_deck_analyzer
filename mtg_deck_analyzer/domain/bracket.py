@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from .constants import (
     BRACKET_LABELS,
-    EXTRA_TURN_TEXT,
+    EXTRA_TURN_RE,
     GAME_CHANGER_NAMES,
     MASS_LAND_DENIAL_NAMES,
 )
@@ -57,19 +57,20 @@ def _name_key(card: dict) -> str:
 def _is_game_changer(card: dict) -> bool:
     """True when Scryfall flags the card, or the fallback list names it.
 
-    A card cached before this app carried the flag has no key at all, and only
-    then does the hand-maintained list get a say: an explicit ``False`` is
-    live data and outranks a list that may have gone stale.
+    A card stored before this app carried the flag has no value at all, and
+    only then does the hand-maintained list get a say: an explicit ``False``
+    is live data and outranks a list that may have gone stale.
     """
-    if "game_changer" in card:
-        return bool(card["game_changer"])
+    flag = card.get("game_changer")
+    if flag is not None:
+        return bool(flag)
     return _name_key(card) in GAME_CHANGER_NAMES
 
 
 def _grants_extra_turn(card: dict) -> bool:
     """True when any face's oracle text hands out an extra turn."""
     return any(
-        EXTRA_TURN_TEXT in (face.get("rules_text") or "").lower()
+        EXTRA_TURN_RE.search((face.get("rules_text") or "").lower())
         for face in card.get("faces", [])
     )
 

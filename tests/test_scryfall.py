@@ -105,9 +105,16 @@ class TestProcessCachedCard:
         out = process_cached_card(card, _NoImageCache())
         assert out["game_changer"] is True
 
-    def test_missing_game_changer_becomes_false(self):
-        out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
+    def test_carries_a_present_false_game_changer_flag_through(self):
+        card = {"id": "x", "name": "Forest", "game_changer": False}
+        out = process_cached_card(card, _NoImageCache())
         assert out["game_changer"] is False
+
+    def test_missing_game_changer_stays_unknown(self):
+        # None (key absent) is distinct from an explicit False: only the
+        # unknown case lets the bracket estimate fall back to the name list.
+        out = process_cached_card({"id": "x", "name": "Forest"}, _NoImageCache())
+        assert out["game_changer"] is None
 
 class TestProducedMana:
     """``produced_mana`` drives the deck's colored-source count."""

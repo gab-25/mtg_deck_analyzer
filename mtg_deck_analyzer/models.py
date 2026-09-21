@@ -87,9 +87,11 @@ class Deck(models.Model):
     # until ``manage.py recompute_statistics`` refills it.
     statistics = models.JSONField(default=dict)
     # Estimated Commander Bracket: ``{"bracket": int, "label": str,
-    # "signals": {...}}``, or an empty dict for decks analyzed before the
-    # estimate existed. A minimum estimate read off the list, never a
-    # declaration of how the deck is actually played.
+    # "signals": {...}}``. Decks stored before the estimate existed were
+    # backfilled by a data migration, so an empty dict now means the deck was
+    # never successfully analyzed, not that it predates the feature. A
+    # minimum estimate read off the list, never a declaration of how the
+    # deck is actually played.
     bracket = models.JSONField(default=dict)
 
     # Processed card list: ``[{"quantity": int, "is_commander": bool,

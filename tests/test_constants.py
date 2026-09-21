@@ -10,7 +10,7 @@ from mtg_deck_analyzer.domain.constants import (
     CATEGORY_ORDER,
     COMMANDER_DECK_SIZE,
     DEFAULT_FORMAT,
-    EXTRA_TURN_TEXT,
+    EXTRA_TURN_RE,
     FORMATS,
     GAME_CHANGER_NAMES,
     MASS_LAND_DENIAL_NAMES,
@@ -70,21 +70,46 @@ class TestFormats:
 
 def test_game_changer_names_hold_the_official_53_front_faces():
     assert len(GAME_CHANGER_NAMES) == 53
+    # The count alone cannot catch a typo (a misspelled entry keeps the count
+    # at 53 and silently never matches), so exact names are pinned instead,
+    # spread across the alphabet.
     assert "rhystic study" in GAME_CHANGER_NAMES
     assert "smothering tithe" in GAME_CHANGER_NAMES
     # Stored by front face: the list is matched through ``front_face_name``.
     assert "tergrid, god of fright" in GAME_CHANGER_NAMES
+    for name in (
+        "ad nauseam",
+        "bolas's citadel",
+        "cyclonic rift",
+        "demonic tutor",
+        "gaea's cradle",
+        "mana vault",
+        "necropotence",
+        "opposition agent",
+        "the one ring",
+        "worldly tutor",
+    ):
+        assert name in GAME_CHANGER_NAMES
     assert all(name == name.lower() for name in GAME_CHANGER_NAMES)
 
 
 def test_mass_land_denial_names_are_lowercase_and_cover_the_staples():
     assert "armageddon" in MASS_LAND_DENIAL_NAMES
     assert "winter orb" in MASS_LAND_DENIAL_NAMES
+    assert "ruination" in MASS_LAND_DENIAL_NAMES
+    # Back to Basics locks nonbasics rather than denying lands symmetrically,
+    # i.e. it is a colour hoser like Blood Moon, not mass land denial.
+    assert "back to basics" not in MASS_LAND_DENIAL_NAMES
     assert all(name == name.lower() for name in MASS_LAND_DENIAL_NAMES)
 
 
-def test_extra_turn_text_matches_the_printed_wording():
-    assert EXTRA_TURN_TEXT in "take an extra turn after this one."
+def test_extra_turn_re_matches_the_printed_wording_but_not_prohibitions():
+    assert EXTRA_TURN_RE.search("take an extra turn after this one.")
+    assert EXTRA_TURN_RE.search("take two extra turns after this one.")
+    assert not EXTRA_TURN_RE.search(
+        "if an opponent would begin an extra turn, that player skips that "
+        "turn instead."
+    )
 
 
 def test_bracket_labels_name_all_five_tiers():

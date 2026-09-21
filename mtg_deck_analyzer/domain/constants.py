@@ -1,5 +1,6 @@
 """Shared constants used across modules."""
 
+import re
 from dataclasses import dataclass
 
 # Custom User-Agent required by the Scryfall API.
@@ -204,7 +205,10 @@ GAME_CHANGER_NAMES = frozenset(
 # Mass land denial, hand-maintained the way Moxfield maintains its own: cards
 # that strip or lock every player's lands, which the guidance keeps out of
 # brackets 2 and 3. Symmetrical sweepers only — single-target land removal
-# and colour hosers (Blood Moon) are not mass denial.
+# and colour hosers (Blood Moon, Back to Basics) are not mass denial.
+# Matching goes through ``front_face_name``, so a split or double-faced card
+# whose denial half is the back (e.g. Boom // Bust) has to be stored here
+# under its front-face name.
 MASS_LAND_DENIAL_NAMES = frozenset(
     name.lower()
     for name in (
@@ -223,15 +227,23 @@ MASS_LAND_DENIAL_NAMES = frozenset(
         "Sunder",
         "Wake of Destruction",
         "Worms of the Earth",
-        "Back to Basics",
         "Rising Waters",
         "Stasis",
         "Static Orb",
         "Winter Orb",
+        "Ruination",
+        "From the Ashes",
+        "Fall of the Thran",
+        "Hokori, Dust Drinker",
+        "Keldon Firebombers",
+        "Tectonic Break",
+        "Death Cloud",
     )
 )
 
 # Every extra-turn card shares this wording ("Take an extra turn after this
-# one"), so the oracle text settles the signal and no name list has to be
-# kept up to date set after set.
-EXTRA_TURN_TEXT = "extra turn"
+# one", "Takes two extra turns"), so the oracle text settles the signal and no
+# name list has to be kept up to date set after set. Matching the verb keeps
+# out the cards that PREVENT extra turns (Stranglehold, Ugin's Nexus), whose
+# text also contains the phrase.
+EXTRA_TURN_RE = re.compile(r"takes? (?:\w+ )?extra turns?")

@@ -7,7 +7,11 @@ def _card(name, *, game_changer=None, rules_text=""):
     """A processed card, shaped the way ``process_cached_card`` returns one.
 
     ``game_changer=None`` omits the key entirely, which is how a cache entry
-    written before Scryfall exposed the flag comes back.
+    written before Scryfall exposed the flag comes back. It also models a
+    card stored in ``Deck.cards`` before this feature existed — the shape the
+    data migration and the PDF recompute read — rather than the output of a
+    fresh ``process_cached_card``, which always carries the key (possibly as
+    ``None``).
     """
     data = {
         "name": name,
@@ -120,3 +124,28 @@ class TestSignalDetection:
         verdict = estimate_bracket(_deck(_card("Rhystic Study", game_changer=False)))
         assert verdict["signals"]["game_changers"] == []
         assert verdict["bracket"] == 2
+
+    def test_a_card_that_prevents_extra_turns_is_not_a_signal(self):
+        # Stranglehold's prohibition text contains "extra turn" as a
+        # substring, but it stops extra turns rather than granting one.
+        verdict = estimate_bracket(_deck(
+            _card(
+                "Stranglehold",
+                game_changer=False,
+                rules_text=(
+                    "If an opponent would begin an extra turn, that player "
+                    "skips that turn instead."
+                ),
+            ),
+            _card("Time Warp", game_changer=False,
+                  rules_text="Take an extra turn after this one."),
+        ))
+        assert verdict["bracket"] == 2
+        assert verdict["signals"]["extra_turns"] == ["Time Warp"]
+
+    def test_a_card_that_grants_multiple_extra_turns_is_counted(self):
+        verdict = estimate_bracket(_deck(
+            _card("Two-Turn Sorcery", game_changer=False,
+                  rules_text="Take two extra turns after this one."),
+        ))
+        assert verdict["signals"]["extra_turns"] == ["Two-Turn Sorcery"]
