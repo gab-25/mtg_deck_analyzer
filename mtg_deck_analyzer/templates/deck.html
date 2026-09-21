@@ -120,10 +120,6 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     {% endfor %}
                 </div>
             </div>
-
-            {% if version_history %}
-            {% include "partials/deck_versions.html" %}
-            {% endif %}
         </div>
 
         <div class="detail-sidebar flex flex-col gap-4 sticky top-[78px]">
@@ -186,6 +182,10 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                     {% endfor %}
                 </div>
             </div>
+
+            {% if version_history %}
+            {% include "partials/deck_versions.html" with scrollable=True %}
+            {% endif %}
         </div>
     </div>
 </div>

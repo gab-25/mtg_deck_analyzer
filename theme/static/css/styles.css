@@ -373,6 +373,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-\[360px\] {
+    max-height: 360px;
+  }
   .min-h-\[3px\] {
     min-height: 3px;
   }
@@ -504,6 +507,9 @@
   }
   .overflow-hidden {
     overflow: hidden;
+  }
+  .overflow-y-auto {
+    overflow-y: auto;
   }
   .rounded {
     border-radius: 0.25rem;
