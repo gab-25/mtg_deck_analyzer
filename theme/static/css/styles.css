@@ -373,9 +373,6 @@
   .h-full {
     height: 100%;
   }
-  .max-h-\[360px\] {
-    max-height: 360px;
-  }
   .min-h-\[3px\] {
     min-height: 3px;
   }
@@ -507,9 +504,6 @@
   }
   .overflow-hidden {
     overflow: hidden;
-  }
-  .overflow-y-auto {
-    overflow-y: auto;
   }
   .rounded {
     border-radius: 0.25rem;
@@ -1531,7 +1525,7 @@ select.field {
   .detail-grid, .editor-grid, .version-grid {
     grid-template-columns: 1fr !important;
   }
-  .detail-sidebar, .editor-sidebar {
+  .editor-sidebar {
     position: static !important;
   }
   .detail-sidebar {

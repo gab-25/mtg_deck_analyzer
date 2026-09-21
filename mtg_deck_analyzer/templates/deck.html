@@ -118,7 +118,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </div>
         </div>
 
-        <div class="detail-sidebar flex flex-col gap-4 sticky top-[78px]">
+        <div class="detail-sidebar flex flex-col gap-4">
             {% if commander_cards %}
             <div class="panel-card p-[18px]">
                 <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">
@@ -184,7 +184,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             </div>
 
             {% if version_history %}
-            {% include "partials/deck_versions.html" with scrollable=True %}
+            {% include "partials/deck_versions.html" %}
             {% endif %}
         </div>
     </div>
