@@ -106,13 +106,22 @@ SVG coordinate is precomputed in the view; this file only places them.
                 Lands in a seven-card hand. The highlighted bars are the keepable window{% if statistics.opening_hand.mulligan_in %} —
                 roughly one hand in {{ statistics.opening_hand.mulligan_in }} falls outside it and wants a mulligan{% endif %}.
             </div>
-            <div class="flex flex-col gap-2">
+            {% comment %}
+            One series rather than five near-identical sentences. "Never
+            missing" carries the cumulative meaning that "every land drop
+            through turn N" needed explaining out loud.
+            {% endcomment %}
+            <div class="text-[13px] text-txt2 mb-2">Never missing a land drop</div>
+            <div class="flex">
                 {% for d in statistics.opening_hand.land_drops %}
-                <div class="flex justify-between text-[13px]">
-                    <span class="text-txt2">Every land drop through turn {{ d.turn }}</span>
-                    <span class="font-mono2 font-bold text-[12px] text-txt3">{{ d.pct }}%</span>
+                <div class="flex-1 text-center">
+                    <div class="font-mono2 font-bold text-[13px] text-txt2">{{ d.pct }}%</div>
+                    <div class="font-mono2 text-[11px] text-txt3">through T{{ d.turn }}</div>
                 </div>
                 {% endfor %}
+            </div>
+            <div class="mt-2.5 text-[11px] text-txt3 font-light">
+                These odds ignore ramp: a mana rock or a dork makes a missed drop matter less.
             </div>
         </div>
 

@@ -291,9 +291,13 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
         f"<b>Average:</b> {hand['average_lands']:.2f} lands "
         f"&nbsp;&bull;&nbsp; <b>two to five:</b> "
         f"{round(hand['keepable'] * 100)}%", text))
+    # "Never missing" rather than "every land drop through": the figure is
+    # cumulative, and the old wording had to be explained out loud.
     drops = " &nbsp;&bull;&nbsp; ".join(
         f"<b>T{e['turn']}:</b> {round(e['p'] * 100)}%" for e in hand["land_drops"])
-    flowables.append(Paragraph(f"Every land drop through &mdash; {drops}", text))
+    flowables.append(Paragraph(
+        f"Never missing a land drop &mdash; {drops} "
+        f"<i>(ignoring ramp)</i>", text))
     flowables.append(Spacer(1, 8))
 
     return flowables

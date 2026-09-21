@@ -1636,6 +1636,18 @@ class TestStatisticsPanel:
         keepable = {b["lands"] for b in hand["distribution"]["bars"] if b["keepable"]}
         assert keepable == {2, 3, 4, 5}
 
+    def test_the_land_drops_read_as_one_series_not_five_sentences(self, client):
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        # "Never missing" states the cumulative meaning the old label needed
+        # a spoken explanation to convey.
+        assert "Never missing a land drop" in body
+        assert "Every land drop through turn 1" not in body
+
+    def test_the_land_drop_odds_say_they_ignore_ramp(self, client):
+        # 48% by turn five alarms more than it should without this.
+        body = client.get(f"/decks/{self._deck(client).id}").content.decode()
+        assert "ramp" in body.lower()
+
     def test_the_average_is_rendered_to_two_decimals(self, client):
         hand = client.get(f"/decks/{self._deck(client).id}") \
             .context["statistics"]["opening_hand"]
