@@ -20,7 +20,12 @@ from reportlab.platypus import (
 )
 
 from ..domain.cards import classify_card, compute_statistics
-from ..domain.constants import CATEGORY_ORDER, DEFAULT_FORMAT, FORMATS
+from ..domain.constants import (
+    CATEGORY_ORDER,
+    COLOR_FULL_NAMES,
+    DEFAULT_FORMAT,
+    FORMATS,
+)
 from ..domain.statistics import curve_bars
 from ..domain.text_utils import markdown_to_flowables
 
@@ -42,7 +47,7 @@ _STATS_LABELS = {
     "commander": "Commander",
     "cards": "Total Cards",
     "value": "Estimated Value (Cardmarket)",
-    "cmc": "Average CMC (non-Lands)",
+    "cmc": "Average Mana Value (non-Lands)",
 }
 
 
@@ -267,12 +272,12 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     for entry in statistics["colors"]:
         production = f"{entry['production_pct']}%" if sources_known else "-"
         on_lands = f"{entry['lands_pct']}%" if sources_known else "-"
-        rows.append([Paragraph(entry["key"], text),
+        rows.append([Paragraph(COLOR_FULL_NAMES[entry["key"]], text),
                      Paragraph(f"{entry['card_pct']}%", text),
                      Paragraph(f"{entry['symbol_pct']}%", text),
                      Paragraph(production, text),
                      Paragraph(on_lands, text)])
-    flowables.append(_plain_table(rows, [45, 50, 55, 65, 55],
+    flowables.append(_plain_table(rows, [62, 45, 55, 65, 55],
                                   _SECTION_TABLE_STYLE))
     if not sources_known:
         flowables.append(Paragraph(
@@ -290,11 +295,12 @@ def create_statistics_flowables(statistics: dict, styles: dict) -> list:
     # because eight "N lands: X%" pairs do not fit on one line.
     lands_line = " &nbsp;&bull;&nbsp; ".join(
         f"<b>{e['lands']}:</b> {round(e['p'] * 100)}%" for e in hand["land_counts"])
-    flowables.append(Paragraph(f"Lands in hand &mdash; {lands_line}", text))
     flowables.append(Paragraph(
-        f"<b>Average:</b> {hand['average_lands']:.2f} lands "
-        f"&nbsp;&bull;&nbsp; <b>two to five:</b> "
-        f"{round(hand['keepable'] * 100)}%", text))
+        f"Lands in a seven-card hand &mdash; {lands_line}", text))
+    flowables.append(Paragraph(
+        f"<b>Two to five lands in seven:</b> {round(hand['keepable'] * 100)}% "
+        f"&nbsp;&bull;&nbsp; <b>Average lands in seven:</b> "
+        f"{hand['average_lands']:.2f}", text))
     # "Never missing" rather than "every land drop through": the figure is
     # cumulative, and the old wording had to be explained out loud.
     drops = " &nbsp;&bull;&nbsp; ".join(

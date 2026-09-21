@@ -56,6 +56,15 @@ class TestComputeStatistics:
 
 
 class TestStatsTableAverage:
+    def test_the_average_is_labelled_the_way_the_deck_page_words_it(self):
+        # The PDF and the deck page print the same number; they should call
+        # it the same thing. "CMC" is the name the game retired.
+        table = create_stats_table(10, 0.0, 2.25, {"Creature": 10})
+        blob = " ".join(cell.text for row in table._cellvalues for cell in row
+                        if hasattr(cell, "text"))
+        assert "Average Mana Value" in blob
+        assert "CMC" not in blob
+
     def test_the_average_row_is_dropped_when_there_is_none(self):
         table = create_stats_table(10, 0.0, None, {"Creature": 10})
         blob = " ".join(cell.text for row in table._cellvalues for cell in row
@@ -238,6 +247,25 @@ class TestStatisticsSection:
         # Every count from none to seven, not just the keepable window.
         for count in range(8):
             assert f"{count}:" in blob, f"land count {count} missing"
+
+    def _section_text(self):
+        flowables = create_statistics_flowables(self._statistics(), _build_styles())
+        texts = [getattr(f, "text", "") for f in flowables]
+        texts += [getattr(cell, "text", "") for f in flowables
+                  for row in getattr(f, "_cellvalues", []) for cell in row]
+        return " ".join(texts)
+
+    def test_the_colors_are_named_the_way_the_deck_page_names_them(self):
+        # The deck page heads each column "White production", not "W".
+        blob = self._section_text()
+        for name in ("White", "Blue", "Black", "Red", "Green", "Colorless"):
+            assert name in blob, f"{name} missing"
+
+    def test_the_opening_hand_is_worded_the_way_the_deck_page_words_it(self):
+        blob = self._section_text()
+        assert "Two to five lands in seven" in blob
+        assert "Average lands in seven" in blob
+        assert "Lands in a seven-card hand" in blob
 
     def test_generate_pdf_includes_the_section(self, tmp_path):
         out = tmp_path / "deck.pdf"

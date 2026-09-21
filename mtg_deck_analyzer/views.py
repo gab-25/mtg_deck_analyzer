@@ -19,8 +19,8 @@ from .caching.db_cache import DbCardCache
 from .domain.cards import classify_card
 from .domain.changelog import decklist_changes
 from .domain.commander import check_decklist, commanders, deck_color_identity
-from .domain.constants import DEFAULT_FORMAT, FORMATS, format_choices
-from .domain.constants import CATEGORY_ORDER
+from .domain.constants import CATEGORY_ORDER, COLOR_FULL_NAMES, DEFAULT_FORMAT
+from .domain.constants import FORMATS, format_choices
 from .domain.decklist import parse_decklist_text
 from .domain.statistics import STATISTICS_SCHEMA, curve_bars
 from .domain.storage import (
@@ -60,9 +60,6 @@ COLOR_HEX = {
     "G": "#4c9e6a",
     "C": "#b7b0a8",
 }
-# Full colour names, for the column headings in the statistics panel.
-COLOR_FULL_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red",
-                    "G": "Green", "C": "Colorless"}
 TYPE_HEX = {
     "Creature": "#8fd08f",
     "Instant": "#7fb6e0",
