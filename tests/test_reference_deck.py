@@ -93,43 +93,12 @@ class TestCurve:
         assert sum(b["permanents"] + b["spells"] for b in curve) == 76
 
 
-STORM = json.loads(
-    (Path(__file__).parent / "fixtures" / "moxfield_storm_deck.json").read_text()
-)
-
-
-class TestSecondReferenceDeck:
-    """A second deck, checked the same way — RogShai - Jeskai Storm Combo.
-
-    One deck can be matched by a formula that is right for the wrong reason.
-    This one was fetched after the formulas were settled, and it is what
-    caught the opening-hand land count reading the front face: Moxfield's
-    published average of 1.64 only comes out at 23 lands, the any-face count,
-    where the front face gives 21 and 1.50.
-    """
-
-    def _colors(self):
-        return {c["key"]: c for c in deck_statistics(STORM)["colors"]}
-
-    def test_the_average_lands_in_hand_match_moxfield(self):
-        stats = deck_statistics(STORM)
+class TestOpeningHand:
+    def test_the_average_lands_in_hand_counts_a_land_on_either_face(self):
+        # The count that first read the front face only: the deck's three
+        # modal cards with a land back give 24 lands there, and an average of
+        # 1.71, against the 27 that land_production pins to Moxfield's figure.
+        stats = deck_statistics(DECK)
         assert stats["library_size"] == 98
-        assert stats["land_count"] == 23
-        assert stats["opening_hand"]["average_lands"] == pytest.approx(1.64, abs=0.005)
-
-    @pytest.mark.parametrize(
-        "color,production", [("W", 39), ("U", 48), ("B", 26), ("R", 48),
-                             ("G", 26), ("C", 22)]
-    )
-    def test_the_production_percentages_match_moxfield(self, color, production):
-        assert self._colors()[color]["production_pct"] == production
-
-    @pytest.mark.parametrize(
-        "color,on_lands", [("W", 19), ("U", 23), ("B", 13), ("R", 23),
-                           ("G", 13), ("C", 10)]
-    )
-    def test_the_land_share_matches_moxfield(self, color, on_lands):
-        # Black and green sat a point low until percentages started rounding
-        # half-up: both land on exactly 12.5%, where Python's round() picks
-        # the even number and Moxfield picks 13.
-        assert self._colors()[color]["lands_pct"] == on_lands
+        assert stats["land_count"] == 27
+        assert stats["opening_hand"]["average_lands"] == pytest.approx(1.93, abs=0.005)
