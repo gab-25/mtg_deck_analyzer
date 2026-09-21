@@ -120,3 +120,11 @@ def test_bracket_labels_name_all_five_tiers():
         4: "Optimized",
         5: "cEDH",
     }
+
+
+def test_only_commander_has_a_bracket_system():
+    # The brackets are the Commander Format Panel's, defined for multiplayer
+    # EDH. Duel Commander has its own ban list and no bracket system, so a
+    # duel deck must not be handed a verdict measured with that yardstick.
+    assert FORMATS["commander"].has_brackets is True
+    assert FORMATS["duel"].has_brackets is False

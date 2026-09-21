@@ -1,6 +1,7 @@
 from django.db import migrations
 
 from mtg_deck_analyzer.domain.bracket import estimate_bracket
+from mtg_deck_analyzer.domain.constants import DEFAULT_FORMAT
 
 
 def backfill_bracket(apps, schema_editor):
@@ -10,10 +11,13 @@ def backfill_bracket(apps, schema_editor):
     so no re-analysis and no network call is needed. Those cards were
     processed before ``game_changer`` was carried through, so the signal comes
     from the fallback name list: this backfill is exactly as good as that list.
+
+    A deck's format decides whether it gets a verdict at all; a Duel Commander
+    deck keeps the empty dict, since that format has no bracket system.
     """
     Deck = apps.get_model("mtg_deck_analyzer", "Deck")
     for deck in Deck.objects.exclude(cards=[]).iterator():
-        deck.bracket = estimate_bracket(deck.cards)
+        deck.bracket = estimate_bracket(deck.cards, deck.format or DEFAULT_FORMAT)
         deck.save(update_fields=["bracket"])
 
 

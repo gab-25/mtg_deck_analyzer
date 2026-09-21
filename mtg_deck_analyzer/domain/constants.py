@@ -33,6 +33,12 @@ class Format:
     label: str
     # Key read inside a card's Scryfall ``legalities`` dict.
     legality_key: str
+    # Whether the format has the Commander Brackets. They are the Commander
+    # Format Panel's system for multiplayer EDH, with the tiers anchored to
+    # how long a pod's game is expected to run. Duel Commander is governed by
+    # its own committee and has no bracket system, so a duel deck is not given
+    # a verdict measured with that yardstick.
+    has_brackets: bool
     # Starting life total and a one-line description of the game; both are
     # interpolated into the analysis prompt.
     life: int
@@ -43,6 +49,7 @@ FORMATS: dict[str, Format] = {
     "commander": Format(
         label="Commander",
         legality_key="commander",
+        has_brackets=True,
         life=40,
         context=(
             "multiplayer (typically a four-player pod), where politics and "
@@ -52,6 +59,7 @@ FORMATS: dict[str, Format] = {
     "duel": Format(
         label="Duel Commander",
         legality_key="duel",
+        has_brackets=False,
         life=20,
         context=(
             "a 1v1 duel, with no politics, a much faster clock and a heavier "

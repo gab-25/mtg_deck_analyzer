@@ -110,7 +110,7 @@ def analyze_decklist(
     # Computed before the analysis because the estimate is an *input* to the
     # prompt: the model comments on the deck at that power level instead of
     # guessing the level itself.
-    bracket = estimate_bracket(processed_cards)
+    bracket = estimate_bracket(processed_cards, fmt)
 
     deck_analysis = None
     if not skip_analysis:

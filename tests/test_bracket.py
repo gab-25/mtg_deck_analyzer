@@ -149,3 +149,20 @@ class TestSignalDetection:
                   rules_text="Take two extra turns after this one."),
         ))
         assert verdict["signals"]["extra_turns"] == ["Two-Turn Sorcery"]
+
+
+class TestFormatGating:
+    """The bracket system is Commander's; Duel Commander has none of its own."""
+
+    def test_a_duel_commander_deck_gets_no_verdict(self):
+        assert estimate_bracket(_deck(_card("Rhystic Study", game_changer=True)),
+                                fmt="duel") == {}
+
+    def test_commander_is_the_default_format(self):
+        deck = _deck(_card("Rhystic Study", game_changer=True))
+        assert estimate_bracket(deck) == estimate_bracket(deck, fmt="commander")
+
+    def test_a_commander_deck_still_gets_its_verdict(self):
+        verdict = estimate_bracket(_deck(_card("Armageddon", game_changer=False)),
+                                   fmt="commander")
+        assert verdict["bracket"] == 4

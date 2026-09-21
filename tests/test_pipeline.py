@@ -183,3 +183,14 @@ def test_stats_carry_the_bracket_verdict(fetched):
     assert bracket["bracket"] == 2
     assert bracket["label"] == "Core"
     assert bracket["signals"]["game_changers"] == []
+
+
+def test_a_duel_commander_deck_gets_no_bracket(fetched):
+    """Duel Commander has no bracket system, so the pipeline stores no verdict."""
+    decklist = f"1 {COMMANDER} *CMDR*\n" + "\n".join(
+        [f"1 Elf {i}" for i in range(98)] + ["1 Forest"]
+    )
+    result = pipeline.analyze_decklist(
+        decklist, skip_analysis=True, cache=object(), fmt="duel"
+    )
+    assert result["stats"]["bracket"] == {}

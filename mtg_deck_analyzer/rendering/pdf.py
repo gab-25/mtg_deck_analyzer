@@ -723,7 +723,7 @@ def generate_pdf(
     # Recomputed here for the same reason the statistics are: the PDF is built
     # from the stored cards, so it stays correct even for a deck whose stored
     # verdict predates this feature.
-    bracket = estimate_bracket(processed_cards)
+    bracket = estimate_bracket(processed_cards, fmt)
     stats_table = create_stats_table(
         total_cards,
         total_price,

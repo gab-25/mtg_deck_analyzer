@@ -14,7 +14,9 @@ from dataclasses import dataclass
 
 from .constants import (
     BRACKET_LABELS,
+    DEFAULT_FORMAT,
     EXTRA_TURN_RE,
+    FORMATS,
     GAME_CHANGER_NAMES,
     MASS_LAND_DENIAL_NAMES,
 )
@@ -75,13 +77,23 @@ def _grants_extra_turn(card: dict) -> bool:
     )
 
 
-def estimate_bracket(processed_cards: list) -> dict:
+def estimate_bracket(processed_cards: list, fmt: str = DEFAULT_FORMAT) -> dict:
     """Estimates the minimum Commander Bracket for a processed deck.
 
     Returns the tier, its official label and the card names behind each
     signal — the names, not just the counts, so a player can argue with the
     verdict instead of having to trust it.
+
+    ``fmt`` is the Commander format the deck is built for. A format without
+    the bracket system gets an empty dict, which every consumer already reads
+    as "no verdict to show": the Game Changers list is a multiplayer artifact,
+    and several of those cards are banned outright in Duel Commander, so a
+    number computed from it would measure a duel deck against a yardstick
+    written for a different game.
     """
+    if not FORMATS[fmt].has_brackets:
+        return {}
+
     game_changers = []
     mass_land_denial = []
     extra_turns = []
