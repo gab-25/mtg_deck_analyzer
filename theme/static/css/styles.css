@@ -1534,6 +1534,9 @@ select.field {
   .detail-sidebar, .editor-sidebar {
     position: static !important;
   }
+  .detail-sidebar {
+    order: -1;
+  }
 }
 @media (max-width: 640px) {
   .home-stats {

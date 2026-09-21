@@ -99,3 +99,37 @@ def test_the_scan_itself_detects_an_uncollapsed_grid():
     assert FIXED_COLUMN_GRID.findall(
         '<div class="grid grid-cols-[minmax(0,1fr)_300px] gap-5">'
     ) == ["grid grid-cols-[minmax(0,1fr)_300px] gap-5"]
+
+
+def _collapse_media_query() -> str:
+    """The body of the media query that folds ``.detail-grid`` to one column."""
+    source = STYLES.read_text()
+    for media in re.finditer(r"@media[^{]*max-width[^{]*\{(.*?)\n\}", source, re.S):
+        body = media.group(1)
+        if ".detail-grid" in body and "grid-template-columns: 1fr" in body:
+            return body
+    return ""
+
+
+def test_the_collapsed_deck_sidebar_is_pulled_above_the_card_list():
+    """Below the breakpoint the sidebar must not land under 100 card rows.
+
+    Once the grid is a single column, source order decides what the reader
+    reaches first — and the deck's main column is a card list a hundred rows
+    long. Left in source order the whole sidebar (commander, value,
+    statistics, card types, version history) sits below all of it, several
+    screens down, which reads as the sidebar having vanished. ``order`` on
+    the grid item is what keeps the summary panels reachable.
+    """
+    body = _collapse_media_query()
+    assert body, "no max-width media query collapses .detail-grid"
+    ordered = any(
+        "order:" in declarations
+        for selector, declarations in re.findall(r"([^{}]+)\{([^{}]*)\}", body)
+        if ".detail-sidebar" in selector
+    )
+    assert ordered, (
+        "the collapsed .detail-sidebar keeps its source position, so on a "
+        "narrow screen it renders after the whole card list; give it an "
+        "order that puts it first."
+    )
