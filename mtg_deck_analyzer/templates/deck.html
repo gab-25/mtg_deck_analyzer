@@ -165,22 +165,22 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             {% if deck.bracket.bracket %}
             <div class="panel-card p-[18px]">
                 <div class="mb-4 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Commander bracket</div>
-                <div class="flex items-baseline gap-2.5">
+                <div class="flex items-center gap-2.5">
                     <span class="font-mono2 font-bold text-[34px] leading-none">{{ deck.bracket.bracket }}</span>
                     <span class="text-[15px] font-semibold text-txt2">{{ deck.bracket.label }}</span>
                 </div>
-                <div class="flex flex-col gap-[9px] mt-4 text-[13px]">
+                <div class="flex flex-col gap-[9px] mt-3.5 text-[13px]">
                     <div class="flex justify-between gap-3">
                         <span class="text-txt3">Game Changers</span>
-                        <span class="font-mono2 font-bold text-[12px] text-txt2 text-right">{% if deck.bracket.signals.game_changers %}{{ deck.bracket.signals.game_changers|join:", " }}{% else %}none{% endif %}</span>
+                        <span class="font-mono2 font-bold text-[12px] text-txt2">{% if deck.bracket.signals.game_changers %}{{ deck.bracket.signals.game_changers|join:", " }}{% else %}none{% endif %}</span>
                     </div>
                     <div class="flex justify-between gap-3">
                         <span class="text-txt3">Mass land denial</span>
-                        <span class="font-mono2 font-bold text-[12px] text-txt2 text-right">{% if deck.bracket.signals.mass_land_denial %}{{ deck.bracket.signals.mass_land_denial|join:", " }}{% else %}none{% endif %}</span>
+                        <span class="font-mono2 font-bold text-[12px] text-txt2">{% if deck.bracket.signals.mass_land_denial %}{{ deck.bracket.signals.mass_land_denial|join:", " }}{% else %}none{% endif %}</span>
                     </div>
                     <div class="flex justify-between gap-3">
                         <span class="text-txt3">Extra turns</span>
-                        <span class="font-mono2 font-bold text-[12px] text-txt2 text-right">{% if deck.bracket.signals.extra_turns %}{{ deck.bracket.signals.extra_turns|join:", " }}{% else %}none{% endif %}</span>
+                        <span class="font-mono2 font-bold text-[12px] text-txt2">{% if deck.bracket.signals.extra_turns %}{{ deck.bracket.signals.extra_turns|join:", " }}{% else %}none{% endif %}</span>
                     </div>
                 </div>
                 <div class="mt-3.5 text-[11px] text-txt3">Minimum estimate from the card list. Combos, tutors and how fast the deck wins are not measured.</div>

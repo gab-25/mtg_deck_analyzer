@@ -1757,6 +1757,9 @@ class TestStatisticsPanel:
         assert black["symbol_pct"] == 0
         assert black["production_pct"] > 0
         assert black["used"] is False
+
+
+@pytest.mark.django_db
 def test_analysis_persists_the_bracket_on_the_deck(monkeypatch):
     from mtg_deck_analyzer import views
     from mtg_deck_analyzer.models import Deck

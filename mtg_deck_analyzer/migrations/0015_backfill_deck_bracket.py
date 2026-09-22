@@ -22,7 +22,7 @@ def backfill_bracket(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("mtg_deck_analyzer", "0011_deck_bracket")]
+    dependencies = [("mtg_deck_analyzer", "0014_deck_bracket")]
 
     operations = [
         migrations.RunPython(backfill_bracket, migrations.RunPython.noop),
