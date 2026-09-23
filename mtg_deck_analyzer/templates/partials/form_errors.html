@@ -7,7 +7,7 @@ would beat the equivalent utilities.
 {% if errors %}
 <div class="alert alert-error" style="align-items:flex-start;flex-direction:column;gap:7px">
     <div class="font-semibold" style="display:flex;align-items:center;gap:8px">
-        <span class="ms text-[16px]">error</span>This decklist can’t be analyzed
+        <span translate="no" class="ms text-[16px]">error</span>This decklist can’t be analyzed
     </div>
     <ul class="font-light" style="margin:0;padding-left:26px;list-style:disc">
         {% for error in errors %}<li>{{ error }}</li>{% endfor %}

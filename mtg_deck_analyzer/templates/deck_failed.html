@@ -7,13 +7,13 @@
 <div class="page-narrow" style="max-width:640px">
     {% if user.is_authenticated %}
     <a href="{% url 'index' %}" class="link-back mb-[18px]">
-        <span class="ms text-[18px]">arrow_back</span>All decks
+        <span translate="no" class="ms text-[18px]">arrow_back</span>All decks
     </a>
     {% endif %}
 
     <div class="panel-card p-8 text-center">
         <div class="w-[56px] h-[56px] rounded-full bg-[rgba(208,90,62,.12)] border border-[rgba(208,90,62,.3)] flex items-center justify-center mx-auto mt-0 mb-[18px]">
-            <span class="ms text-[28px] text-danger">error</span>
+            <span translate="no" class="ms text-[28px] text-danger">error</span>
         </div>
         <h1 class="font-cinzel font-semibold text-[24px] m-0 mb-2">Analysis failed</h1>
         <p class="text-txt2 font-light m-0 mb-[18px]">
@@ -32,9 +32,9 @@
         <div class="flex justify-center gap-2.5 flex-wrap">
             <form method="post" action="{% url 'reanalyze_deck' deck.id %}" class="m-0">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-grad"><span class="ms text-[20px]">autorenew</span>Try again</button>
+                <button type="submit" class="btn btn-grad"><span translate="no" class="ms text-[20px]">autorenew</span>Try again</button>
             </form>
-            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line"><span class="ms text-[18px]">edit</span>Edit</a>
+            <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line"><span translate="no" class="ms text-[18px]">edit</span>Edit</a>
             {% url 'delete_deck' deck.id as delete_url %}
             {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? This cannot be undone." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
         </div>

@@ -12,31 +12,31 @@
         </div>
         <form method="get" action="{% url 'index' %}" class="flex gap-[11px] items-center flex-wrap">
             <div class="search-wrap">
-                <span class="ms">search</span>
+                <span translate="no" class="ms">search</span>
                 <input type="search" name="q" value="{{ query }}" placeholder="Search decks" class="field" />
             </div>
             {% if query %}
             <a href="{% url 'index' %}" class="btn btn-line btn-sm">
-                <span class="ms text-[18px]">close</span>Clear
+                <span translate="no" class="ms text-[18px]">close</span>Clear
             </a>
             {% endif %}
             <a href="{% url 'new_deck' %}" class="btn btn-grad">
-                <span class="ms text-[20px]">add</span>New deck
+                <span translate="no" class="ms text-[20px]">add</span>New deck
             </a>
         </form>
     </div>
 
     <div class="home-stats grid grid-cols-3 gap-[13px] mb-[26px]">
         <div class="stat-card">
-            <span class="ms text-[26px] text-violet2">style</span>
+            <span translate="no" class="ms text-[26px] text-violet2">style</span>
             <div><div class="stat-num">{{ stat_total }}</div><div class="stat-label">Decks</div></div>
         </div>
         <div class="stat-card">
-            <span class="ms text-[26px] text-gold">payments</span>
+            <span translate="no" class="ms text-[26px] text-gold">payments</span>
             <div><div class="stat-num text-gold">€{{ stat_value|floatformat:2 }}</div><div class="stat-label">Collection value</div></div>
         </div>
         <div class="stat-card">
-            <span class="ms text-[26px] text-teal">check_circle</span>
+            <span translate="no" class="ms text-[26px] text-teal">check_circle</span>
             <div><div class="stat-num text-teal">{{ stat_analyzed }}</div><div class="stat-label">Analyzed</div></div>
         </div>
     </div>

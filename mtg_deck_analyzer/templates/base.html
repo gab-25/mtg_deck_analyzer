@@ -22,11 +22,11 @@
             <a href="{% url 'index' %}" class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
                 <span class="brand-name">MTG DECK ANALYZER</span>
-                <span class="brand-badge"><span class="ms text-[12px]">auto_awesome</span>AI</span>
+                <span class="brand-badge"><span translate="no" class="ms text-[12px]">auto_awesome</span>AI</span>
             </a>
             <nav class="flex items-center gap-[13px] flex-wrap">
                 <a href="{% url 'new_deck' %}" class="btn btn-grad">
-                    <span class="ms text-[20px]">add</span>New deck
+                    <span translate="no" class="ms text-[20px]">add</span>New deck
                 </a>
                 <div class="flex items-center gap-[11px]">
                     <div class="avatar">{{ user.get_username|slice:":2" }}</div>
@@ -50,7 +50,7 @@
             <span class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
                 <span class="brand-name">MTG DECK ANALYZER</span>
-                <span class="brand-badge"><span class="ms text-[12px]">auto_awesome</span>AI</span>
+                <span class="brand-badge"><span translate="no" class="ms text-[12px]">auto_awesome</span>AI</span>
             </span>
             {% endif %}
         </header>
@@ -67,7 +67,7 @@
     {% if messages %}
     {% for message in messages %}
     <div class="snackbar no-print">
-        <span class="ms text-[20px] text-teal">check_circle</span>
+        <span translate="no" class="ms text-[20px] text-teal">check_circle</span>
         <span class="text-[14px]">{{ message }}</span>
     </div>
     {% endfor %}

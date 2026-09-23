@@ -8,7 +8,7 @@ fails — the markup renders, silently unstyled. That is exactly how the
 statistics panel shipped with a flat mana curve (`h-[140px]` was never
 compiled) and a `query_stats` icon rendered as literal text.
 
-These two tests are cheap and catch that whole class of bug at its source.
+These tests are cheap and catch that whole class of bug at its source.
 """
 
 import re
@@ -47,6 +47,10 @@ def _template_sources():
         yield path, src
 
 
+# An icon span: `ms` as a class, whatever the attribute order.
+ICON_SPAN = re.compile(r'<span\b([^>]*\bclass="ms(?:\s[^"]*)?"[^>]*)>\s*([a-z_]+)\s*</span>')
+
+
 def _compiled_classes():
     css = STYLESHEET.read_text()
     return {
@@ -76,11 +80,27 @@ def test_every_template_class_exists_in_the_stylesheet():
 def test_every_icon_name_is_renderable_by_the_font_subset():
     offenders = {}
     for path, src in _template_sources():
-        for name in re.findall(r'<span class="ms[^"]*">\s*([a-z_]+)\s*</span>', src):
+        for _, name in ICON_SPAN.findall(src):
             unsupported = sorted(set(name) - ICON_CHARS)
             if unsupported:
                 offenders[f"{path.name}:{name}"] = unsupported
     assert not offenders, (
         "These icon names use characters the font subset does not carry, so "
         f"they render as literal text: {offenders}"
+    )
+
+
+def test_every_icon_is_opted_out_of_page_translation():
+    # Icons are ligatures: the glyph is the English word itself. A page
+    # translator rewrites "arrow_back" into "freccia_indietro", which the font
+    # does not know, so it renders as literal text.
+    offenders = [
+        f"{path.name}:{name}"
+        for path, src in _template_sources()
+        for attrs, name in ICON_SPAN.findall(src)
+        if 'translate="no"' not in attrs
+    ]
+    assert not offenders, (
+        "These icons lack translate=\"no\", so browser translation turns them "
+        f"into text: {offenders}"
     )

@@ -34,7 +34,7 @@ because clicking its icon makes the <span>, not the button, the event target.
             {% if image_urls|length > 1 %}
             <label for="card-face-flip" title="Show the other face"
                 class="flex items-center gap-1.5 bg-[rgba(255,255,255,.06)] text-txt2 border border-line2 rounded-full py-2 px-[15px] font-medium text-[13px] cursor-pointer">
-                <span class="ms text-[17px]">flip</span>Flip
+                <span translate="no" class="ms text-[17px]">flip</span>Flip
             </label>
             {% endif %}
             <button type="button"
@@ -42,7 +42,7 @@ because clicking its icon makes the <span>, not the button, the event target.
                 hx-target="#card-image-modal-container"
                 hx-swap="innerHTML"
                 class="flex items-center gap-1.5 bg-[rgba(255,255,255,.06)] text-txt2 border border-line2 rounded-full py-2 px-[15px] font-medium text-[13px] cursor-pointer">
-                <span class="ms text-[17px]">close</span>Close
+                <span translate="no" class="ms text-[17px]">close</span>Close
             </button>
         </div>
     </div>

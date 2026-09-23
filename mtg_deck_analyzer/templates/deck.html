@@ -10,7 +10,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
 <div class="page-narrow" data-screen-label="Deck detail" style="max-width:1264px">
     {% if user.is_authenticated %}
     <a href="{% url 'index' %}" class="link-back no-print mb-[18px]">
-        <span class="ms text-[18px]">arrow_back</span>All decks
+        <span translate="no" class="ms text-[18px]">arrow_back</span>All decks
     </a>
     {% endif %}
 
@@ -23,25 +23,25 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="chip">{{ deck.get_format_display }}</span>
                 {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}
-                {% if deck.visibility == 'unlisted' %}<span class="chip"><span class="ms text-[14px]">link</span>Unlisted</span>{% endif %}
+                {% if deck.visibility == 'unlisted' %}<span class="chip"><span translate="no" class="ms text-[14px]">link</span>Unlisted</span>{% endif %}
             </div>
         </div>
         <div class="no-print flex gap-[9px] flex-wrap items-center">
             {% if can_edit %}
             <a href="{% url 'edit_deck' deck.id %}" class="btn btn-line btn-sm">
-                <span class="ms text-[18px]">edit</span>Edit
+                <span translate="no" class="ms text-[18px]">edit</span>Edit
             </a>
             {% url 'reanalyze_deck' deck.id as reanalyze_url %}
             {% include "partials/confirm_modal.html" with id="confirm-reanalyze" action=reanalyze_url message="Re-run the AI analysis for this deck? The deck goes back to “Analyzing” while it runs." trigger_label="Re-analyze" trigger_icon="autorenew" %}
             {% endif %}
             <button type="button" id="copy-decklist" class="btn btn-line btn-sm">
-                <span class="ms text-[18px]">content_copy</span><span data-copy-label>Copy plain text</span>
+                <span translate="no" class="ms text-[18px]">content_copy</span><span data-copy-label>Copy plain text</span>
             </button>
             <a href="{% url 'deck_pdf' deck.id %}" class="btn btn-line btn-sm">
-                <span class="ms text-[18px]">picture_as_pdf</span>Export PDF
+                <span translate="no" class="ms text-[18px]">picture_as_pdf</span>Export PDF
             </a>
             <a href="{% url 'deck_proxy_pdf' deck.id %}" class="btn btn-line btn-sm">
-                <span class="ms text-[18px]">grid_view</span>Export proxy
+                <span translate="no" class="ms text-[18px]">grid_view</span>Export proxy
             </a>
             {% if can_edit %}
             {% url 'delete_deck' deck.id as delete_url %}
@@ -61,7 +61,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             {% endcomment %}
             <div class="panel-card overflow-hidden" style="background:linear-gradient(180deg,rgba(124,92,255,.05),var(--panel2))">
                 <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
-                    <span class="ms text-violet2 text-[21px]">auto_awesome</span>
+                    <span translate="no" class="ms text-violet2 text-[21px]">auto_awesome</span>
                     <span class="font-semibold text-[15px] tracking-[.04em]">AI Analysis</span>
                 </div>
                 <div class="py-5 px-[18px]">
@@ -72,7 +72,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
 
             <div class="panel-card overflow-hidden">
                 <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
-                    <span class="ms text-txt2 text-[20px]">playing_cards</span>
+                    <span translate="no" class="ms text-txt2 text-[20px]">playing_cards</span>
                     <span class="font-semibold text-[15px]">Cards</span>
                     <span class="text-[12px] text-txt3">{{ deck.total_cards }}</span>
                 </div>
@@ -97,7 +97,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
                         <div class="card-thumb">
                             {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />{% endif %}
                             <span class="font-mono2 absolute top-1 left-1 min-w-[19px] h-[19px] py-0 px-[5px] flex items-center justify-center rounded-full bg-[rgba(10,11,16,.82)] font-bold text-[11px] text-txt">{{ c.quantity }}×</span>
-                            {% if c.image %}<span class="ms absolute right-1 bottom-1 p-0.5 text-[15px] text-txt2 bg-[rgba(10,11,16,.72)] rounded-md">zoom_in</span>{% endif %}
+                            {% if c.image %}<span translate="no" class="ms absolute right-1 bottom-1 p-0.5 text-[15px] text-txt2 bg-[rgba(10,11,16,.72)] rounded-md">zoom_in</span>{% endif %}
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">

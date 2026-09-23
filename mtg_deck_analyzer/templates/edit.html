@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-narrow" data-screen-label="Deck editor">
     <a href="{% url 'deck_detail' deck.id %}" class="link-back mb-[18px]">
-        <span class="ms text-[18px]">arrow_back</span>Cancel
+        <span translate="no" class="ms text-[18px]">arrow_back</span>Cancel
     </a>
     <div class="kicker">Edit deck</div>
     <h1 class="font-cinzel font-semibold text-[32px] mt-[7px] mb-6 tracking-[.02em]">{{ deck.name }}</h1>
@@ -56,7 +56,7 @@
                 {# The gradient overrides .panel-card's default background (unlayered), so it stays inline. #}
                 <div class="panel-card p-[18px]" style="background:linear-gradient(180deg,rgba(124,92,255,.06),var(--panel2))">
                     <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-violet2 mb-3">
-                        <span class="ms text-[18px]">shield_person</span>COMMANDER
+                        <span translate="no" class="ms text-[18px]">shield_person</span>COMMANDER
                     </div>
                     <div class="font-cinzel font-semibold text-[20px] text-txt">
                         {% for commander in deck.commanders %}{{ commander }}{% if not forloop.last %} &amp; {% endif %}{% empty %}Not declared{% endfor %}
@@ -69,7 +69,7 @@
 
                 <div class="panel-card p-[18px]">
                     <div class="flex items-center gap-[7px] font-semibold text-[12.5px] tracking-[.06em] text-txt2 mb-3">
-                        <span class="ms text-[18px]">visibility</span>VISIBILITY
+                        <span translate="no" class="ms text-[18px]">visibility</span>VISIBILITY
                     </div>
                     <label class="flex items-start gap-2.5 text-[12.5px] mb-3 cursor-pointer">
                         <input type="radio" name="visibility" value="private" class="mt-1" {% if form_visibility != 'unlisted' %}checked{% endif %} />
@@ -88,7 +88,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-grad btn-block">
-                    <span class="ms text-[20px]">save</span>Save changes
+                    <span translate="no" class="ms text-[20px]">save</span>Save changes
                 </button>
                 <div class="text-[12px] text-txt3 font-light text-center leading-[1.5]">
                     Changing the card list can take a minute or two to re-analyze.

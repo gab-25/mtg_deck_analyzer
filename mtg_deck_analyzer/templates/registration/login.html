@@ -34,9 +34,9 @@
                     <h1 class="font-cinzel font-semibold text-[40px] leading-[1.1] m-0 mb-4 tracking-[.01em]">See through<br>your deck.</h1>
                     <p class="font-light text-[15.5px] text-txt2 leading-[1.6] max-w-[352px] m-0 mb-7">AI-driven analysis for Magic: The Gathering. Detect the archetype, surface synergies, and read the numbers behind every list.</p>
                     <div class="flex flex-col gap-[13px]">
-                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-violet2 text-[20px]">auto_awesome</span>AI archetype detection</div>
-                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-teal text-[20px]">hub</span>Synergy &amp; matchup insight</div>
-                        <div class="flex items-center gap-[11px] text-[14px]"><span class="ms text-gold text-[20px]">payments</span>Live prices &amp; mana curve</div>
+                        <div class="flex items-center gap-[11px] text-[14px]"><span translate="no" class="ms text-violet2 text-[20px]">auto_awesome</span>AI archetype detection</div>
+                        <div class="flex items-center gap-[11px] text-[14px]"><span translate="no" class="ms text-teal text-[20px]">hub</span>Synergy &amp; matchup insight</div>
+                        <div class="flex items-center gap-[11px] text-[14px]"><span translate="no" class="ms text-gold text-[20px]">payments</span>Live prices &amp; mana curve</div>
                     </div>
                 </div>
 
@@ -49,7 +49,7 @@
                 </div>
 
                 {% if form.errors %}
-                <div class="alert alert-error"><span class="ms text-[16px]">error</span>Invalid username or password.</div>
+                <div class="alert alert-error"><span translate="no" class="ms text-[16px]">error</span>Invalid username or password.</div>
                 {% endif %}
 
                 <form method="post" action="{% url 'login' %}" class="flex flex-col gap-[19px]">
@@ -66,7 +66,7 @@
                     </label>
                     <input type="hidden" name="next" value="{{ next }}" />
                     <button type="submit" class="btn btn-grad btn-block">
-                        Enter the vault<span class="ms text-[20px]">east</span>
+                        Enter the vault<span translate="no" class="ms text-[20px]">east</span>
                     </button>
                 </form>
             </div>
