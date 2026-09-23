@@ -8,7 +8,7 @@
         <span translate="no" class="ms text-[18px]">arrow_back</span>Cancel
     </a>
     <div class="kicker">Edit deck</div>
-    <h1 class="font-cinzel font-semibold text-[32px] mt-[7px] mb-6 tracking-[.02em]">{{ deck.name }}</h1>
+    <h1 translate="no" class="font-cinzel font-semibold text-[32px] mt-[7px] mb-6 tracking-[.02em]">{{ deck.name }}</h1>
 
     <form method="post" action="{% url 'update_deck' deck.id %}">
         {% csrf_token %}

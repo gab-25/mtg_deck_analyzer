@@ -19,7 +19,7 @@ max-width stays inline — a utility would lose to the unlayered component rule.
             <div class="flex items-center gap-[9px] mb-2.5">
                 {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
             </div>
-            <h1 class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
+            <h1 translate="no" class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
             <div class="flex items-center gap-2 flex-wrap">
                 <span class="chip">{{ deck.get_format_display }}</span>
                 {% for commander in deck.commanders %}<span class="chip">{{ commander }}</span>{% endfor %}

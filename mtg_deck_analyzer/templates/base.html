@@ -21,7 +21,7 @@
             {% if user.is_authenticated %}
             <a href="{% url 'index' %}" class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
-                <span class="brand-name">MTG DECK ANALYZER</span>
+                <span translate="no" class="brand-name">MTG DECK ANALYZER</span>
                 <span class="brand-badge"><span translate="no" class="ms text-[12px]">auto_awesome</span>AI</span>
             </a>
             <nav class="flex items-center gap-[13px] flex-wrap">
@@ -49,7 +49,7 @@
             {% endcomment %}
             <span class="brand">
                 {% include "partials/brand_mark.html" with size=28 %}
-                <span class="brand-name">MTG DECK ANALYZER</span>
+                <span translate="no" class="brand-name">MTG DECK ANALYZER</span>
                 <span class="brand-badge"><span translate="no" class="ms text-[12px]">auto_awesome</span>AI</span>
             </span>
             {% endif %}
@@ -60,7 +60,7 @@
         </main>
 
         <footer class="no-print p-[22px] text-center text-[12px] text-txt3">
-            MTG Deck Analyzer <span class="opacity-70">v{{ app_version }}</span> &bull; card data from Scryfall &bull; analysis by AI
+            <span translate="no">MTG Deck Analyzer</span> <span class="opacity-70">v{{ app_version }}</span> &bull; card data from Scryfall &bull; analysis by AI
         </footer>
     </div>
 
