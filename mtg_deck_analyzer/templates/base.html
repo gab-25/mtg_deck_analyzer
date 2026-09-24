@@ -29,9 +29,9 @@
                     <span translate="no" class="ms text-[20px]">add</span>New deck
                 </a>
                 <div class="flex items-center gap-[11px]">
-                    <div class="avatar">{{ user.get_username|slice:":2" }}</div>
+                    <div translate="no" class="avatar">{{ user.get_username|slice:":2" }}</div>
                     <div class="leading-[1.15]">
-                        <div class="text-[13.5px] font-semibold">{{ user.get_username }}</div>
+                        <div translate="no" class="text-[13.5px] font-semibold">{{ user.get_username }}</div>
                         <form method="post" action="{% url 'logout' %}" class="m-0">
                             {% csrf_token %}
                             <button type="submit" class="bg-transparent border-none p-0 cursor-pointer text-[11px] text-txt3">
