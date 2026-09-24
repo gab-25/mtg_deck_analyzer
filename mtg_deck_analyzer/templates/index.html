@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+{# The home page is all proper names and UI labels: keep the whole document out of page translation. #}
+{% block html_attrs %} translate="no"{% endblock %}
+
 {% block content %}
 <div class="page" data-screen-label="Home">
     <div class="flex items-end justify-between gap-5 flex-wrap mb-6">
