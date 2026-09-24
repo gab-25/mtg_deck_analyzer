@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}MTG Deck Analyzer{% endblock %}</title>
+    <title translate="no">{% block title %}MTG Deck Analyzer{% endblock %}</title>
+    <script src="{% static 'js/untranslated-title.js' %}"></script>
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/all.min.css' %}" />
     {# Loads htmx (bundled by django-htmx) and, in DEBUG, its error-logging extension. #}
     {% htmx_script %}
