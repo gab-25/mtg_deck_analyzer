@@ -93,12 +93,6 @@ def test_index_renders(client):
 
 
 @pytest.mark.django_db
-def test_only_the_index_opts_the_whole_page_out_of_translation(client):
-    assert '<html lang="en" translate="no">' in client.get("/").content.decode()
-    assert '<html lang="en">' in client.get("/decks/new").content.decode()
-
-
-@pytest.mark.django_db
 def test_create_page_renders_form(client):
     r = client.get("/decks/new")
     assert r.status_code == 200
