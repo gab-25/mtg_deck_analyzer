@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page" data-screen-label="Home">
+    <div class="flex items-end justify-between gap-5 flex-wrap mb-6">
+        <div>
+            <div class="kicker">Playtest</div>
+            <h1 class="font-cinzel font-semibold text-[34px] mt-[7px] mb-1.5 tracking-[.03em]">The Table</h1>
+            <p class="m-0 text-txt2 font-light text-[14.5px]">
+                Import Commander decks, seat them at a table and let AI agents play them out.
+            </p>
+        </div>
+        <div class="flex gap-[11px] items-center flex-wrap">
+            <a href="{% url 'new_deck' %}" class="btn btn-line">
+                <span translate="no" class="ms text-[20px]">add</span>Import deck
+            </a>
+            <a href="{% url 'new_match' %}" class="btn btn-grad">
+                <span translate="no" class="ms text-[20px]">swords</span>New match
+            </a>
+        </div>
+    </div>
+
+    <div class="home-stats grid grid-cols-3 gap-[13px] mb-[26px]">
+        <div class="stat-card">
+            <span translate="no" class="ms text-[26px] text-violet2">style</span>
+            <div><div class="stat-num">{{ deck_count }}</div><div class="stat-label">Decks</div></div>
+        </div>
+        <div class="stat-card">
+            <span translate="no" class="ms text-[26px] text-teal">swords</span>
+            <div><div class="stat-num text-teal">{{ match_count }}</div><div class="stat-label">Matches</div></div>
+        </div>
+        <div class="stat-card">
+            <span translate="no" class="ms text-[26px] text-gold">smart_toy</span>
+            <div><div class="stat-num text-gold">{% if llm_ready %}On{% else %}Off{% endif %}</div><div class="stat-label">LLM players</div></div>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-3">
+        <div class="kicker">Recent matches</div>
+        <a href="{% url 'match_list' %}" class="text-[13px] text-violet2 no-underline">All matches</a>
+    </div>
+    <div class="mb-[26px]">
+        {% include "playtest/partials/match_cards.html" %}
+    </div>
+
+    <div class="flex items-center justify-between mb-3">
+        <div class="kicker">Recent decks</div>
+        <a href="{% url 'deck_list' %}" class="text-[13px] text-violet2 no-underline">All decks</a>
+    </div>
+    {% include "decks/partials/deck_cards.html" %}
+</div>
+{% endblock %}

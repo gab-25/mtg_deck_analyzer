@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Matches — MTG Deck Tester{% endblock %}
+
+{% block content %}
+<div class="page" data-screen-label="Matches">
+    <div class="flex items-end justify-between gap-5 flex-wrap mb-6">
+        <div>
+            <div class="kicker">Playtest</div>
+            <h1 class="font-cinzel font-semibold text-[34px] mt-[7px] mb-1.5 tracking-[.03em]">Matches</h1>
+            <p class="m-0 text-txt2 font-light text-[14.5px]">Every game your decks played, newest first.</p>
+        </div>
+        <a href="{% url 'new_match' %}" class="btn btn-grad">
+            <span translate="no" class="ms text-[20px]">swords</span>New match
+        </a>
+    </div>
+
+    {% include "playtest/partials/match_grid.html" %}
+</div>
+{% endblock %}

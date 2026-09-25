@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mtg
+      POSTGRES_PASSWORD: mtg
+      POSTGRES_DB: mtg_tester
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtg"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://mtg:mtg@db:5432/mtg_tester
+      # Provide your OpenRouter key to enable the LLM players:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Optional: the default model id for LLM seats (https://openrouter.ai/models).
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

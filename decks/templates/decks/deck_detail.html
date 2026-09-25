@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}{{ deck.name }} — MTG Deck Tester{% endblock %}
+
+{% block content %}
+{% comment %}
+.page-narrow caps width at 960px; this page overrides it to 1264px, so the
+max-width stays inline — a utility would lose to the unlayered component rule.
+{% endcomment %}
+<div class="page-narrow" data-screen-label="Deck detail" style="max-width:1264px">
+    <a href="{% url 'deck_list' %}" class="link-back mb-[18px]">
+        <span translate="no" class="ms text-[18px]">arrow_back</span>All decks
+    </a>
+
+    <div class="flex items-start justify-between gap-5 flex-wrap mb-6">
+        <div>
+            <div class="flex items-center gap-[9px] mb-2.5">
+                {% for pip in pips %}<span class="pip" style="background:{{ pip.hex }}"></span>{% endfor %}
+            </div>
+            <h1 translate="no" class="font-cinzel m-0 mb-[11px] font-semibold text-[32px] tracking-[.02em]">{{ deck.name }}</h1>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="chip">{{ deck.get_format_display }}</span>
+                {% include "decks/partials/status_badge.html" with deck=deck %}
+            </div>
+        </div>
+        <div class="flex gap-[9px] flex-wrap items-center">
+            {% if deck.status == 'ready' %}
+            <a href="{% url 'new_match' %}?deck={{ deck.id }}&format={{ deck.format }}" class="btn btn-grad btn-sm">
+                <span translate="no" class="ms text-[18px]">swords</span>Play a match
+            </a>
+            {% endif %}
+            {% url 'delete_deck' deck.id as delete_url %}
+            {% include "partials/confirm_modal.html" with id="confirm-delete" action=delete_url message="Delete this deck? Matches it played are kept." trigger_label="Delete" trigger_icon="delete" trigger_class="btn btn-danger-line btn-sm" confirm_label="Delete" confirm_class="btn btn-danger" danger=True %}
+        </div>
+    </div>
+
+    {% if deck.status == 'failed' %}
+    {% comment %}
+    The reason can span several lines (one per rule broken): keep the line
+    breaks and top-align them. Both override .alert's own flex rules, which are
+    unlayered and would beat the equivalent utilities.
+    {% endcomment %}
+    <div class="alert alert-error mb-[18px]" style="align-items:flex-start;white-space:pre-line">{{ deck.error }}</div>
+    <div class="panel-card p-[18px]">
+        <div class="field-label mb-2">Submitted list</div>
+        <pre class="font-mono2 text-[12.5px] text-txt3 m-0" style="white-space:pre-wrap">{{ deck.raw_decklist }}</pre>
+    </div>
+    {% else %}
+    <div class="detail-grid grid grid-cols-[minmax(0,1fr)_420px] gap-[22px] items-start">
+        <div class="panel-card overflow-hidden min-w-0">
+            <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
+                <span translate="no" class="ms text-txt2 text-[20px]">playing_cards</span>
+                <span class="font-semibold text-[15px]">Cards</span>
+                <span class="text-[12px] text-txt3">{{ deck.total_cards }}</span>
+            </div>
+            <div>
+                {% for group in card_groups %}
+                <div class="group-head">
+                    <span class="w-[9px] h-[9px] rounded-full" style="background:{{ group.hex }}"></span>
+                    <span class="font-semibold text-[12.5px] tracking-[.06em] uppercase text-txt2">{{ group.label }}</span>
+                    <span class="font-mono2 font-bold text-[11px] text-txt3">{{ group.count }}</span>
+                </div>
+                {% for c in group.cards %}
+                <button
+                    type="button"
+                    class="card-row"
+                    {% if c.image_query %}
+                    hx-get="{% url 'card_image_modal' %}?{{ c.image_query }}"
+                    hx-target="#card-image-modal-container"
+                    hx-swap="innerHTML"
+                    {% endif %}
+                    title="View card"
+                >
+                    <div class="card-thumb">
+                        {% if c.image %}<img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />{% endif %}
+                        <span class="font-mono2 absolute top-1 left-1 min-w-[19px] h-[19px] py-0 px-[5px] flex items-center justify-center rounded-full bg-[rgba(10,11,16,.82)] font-bold text-[11px] text-txt">{{ c.quantity }}×</span>
+                        {% if c.image %}<span translate="no" class="ms absolute right-1 bottom-1 p-0.5 text-[15px] text-txt2 bg-[rgba(10,11,16,.72)] rounded-md">zoom_in</span>{% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-semibold text-[14.5px]">{{ c.name }}</span>
+                            <span class="py-0.5 px-[7px] text-[11px] border border-line2 rounded-full" style="color:{{ c.type_hex }}">{{ c.type }}</span>
+                            {% if c.is_commander %}<span class="chip">Commander</span>{% endif %}
+                        </div>
+                        {% if c.oracle %}<div class="mt-1 max-w-[560px] text-[12.5px] text-txt3 font-light leading-[1.45] whitespace-pre-line">{{ c.oracle }}</div>{% endif %}
+                    </div>
+                    <div class="flex-none flex flex-col items-end gap-1.5">
+                        <span class="mv-badge">{{ c.mv }}</span>
+                    </div>
+                </button>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="detail-sidebar flex flex-col gap-4">
+            {% for c in commander_cards %}
+            <div class="panel-card p-[18px]">
+                <div class="mb-3.5 font-semibold text-[12.5px] tracking-[.08em] uppercase text-txt3">Commander</div>
+                <div class="flex items-center gap-3">
+                    {% if c.image %}
+                    <button type="button" class="card-thumb flex-none"
+                        hx-get="{% url 'card_image_modal' %}?{{ c.image_query }}"
+                        hx-target="#card-image-modal-container" hx-swap="innerHTML" title="View card">
+                        <img src="{{ c.image }}" alt="{{ c.name }}" loading="lazy" />
+                    </button>
+                    {% endif %}
+                    <div class="min-w-0">
+                        <div translate="no" class="font-cinzel font-semibold text-[15px] leading-[1.2]">{{ c.name }}</div>
+                        <div class="mt-1 text-[12px] text-txt3 font-light">{{ c.type_line }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{# HTMX target: the card-image zoom modal is fetched and swapped in here on click. #}
+<div id="card-image-modal-container"></div>
+{% endblock %}

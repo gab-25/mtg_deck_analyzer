@@ -1,0 +1,9 @@
+{% comment %}
+The deck-list region. While an import runs it polls itself via HTMX (swapping
+its own outer HTML); once nothing is importing the re-rendered region drops the
+trigger and polling stops.
+{% endcomment %}
+<div id="deck-grid-region"
+    {% if has_busy %}hx-get="{% url 'deck_list' %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+    {% include "decks/partials/deck_cards.html" %}
+</div>

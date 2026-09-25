@@ -1,0 +1,86 @@
+"""Reading and checking the new-match form."""
+
+import random
+from dataclasses import dataclass
+
+from decks.formats import DEFAULT_FORMAT, FORMATS
+from decks.models import Deck
+
+from .agents import openrouter
+from .models import Seat
+
+# Rows the form shows; the format decides how many of them may be filled.
+SEAT_ROWS = max(fmt.max_seats for fmt in FORMATS.values())
+MAX_ROUNDS_LIMIT = 100
+
+
+@dataclass
+class SeatChoice:
+    deck: Deck
+    agent: str
+    model: str
+
+
+@dataclass
+class MatchForm:
+    format: str
+    seed: int
+    max_rounds: int
+    seats: list[SeatChoice]
+
+
+def _int(value, default=None):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def parse_match_form(post, user) -> tuple[MatchForm | None, list[str]]:
+    """Returns the chosen match set-up, or ``None`` and every reason it is refused."""
+    errors = []
+    fmt = post.get("format") if post.get("format") in FORMATS else DEFAULT_FORMAT
+    rules = FORMATS[fmt]
+
+    raw_seed = (post.get("seed") or "").strip()
+    seed = _int(raw_seed) if raw_seed else random.randrange(2**31)
+    if seed is None:
+        errors.append("The seed must be a whole number.")
+
+    max_rounds = _int(post.get("max_rounds"), 20)
+    if not 1 <= max_rounds <= MAX_ROUNDS_LIMIT:
+        errors.append(f"The round limit must be between 1 and {MAX_ROUNDS_LIMIT}.")
+
+    decks = {str(d.id): d for d in Deck.objects.filter(owner=user, status=Deck.Status.READY)}
+    agents = {choice for choice, _ in Seat.Agent.choices}
+    seats = []
+    for row in range(SEAT_ROWS):
+        deck_id = post.get(f"seat-{row}-deck") or ""
+        if not deck_id:
+            continue
+        deck = decks.get(deck_id)
+        if deck is None:
+            errors.append(f"Seat {row + 1}: pick one of your imported decks.")
+            continue
+        if deck.format != fmt:
+            errors.append(f"Seat {row + 1}: {deck.name} is not a {rules.label} deck.")
+        agent = post.get(f"seat-{row}-agent") or Seat.Agent.RANDOM
+        if agent not in agents:
+            errors.append(f"Seat {row + 1}: unknown agent {agent!r}.")
+        seats.append(
+            SeatChoice(deck=deck, agent=agent, model=(post.get(f"seat-{row}-model") or "").strip())
+        )
+
+    if not rules.min_seats <= len(seats) <= rules.max_seats:
+        if rules.min_seats == rules.max_seats:
+            wanted = f"exactly {rules.min_seats}"
+        else:
+            wanted = f"{rules.min_seats} to {rules.max_seats}"
+        errors.append(f"{rules.label} is played by {wanted} players; {len(seats)} chosen.")
+
+    if any(s.agent == Seat.Agent.LLM for s in seats) and not openrouter.api_key():
+        errors.append("LLM seats need an OpenRouter API key: set OPENROUTER_API_KEY.")
+
+    if errors:
+        return None, errors
+    return MatchForm(format=fmt, seed=seed, max_rounds=max_rounds, seats=seats), []

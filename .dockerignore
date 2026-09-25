@@ -1,0 +1,27 @@
+# Keep the build context small and reproducible.
+.git
+.gitignore
+.venv
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Local environment & secrets — provided at runtime, never baked into the image.
+.env
+*.env
+!.env.example
+
+# Local databases / build artifacts.
+*.db
+*.sqlite3
+staticfiles/
+
+# Dev-only files.
+tests/
+README.md
+LICENSE
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,62 @@
+{% comment %}
+Scoreboard and log. While the match runs the region polls itself (outerHTML
+swap); the finished render drops the trigger and polling stops.
+{% endcomment %}
+<div id="match-live-region" class="flex flex-col gap-5"
+    {% if match.is_busy %}hx-get="{% url 'match_live' match.id %}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+
+    <div class="flex items-center gap-3 flex-wrap">
+        {% include "playtest/partials/match_status.html" with match=match %}
+        {% if match.status == 'finished' %}
+        <span class="text-[13px] text-txt2">{{ match.get_end_reason_display }} after {{ match.round }} round{{ match.round|pluralize }}.</span>
+        {% endif %}
+    </div>
+
+    {% if match.status == 'failed' %}
+    <div class="alert alert-error" style="align-items:flex-start;white-space:pre-line">{{ match.error }}</div>
+    {% endif %}
+
+    <div class="seat-grid">
+        {% for seat in seats %}
+        <div class="seat-card{% if match.winner_id == seat.id %} seat-winner{% elif seat.eliminated_round %} seat-out{% endif %}">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="field-label">Seat {{ seat.position|add:1 }}</span>
+                <span class="chip">
+                    <span translate="no" class="ms text-[14px]">{% if seat.agent == 'llm' %}psychology{% else %}casino{% endif %}</span>{{ seat.get_agent_display }}
+                </span>
+            </div>
+            <div translate="no" class="font-cinzel font-semibold text-[16px] leading-[1.2] mb-1.5">{{ seat.deck_name }}</div>
+            {% if seat.agent == 'llm' %}<div class="font-mono2 text-[11px] text-txt3 mb-2">{{ seat.model|default:default_model }}</div>{% endif %}
+            <div class="flex items-center gap-2 mt-2 text-[13px]">
+                {% if match.winner_id == seat.id %}
+                <span translate="no" class="ms text-[18px] text-gold">military_tech</span><span class="text-gold font-semibold">Winner</span>
+                {% elif seat.eliminated_round %}
+                <span translate="no" class="ms text-[18px] text-danger">heart_broken</span><span class="text-txt3">Out in round {{ seat.eliminated_round }}</span>
+                {% endif %}
+                {% if seat.life is not None %}<span class="font-mono2 font-bold">{{ seat.life }} life</span>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="panel-card overflow-hidden">
+        <div class="flex items-center gap-[9px] py-4 px-[18px] border-b border-line2">
+            <span translate="no" class="ms text-txt2 text-[20px]">event_list</span>
+            <span class="font-semibold text-[15px]">Game log</span>
+            <span class="text-[12px] text-txt3">{{ events|length }} event{{ events|length|pluralize }}</span>
+        </div>
+        <div class="event-log">
+            {% for event in events %}
+            <div class="event-row{% if event.kind == 'turn' or event.kind == 'game_over' or event.kind == 'eliminated' %} event-headline{% endif %}">
+                <span class="font-mono2 text-[11px] text-txt3 min-w-[19px] flex-none">{{ event.seq }}</span>
+                <div class="min-w-0">
+                    <div class="{% if event.kind == 'agent_fallback' or event.kind == 'decision_limit' %}text-gold{% elif event.kind == 'eliminated' %}text-danger{% endif %}">{{ event.text }}</div>
+                    {% if event.reasoning %}<div class="event-reason">“{{ event.reasoning }}”</div>{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="py-5 px-[18px] text-txt3 text-[13px]">Shuffling up…</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,132 @@
+"""Deck views: import a decklist, browse your decks, look at one."""
+
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_http_methods
+
+from mtg_deck_tester.access import get_owned_or_404
+from mtg_deck_tester.jobs import start_job
+
+from .cache import DbCardCache
+from .formats import DEFAULT_FORMAT, FORMATS, format_choices
+from .importer import decklist_errors, run_import
+from .models import Deck
+from .presentation import card_groups, commander_cards, deck_pips
+
+
+def _grid_context(user) -> dict:
+    """Context for the deck grid, which polls itself while an import runs."""
+    decks = list(Deck.objects.filter(owner=user))
+    for deck in decks:
+        deck.pips = deck_pips(deck)
+    return {"decks": decks, "has_busy": any(d.is_busy for d in decks)}
+
+
+@login_required
+@require_http_methods(["GET"])
+def deck_list(request):
+    context = _grid_context(request.user)
+    # HTMX poll: return just the grid region so it can swap itself in place.
+    template = "decks/partials/deck_grid.html" if request.htmx else "decks/deck_list.html"
+    return render(request, template, context)
+
+
+def _form_context(**extra) -> dict:
+    return {"format_choices": format_choices(), "form_format": DEFAULT_FORMAT, **extra}
+
+
+@login_required
+@require_http_methods(["GET"])
+def new_deck(request):
+    return render(request, "decks/deck_new.html", _form_context())
+
+
+@login_required
+@require_http_methods(["POST"])
+def create_deck(request):
+    name = (request.POST.get("name") or "").strip() or "Untitled Deck"
+    decklist = request.POST.get("decklist", "")
+    fmt = request.POST.get("format")
+    if fmt not in FORMATS:
+        fmt = DEFAULT_FORMAT
+
+    # Cheap validation first, so an illegal deck is reported inline; the
+    # Scryfall fetch runs in the background afterwards.
+    errors = decklist_errors(decklist)
+    if errors:
+        context = _form_context(
+            errors=errors, form_name=name, form_decklist=decklist, form_format=fmt
+        )
+        return render(request, "decks/deck_new.html", context, status=422)
+
+    deck = Deck.objects.create(
+        owner=request.user,
+        name=name,
+        format=fmt,
+        raw_decklist=decklist,
+        status=Deck.Status.PENDING,
+    )
+    start_job(run_import, deck.id)
+    # Post/Redirect/Get: the deck list shows the import and polls until it's done.
+    return redirect("deck_list")
+
+
+@login_required
+@require_http_methods(["GET"])
+def deck_detail(request, deck_id):
+    deck = get_owned_or_404(Deck, request.user, deck_id)
+    if deck.is_busy:
+        return redirect("deck_list")
+    return render(
+        request,
+        "decks/deck_detail.html",
+        {
+            "deck": deck,
+            "pips": deck_pips(deck),
+            "card_groups": card_groups(deck.cards),
+            "commander_cards": commander_cards(deck.cards),
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_deck(request, deck_id):
+    get_owned_or_404(Deck, request.user, deck_id).delete()
+    return redirect("deck_list")
+
+
+# The card art cache is shared across every deck and keyed by card: public
+# Scryfall data, not user data, so it needs no ownership check.
+@login_required
+@require_http_methods(["GET"])
+def media(request, name: str):
+    """Serves a cached card image from the database."""
+    data = DbCardCache().get_image(name)
+    if data is None:
+        return HttpResponse("Image not found", status=404)
+    return HttpResponse(data, content_type="image/jpeg")
+
+
+@login_required
+@require_http_methods(["GET"])
+def card_image_modal(request):
+    """Returns the zoom-modal fragment for a cached card's faces (HTMX).
+
+    Thumbnails ``hx-get`` this endpoint with one ``name`` per printed face, so a
+    double-faced card ships both images at once and the flip costs no further
+    request. Called without a ``name`` it returns an empty body, which the
+    overlay uses to close itself.
+    """
+    names = [name for name in request.GET.getlist("name") if name]
+    if not names:
+        return HttpResponse("")
+    cache = DbCardCache()
+    if any(not cache.has_image(name) for name in names):
+        return HttpResponse("Image not found", status=404)
+    return render(
+        request,
+        "partials/card_image_modal.html",
+        {"image_urls": [f"/media/{name}" for name in names]},
+    )

@@ -1,0 +1,7 @@
+{% comment %}
+The match-list region: polls itself while a match is running, like the deck grid.
+{% endcomment %}
+<div id="match-grid-region"
+    {% if has_busy %}hx-get="{% url 'match_list' %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+    {% include "playtest/partials/match_cards.html" %}
+</div>

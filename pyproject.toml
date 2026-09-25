@@ -1,0 +1,35 @@
+[project]
+name = "mtg-deck-tester"
+version = "0.1.0"
+description = "Django web app where AI agents playtest Magic: The Gathering Commander decks"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "django>=5.1",
+    "django-htmx>=1.27.0",
+    "gunicorn>=26.0.0",
+    "psycopg[binary]>=3.2.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.34.2",
+    "whitenoise>=6.12.0",
+]
+
+# This is a Django application shipped as a Docker image, not a distributable
+# library: tell uv to install only the dependencies and run the code from the
+# working directory (no wheel build / editable install of the project itself).
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+DJANGO_SETTINGS_MODULE = "mtg_deck_tester.settings_test"
+filterwarnings = [
+    # WhiteNoise warns that STATIC_ROOT is empty; expected in tests (no collectstatic).
+    "ignore:No directory at:UserWarning",
+]

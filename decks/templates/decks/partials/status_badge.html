@@ -1,0 +1,11 @@
+{% comment %}
+Status pill for a deck import. Include with the deck in scope:
+{% include "decks/partials/status_badge.html" with deck=deck %}
+{% endcomment %}
+{% if deck.status == 'ready' %}
+<span class="status status-ready"><span translate="no" class="ms text-[13px]">check</span>Ready</span>
+{% elif deck.status == 'failed' %}
+<span class="status status-failed"><span translate="no" class="ms text-[13px]">error</span>Failed</span>
+{% else %}
+<span class="status status-pending"><span class="spinner"></span>Importing</span>
+{% endif %}
